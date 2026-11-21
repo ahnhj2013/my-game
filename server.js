@@ -16,36 +16,54 @@ io.on('connection', (socket) => {
   players[socket.id] = {
     id: socket.id,
     name: `플레이어_${socket.id.substring(0, 4)}`,
-    x: (Math.random() - 0.5) * 10,
+    x: (Math.random() - 0.5) * 8,
     y: 0,
-    z: (Math.random() - 0.5) * 10,
+    z: (Math.random() - 0.5) * 8,
     rotY: 0,
-    outfit: 'tshirt',     // tshirt, suit, hoodie, armor
-    outfitColor: '#3b82f6',
-    face: 'happy'         // happy, cool, cat, robot
+    isMoving: false,
+    face: 'happy',
+    topStyle: 'tshirt',
+    topColor: '#3b82f6',
+    bottomStyle: 'pants',
+    bottomColor: '#1e293b',
+    gesture: 'none'
   };
 
   socket.emit('currentPlayers', players);
   socket.broadcast.emit('newPlayer', players[socket.id]);
 
-  // 닉네임 및 아바타 커스터마이징 동기화
+  // 프로필 및 상·하의/얼굴 변경
   socket.on('updateProfile', (data) => {
     const p = players[socket.id];
     if (!p) return;
     if (data.name && data.name.trim()) p.name = data.name.trim().substring(0, 12);
-    if (data.outfit) p.outfit = data.outfit;
-    if (data.outfitColor) p.outfitColor = data.outfitColor;
     if (data.face) p.face = data.face;
+    if (data.topStyle) p.topStyle = data.topStyle;
+    if (data.topColor) p.topColor = data.topColor;
+    if (data.bottomStyle) p.bottomStyle = data.bottomStyle;
+    if (data.bottomColor) p.bottomColor = data.bottomColor;
     io.emit('playerUpdated', p);
   });
 
+  // 초당 50회 이상 위치 및 걷기 상태 동기화
   socket.on('playerMovement', (data) => {
-    if (players[socket.id]) {
-      players[socket.id].x = data.x;
-      players[socket.id].y = data.y;
-      players[socket.id].z = data.z;
-      players[socket.id].rotY = data.rotY;
-      socket.broadcast.emit('playerMoved', players[socket.id]);
+    const p = players[socket.id];
+    if (p) {
+      p.x = data.x;
+      p.y = data.y;
+      p.z = data.z;
+      p.rotY = data.rotY;
+      p.isMoving = !!data.isMoving;
+      socket.broadcast.emit('playerMoved', p);
+    }
+  });
+
+  // 제스처(모션) 동기화
+  socket.on('playGesture', (gestureName) => {
+    const p = players[socket.id];
+    if (p) {
+      p.gesture = gestureName;
+      io.emit('playerGesture', { id: socket.id, gesture: gestureName });
     }
   });
 
