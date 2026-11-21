@@ -3,32 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>3D 오픈월드 멀티플레이어</title>
+  <title>3D 오픈월드 - 아바타 커스터마이징</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
     body { overflow: hidden; background: #1a1a2e; font-family: 'Malgun Gothic', sans-serif; touch-action: none; }
-    #game-canvas { display: block; width: 100vw; height: 100vh; }
     
     /* 상단 상태바 */
     #top-bar {
       position: fixed; top: 12px; left: 12px; right: 12px;
       display: flex; justify-content: space-between; align-items: center;
-      pointer-events: none; z-index: 10;
+      pointer-events: none; z-index: 10; gap: 8px;
     }
+    .top-left { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .badge {
-      background: rgba(15, 23, 42, 0.75); color: #fff; padding: 8px 14px;
+      background: rgba(15, 23, 42, 0.8); color: #fff; padding: 8px 14px;
       border-radius: 20px; font-size: 13px; backdrop-filter: blur(6px);
-      border: 1px solid rgba(255,255,255,0.15); pointer-events: auto;
+      border: 1px solid rgba(255,255,255,0.18); pointer-events: auto;
     }
-    #name-input {
-      background: transparent; border: none; border-bottom: 1px solid #38bdf8;
-      color: #38bdf8; font-weight: bold; width: 90px; outline: none; font-size: 13px;
+    #customize-btn {
+      background: #0284c7; color: #fff; font-weight: bold; cursor: pointer;
+      border: 1px solid #38bdf8; transition: 0.15s;
     }
+    #customize-btn:hover { background: #0369a1; }
+
+    /* 아바타 꾸미기 패널 */
+    #custom-panel {
+      position: fixed; top: 60px; left: 12px; width: 280px;
+      background: rgba(15, 23, 42, 0.92); color: #f8fafc;
+      border-radius: 16px; padding: 16px; backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2); z-index: 20;
+      display: none; flex-direction: column; gap: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    #custom-panel.open { display: flex; }
+    .panel-title { font-size: 15px; font-weight: bold; color: #38bdf8; display: flex; justify-content: space-between; }
+    .close-btn { background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer; }
+    .field-group { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #cbd5e1; }
+    .field-group input[type="text"] {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px; padding: 6px 10px; color: #fff; font-size: 13px; outline: none;
+    }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .opt-btn {
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      color: #e2e8f0; padding: 7px; border-radius: 8px; font-size: 12px; cursor: pointer;
+    }
+    .opt-btn.active { background: #0284c7; border-color: #38bdf8; color: #fff; font-weight: bold; }
+    .color-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .color-swatch {
+      width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); cursor: pointer;
+    }
+    .color-swatch.active { border-color: #fff; transform: scale(1.15); }
+    #color-picker { width: 32px; height: 26px; border: none; background: none; cursor: pointer; }
 
     /* 채팅창 */
     #chat-container {
       position: fixed; bottom: 16px; left: 16px; width: 300px; max-width: calc(100vw - 140px);
-      background: rgba(15, 23, 42, 0.75); border-radius: 12px; padding: 10px;
+      background: rgba(15, 23, 42, 0.78); border-radius: 12px; padding: 10px;
       backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.15);
       display: flex; flex-direction: column; gap: 6px; z-index: 10;
     }
@@ -72,8 +103,57 @@
 </head>
 <body>
   <div id="top-bar">
-    <div class="badge">닉네임: <input id="name-input" type="text" placeholder="이름 입력" maxlength="12"></div>
+    <div class="top-left">
+      <button class="badge" id="customize-btn">👕 아바타 꾸미기</button>
+    </div>
     <div class="badge" id="player-count">접속자: 1명</div>
+  </div>
+
+  <!-- 아바타 커스터마이징 UI -->
+  <div id="custom-panel">
+    <div class="panel-title">
+      <span>아바타 커스터마이징</span>
+      <button class="close-btn" id="close-panel">✕</button>
+    </div>
+
+    <div class="field-group">
+      <label>닉네임</label>
+      <input id="name-input" type="text" placeholder="닉네임 입력" maxlength="12">
+    </div>
+
+    <div class="field-group">
+      <label>얼굴 표정</label>
+      <div class="btn-grid" id="face-options">
+        <button class="opt-btn active" data-val="happy">😊 기본 미소</button>
+        <button class="opt-btn" data-val="cool">😎 선글라스</button>
+        <button class="opt-btn" data-val="cat">🐱 고양이</button>
+        <button class="opt-btn" data-val="robot">🤖 사이보그</button>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label>의상 스타일</label>
+      <div class="btn-grid" id="outfit-options">
+        <button class="opt-btn active" data-val="tshirt">👕 반팔 티셔츠</button>
+        <button class="opt-btn" data-val="suit">👔 정장 & 넥타이</button>
+        <button class="opt-btn" data-val="hoodie">🧥 후드티</button>
+        <button class="opt-btn" data-val="armor">🛡️ 미래 갑옷</button>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label>의상 색상</label>
+      <div class="color-row" id="color-swatches">
+        <div class="color-swatch active" style="background:#3b82f6" data-color="#3b82f6"></div>
+        <div class="color-swatch" style="background:#ef4444" data-color="#ef4444"></div>
+        <div class="color-swatch" style="background:#10b981" data-color="#10b981"></div>
+        <div class="color-swatch" style="background:#f59e0b" data-color="#f59e0b"></div>
+        <div class="color-swatch" style="background:#8b5cf6" data-color="#8b5cf6"></div>
+        <div class="color-swatch" style="background:#1e293b" data-color="#1e293b"></div>
+        <div class="color-swatch" style="background:#f8fafc" data-color="#f8fafc"></div>
+        <input type="color" id="color-picker" value="#3b82f6" title="직접 색상 선택">
+      </div>
+    </div>
   </div>
 
   <div id="chat-container">
@@ -101,15 +181,14 @@
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // 조명
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.85);
     scene.add(hemiLight);
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
     dirLight.position.set(30, 50, 30);
     dirLight.castShadow = true;
     scene.add(dirLight);
 
-    // 오픈월드 바닥 & 그리드 & 랜드마크
+    // 오픈월드 바닥 & 그리드 & 중앙 분수/조형물
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(300, 300),
       new THREE.MeshStandardMaterial({ color: 0x4ade80 })
@@ -122,55 +201,213 @@
     grid.position.y = 0.01;
     scene.add(grid);
 
-    // 중앙 광장 기둥 & 오브젝트
     for (let i = 0; i < 16; i++) {
       const box = new THREE.Mesh(
         new THREE.BoxGeometry(2 + Math.random()*3, 2 + Math.random()*6, 2 + Math.random()*3),
         new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0xfbbf24 : 0xf87171 })
       );
       const angle = (i / 16) * Math.PI * 2;
-      const dist = 15 + (i % 3) * 12;
+      const dist = 16 + (i % 3) * 12;
       box.position.set(Math.cos(angle) * dist, box.geometry.parameters.height / 2, Math.sin(angle) * dist);
       box.castShadow = true;
       box.receiveShadow = true;
       scene.add(box);
     }
 
-    // 2. 아바타 생성 함수 (이름표 & 말풍선 포함)
-    function createAvatar(color, name) {
-      const group = new THREE.Group();
+    // 2. 얼굴 텍스처 생성기 (Canvas 2D로 디테일한 표정 그리기)
+    function createFaceTexture(faceType) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
 
-      const body = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 1.4, 0.7),
-        new THREE.MeshStandardMaterial({ color })
-      );
-      body.position.y = 0.7;
-      body.castShadow = true;
-      group.add(body);
+      // 피부색 배경
+      ctx.fillStyle = faceType === 'robot' ? '#94a3b8' : '#ffedd5';
+      ctx.fillRect(0, 0, 256, 256);
 
-      const head = new THREE.Mesh(
-        new THREE.BoxGeometry(0.8, 0.8, 0.8),
-        new THREE.MeshStandardMaterial({ color: 0xffedd5 })
-      );
-      head.position.y = 1.8;
+      if (faceType === 'happy') {
+        // 기본 미소
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath(); ctx.arc(85, 110, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(171, 110, 14, 0, Math.PI * 2); ctx.fill();
+        // 볼터치
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.35)';
+        ctx.beginPath(); ctx.arc(65, 140, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(191, 140, 16, 0, Math.PI * 2); ctx.fill();
+        // 입
+        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 8; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(128, 142, 26, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+      } else if (faceType === 'cool') {
+        // 선글라스
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(42, 88, 76, 44);
+        ctx.fillRect(138, 88, 76, 44);
+        ctx.fillRect(114, 98, 28, 10);
+        // 반사광
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(52, 95, 18, 8);
+        ctx.fillRect(148, 95, 18, 8);
+        // 씨익 웃는 입
+        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 8; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(100, 170); ctx.quadraticCurveTo(132, 182, 162, 160); ctx.stroke();
+      } else if (faceType === 'cat') {
+        // 고양이 눈 & 수염
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath(); ctx.ellipse(85, 110, 12, 18, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(171, 110, 12, 18, 0, 0, Math.PI * 2); ctx.fill();
+        // 코 & ㅅ 입
+        ctx.fillStyle = '#fb7185';
+        ctx.beginPath(); ctx.arc(128, 138, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(106, 158); ctx.quadraticCurveTo(118, 166, 128, 146);
+        ctx.quadraticCurveTo(138, 166, 150, 158); ctx.stroke();
+        // 수염
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(30, 132); ctx.lineTo(72, 138); ctx.moveTo(30, 152); ctx.lineTo(72, 148); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(226, 132); ctx.lineTo(184, 138); ctx.moveTo(226, 152); ctx.lineTo(184, 148); ctx.stroke();
+      } else if (faceType === 'robot') {
+        // 사이보그 바이저
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(36, 86, 184, 48);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(52, 102, 152, 16);
+        // 입 그릴
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(88, 162, 80, 22);
+      }
+
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    // 3. 의상 및 아바타 3D 모델 조립 함수
+    function buildAvatarAppearance(group, data) {
+      // 기존 외형 메쉬 제거 (이름표와 말풍선은 유지)
+      if (group.userData.visualGroup) {
+        group.remove(group.userData.visualGroup);
+      }
+
+      const visual = new THREE.Group();
+      const mainColor = new THREE.Color(data.outfitColor || '#3b82f6');
+      const skinMat = new THREE.MeshStandardMaterial({ color: data.face === 'robot' ? 0x94a3b8 : 0xffedd5 });
+      const outfitMat = new THREE.MeshStandardMaterial({ color: mainColor });
+
+      // 다리 (바지)
+      const legMat = new THREE.MeshStandardMaterial({
+        color: data.outfit === 'suit' ? mainColor.clone().multiplyScalar(0.85) : 0x1e293b
+      });
+      const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.65, 0.4), legMat);
+      leftLeg.position.set(-0.22, 0.325, 0);
+      const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.65, 0.4), legMat);
+      rightLeg.position.set(0.22, 0.325, 0);
+      visual.add(leftLeg, rightLeg);
+
+      // 몸통 & 팔 (의상 스타일별 파츠 추가)
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.95, 0.55), outfitMat);
+      torso.position.y = 1.12;
+      torso.castShadow = true;
+      visual.add(torso);
+
+      if (data.outfit === 'tshirt') {
+        // 반팔 소매 + 맨팔
+        const leftSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.35, 0.36), outfitMat);
+        leftSleeve.position.set(-0.64, 1.38, 0);
+        const rightSleeve = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.35, 0.36), outfitMat);
+        rightSleeve.position.set(0.64, 1.38, 0);
+
+        const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.55, 0.28), skinMat);
+        leftArm.position.set(-0.64, 0.96, 0);
+        const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.55, 0.28), skinMat);
+        rightArm.position.set(0.64, 0.96, 0);
+        visual.add(leftSleeve, rightSleeve, leftArm, rightArm);
+
+      } else if (data.outfit === 'suit') {
+        // 정장: 흰색 셔츠 V넥 + 넥타이 + 긴 재킷 소매
+        const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.65, 0.05), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        shirt.position.set(0, 1.25, 0.26);
+        const tie = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.55, 0.07), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
+        tie.position.set(0, 1.22, 0.27);
+
+        const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.85, 0.34), outfitMat);
+        leftArm.position.set(-0.64, 1.12, 0);
+        const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.85, 0.34), outfitMat);
+        rightArm.position.set(0.64, 1.12, 0);
+        visual.add(shirt, tie, leftArm, rightArm);
+
+      } else if (data.outfit === 'hoodie') {
+        // 후드티: 목 뒤 후드 모자 + 앞주머니 + 후드 끈
+        const hood = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.45, 0.45), outfitMat);
+        hood.position.set(0, 1.55, -0.25);
+        const pocket = new THREE.Mesh(
+          new THREE.BoxGeometry(0.6, 0.3, 0.08),
+          new THREE.MeshStandardMaterial({ color: mainColor.clone().multiplyScalar(0.8) })
+        );
+        pocket.position.set(0, 0.85, 0.28);
+
+        const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.85, 0.36), outfitMat);
+        leftArm.position.set(-0.65, 1.12, 0);
+        const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.85, 0.36), outfitMat);
+        rightArm.position.set(0.65, 1.12, 0);
+        visual.add(hood, pocket, leftArm, rightArm);
+
+      } else if (data.outfit === 'armor') {
+        // 미래 갑옷: 어깨 뽕(숄더 패드) + 가슴 에너지 코어
+        const shoulderMat = new THREE.MeshStandardMaterial({ color: mainColor.clone().multiplyScalar(0.75), metalness: 0.5, roughness: 0.3 });
+        const leftShoulder = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.38, 0.55), shoulderMat);
+        leftShoulder.position.set(-0.68, 1.48, 0);
+        const rightShoulder = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.38, 0.55), shoulderMat);
+        rightShoulder.position.set(0.68, 1.48, 0);
+
+        const core = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.08, 16), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+        core.rotation.x = Math.PI / 2;
+        core.position.set(0, 1.22, 0.28);
+
+        const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.8, 0.34), outfitMat);
+        leftArm.position.set(-0.66, 1.05, 0);
+        const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.8, 0.34), outfitMat);
+        rightArm.position.set(0.66, 1.05, 0);
+        visual.add(leftShoulder, rightShoulder, core, leftArm, rightArm);
+      }
+
+      // 머리 (앞면만 얼굴 텍스처 적용)
+      const faceTex = createFaceTexture(data.face || 'happy');
+      const headMats = [
+        skinMat, // right
+        skinMat, // left
+        skinMat, // top
+        skinMat, // bottom
+        new THREE.MeshStandardMaterial({ map: faceTex }), // front (+Z)
+        skinMat  // back
+      ];
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.82), headMats);
+      head.position.y = 2.02;
       head.castShadow = true;
-      group.add(head);
+      visual.add(head);
 
-      // 눈 (방향 표시)
-      const eyeGeo = new THREE.BoxGeometry(0.12, 0.12, 0.1);
-      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-      leftEye.position.set(-0.2, 1.85, 0.4);
-      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-      rightEye.position.set(0.2, 1.85, 0.4);
-      group.add(leftEye, rightEye);
+      // 고양이 얼굴 선택 시 머리 위 고양이 귀 추가
+      if (data.face === 'cat') {
+        const earGeo = new THREE.ConeGeometry(0.16, 0.28, 4);
+        const leftEar = new THREE.Mesh(earGeo, skinMat);
+        leftEar.position.set(-0.24, 2.52, 0);
+        const rightEar = new THREE.Mesh(earGeo, skinMat);
+        rightEar.position.set(0.24, 2.52, 0);
+        visual.add(leftEar, rightEar);
+      }
 
-      // 닉네임 스프라이트
-      const nameSprite = makeTextSprite(name, "rgba(15,23,42,0.7)", "#ffffff");
-      nameSprite.position.y = 2.6;
+      group.add(visual);
+      group.userData.visualGroup = visual;
+    }
+
+    function createAvatar(playerData) {
+      const group = new THREE.Group();
+      group.userData = { visualGroup: null, nameSprite: null, chatSprite: null, chatTimeout: null };
+
+      buildAvatarAppearance(group, playerData);
+
+      const nameSprite = makeTextSprite(playerData.name, "rgba(15,23,42,0.75)", "#ffffff");
+      nameSprite.position.y = 2.85;
       group.add(nameSprite);
+      group.userData.nameSprite = nameSprite;
 
-      group.userData = { nameSprite, chatSprite: null, chatTimeout: null };
       scene.add(group);
       return group;
     }
@@ -200,7 +437,7 @@
       if (avatar.userData.chatTimeout) clearTimeout(avatar.userData.chatTimeout);
 
       const bubble = makeTextSprite(text, "rgba(255,255,255,0.95)", "#0f172a");
-      bubble.position.y = 3.4;
+      bubble.position.y = 3.65;
       avatar.add(bubble);
       avatar.userData.chatSprite = bubble;
 
@@ -210,7 +447,66 @@
       }, 4500);
     }
 
-    // 3. 멀티플레이어 동기화 관리
+    // 4. 커스터마이징 UI 이벤트 연결
+    let myProfile = { name: '', outfit: 'tshirt', outfitColor: '#3b82f6', face: 'happy' };
+    const customPanel = document.getElementById('custom-panel');
+    const nameInput = document.getElementById('name-input');
+
+    document.getElementById('customize-btn').addEventListener('click', () => {
+      customPanel.classList.toggle('open');
+    });
+    document.getElementById('close-panel').addEventListener('click', () => {
+      customPanel.classList.remove('open');
+    });
+
+    function sendProfileUpdate() {
+      socket.emit('updateProfile', myProfile);
+    }
+
+    nameInput.addEventListener('change', () => {
+      myProfile.name = nameInput.value;
+      sendProfileUpdate();
+    });
+
+    // 얼굴 선택 버튼
+    document.querySelectorAll('#face-options .opt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#face-options .opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        myProfile.face = btn.dataset.val;
+        sendProfileUpdate();
+      });
+    });
+
+    // 의상 스타일 선택 버튼
+    document.querySelectorAll('#outfit-options .opt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#outfit-options .opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        myProfile.outfit = btn.dataset.val;
+        sendProfileUpdate();
+      });
+    });
+
+    // 의상 색상 팔레트 & 자유 피커
+    const colorPicker = document.getElementById('color-picker');
+    document.querySelectorAll('.color-swatch').forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        swatch.classList.add('active');
+        myProfile.outfitColor = swatch.dataset.color;
+        colorPicker.value = swatch.dataset.color;
+        sendProfileUpdate();
+      });
+    });
+
+    colorPicker.addEventListener('input', (e) => {
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      myProfile.outfitColor = e.target.value;
+      sendProfileUpdate();
+    });
+
+    // 5. 멀티플레이어 동기화 관리
     let myAvatar = null;
     const otherPlayers = {};
 
@@ -222,11 +518,12 @@
       Object.keys(players).forEach((id) => {
         const p = players[id];
         if (id === socket.id) {
-          myAvatar = createAvatar(p.color, p.name);
+          myProfile = { name: p.name, outfit: p.outfit, outfitColor: p.outfitColor, face: p.face };
+          nameInput.value = p.name;
+          myAvatar = createAvatar(p);
           myAvatar.position.set(p.x, p.y, p.z);
-          document.getElementById('name-input').value = p.name;
         } else {
-          otherPlayers[id] = createAvatar(p.color, p.name);
+          otherPlayers[id] = createAvatar(p);
           otherPlayers[id].position.set(p.x, p.y, p.z);
           otherPlayers[id].rotation.y = p.rotY;
         }
@@ -236,7 +533,7 @@
 
     socket.on('newPlayer', (p) => {
       if (p.id !== socket.id && !otherPlayers[p.id]) {
-        otherPlayers[p.id] = createAvatar(p.color, p.name);
+        otherPlayers[p.id] = createAvatar(p);
         otherPlayers[p.id].position.set(p.x, p.y, p.z);
         updatePlayerCount();
         addChatLog("시스템", `${p.name}님이 입장했습니다.`);
@@ -250,12 +547,14 @@
       }
     });
 
+    // 누군가 닉네임, 얼굴, 의상, 색상을 변경했을 때 즉시 반영
     socket.on('playerUpdated', (p) => {
       const target = p.id === socket.id ? myAvatar : otherPlayers[p.id];
       if (target) {
+        buildAvatarAppearance(target, p);
         target.remove(target.userData.nameSprite);
-        const newSprite = makeTextSprite(p.name, "rgba(15,23,42,0.7)", "#ffffff");
-        newSprite.position.y = 2.6;
+        const newSprite = makeTextSprite(p.name, "rgba(15,23,42,0.75)", "#ffffff");
+        newSprite.position.y = 2.85;
         target.add(newSprite);
         target.userData.nameSprite = newSprite;
       }
@@ -269,10 +568,9 @@
       }
     });
 
-    // 4. 채팅 & 닉네임 이벤트
+    // 6. 채팅 이벤트
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
-    const nameInput = document.getElementById('name-input');
 
     function addChatLog(name, text) {
       const div = document.createElement('div');
@@ -291,17 +589,13 @@
       chatInput.blur();
     });
 
-    nameInput.addEventListener('change', () => {
-      socket.emit('setName', nameInput.value);
-    });
-
     socket.on('chatMessage', (data) => {
       addChatLog(data.name, data.text);
       const target = data.id === socket.id ? myAvatar : otherPlayers[data.id];
       if (target) showSpeechBubble(target, data.text);
     });
 
-    // 5. 이동 & 카메라 컨트롤
+    // 7. 이동 & 카메라 컨트롤
     const keys = {};
     let joyX = 0, joyY = 0;
     let velY = 0, isGrounded = true;
@@ -314,7 +608,6 @@
     });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-    // 마우스 & 터치 시점 회전
     let isDragging = false, prevX = 0, prevY = 0;
     renderer.domElement.addEventListener('pointerdown', (e) => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
     window.addEventListener('pointerup', () => { isDragging = false; });
@@ -325,7 +618,6 @@
       prevX = e.clientX; prevY = e.clientY;
     });
 
-    // 모바일 조이스틱
     const joyZone = document.getElementById('joystick-zone');
     const joyKnob = document.getElementById('joystick-knob');
     joyZone.addEventListener('touchmove', (e) => {
@@ -353,7 +645,7 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // 6. 메인 게임 루프
+    // 8. 메인 게임 루프
     let lastSent = 0;
     function animate(time) {
       requestAnimationFrame(animate);
@@ -383,7 +675,6 @@
           myAvatar.rotation.y = Math.atan2(dx, dz);
         }
 
-        // 중력 및 점프
         myAvatar.position.y += velY;
         if (myAvatar.position.y > 0) {
           velY -= 0.012;
@@ -393,14 +684,12 @@
           isGrounded = true;
         }
 
-        // 카메라 추적
         const camDist = 9;
         camera.position.x = myAvatar.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist;
         camera.position.y = myAvatar.position.y + Math.sin(camPitch) * camDist + 1.5;
         camera.position.z = myAvatar.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
         camera.lookAt(myAvatar.position.x, myAvatar.position.y + 1.5, myAvatar.position.z);
 
-        // 서버로 내 위치 전송 (초당 20회)
         if (time - lastSent > 50) {
           socket.emit('playerMovement', {
             x: myAvatar.position.x,
