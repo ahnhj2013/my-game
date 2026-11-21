@@ -1,7 +1,6 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,17 +20,23 @@ io.on('connection', (socket) => {
     y: 0,
     z: (Math.random() - 0.5) * 10,
     rotY: 0,
-    color: Math.floor(Math.random() * 0xffffff)
+    outfit: 'tshirt',     // tshirt, suit, hoodie, armor
+    outfitColor: '#3b82f6',
+    face: 'happy'         // happy, cool, cat, robot
   };
 
   socket.emit('currentPlayers', players);
   socket.broadcast.emit('newPlayer', players[socket.id]);
 
-  socket.on('setName', (newName) => {
-    if (players[socket.id] && newName.trim()) {
-      players[socket.id].name = newName.trim().substring(0, 12);
-      io.emit('playerUpdated', players[socket.id]);
-    }
+  // 닉네임 및 아바타 커스터마이징 동기화
+  socket.on('updateProfile', (data) => {
+    const p = players[socket.id];
+    if (!p) return;
+    if (data.name && data.name.trim()) p.name = data.name.trim().substring(0, 12);
+    if (data.outfit) p.outfit = data.outfit;
+    if (data.outfitColor) p.outfitColor = data.outfitColor;
+    if (data.face) p.face = data.face;
+    io.emit('playerUpdated', p);
   });
 
   socket.on('playerMovement', (data) => {
