@@ -688,3 +688,104 @@ io.on('connection', (socket) => {
       io.emit('playerGesture', { id: socket.id, gesture: gestureName });
     }
   });
+
+  socket.on('chatMessage', (msg) => {
+    if (msg && msg.trim()) {
+      io.emit('chatMessage', {
+        id: socket.id,
+        name: players[socket.id]?.name || '익명',
+        text: msg.trim().substring(0, 100)
+      });
+    }
+  });
+
+  // 미니게임 대기실 시작 & 참가
+  socket.on('requestStartLobby', ({ type, cpuCount, mode }) => {
+    if (mg.phase === 'idle') {
+      openMinigameLobby(socket.id, type, cpuCount, mode);
+    }
+  });
+
+  socket.on('joinMinigameLobby', () => {
+    if (mg.phase === 'lobby' && players[socket.id] && !mg.participants[socket.id]) {
+      players[socket.id].inMinigame = true;
+      mg.participants[socket.id] = {
+        id: socket.id,
+        name: players[socket.id].name,
+        isCpu: false
+      };
+      io.emit('minigameLobbyTick', {
+        timeLeft: mg.timeLeft,
+        participants: mg.participants
+      });
+    }
+  });
+
+  // 방장의 팀전 편성 확정
+  socket.on('confirmColorflipTeams', ({ teamCount, assignments }) => {
+    if (mg.phase === 'team_setup' && socket.id === mg.hostId) {
+      startColorFlipMatch(teamCount, assignments);
+    }
+  });
+
+  // 가위바위보 선택 제출
+  socket.on('submitRps', (choice) => {
+    if (mg.phase !== 'rps') return;
+    if (!['rock', 'paper', 'scissors'].includes(choice)) return;
+    const grp = mg.rpsGroups.find(g => g.memberIds.includes(socket.id));
+    if (grp) {
+      grp.choices[socket.id] = choice;
+    }
+  });
+
+  // 얼음땡 액션 (얼음 / 불 / 쨍그랑)
+  socket.on('freezetagUseSkill', (skill) => {
+    if (mg.phase !== 'playing' || mg.type !== 'freezetag') return;
+    const me = mg.participants[socket.id];
+    if (!me || me.role !== 'runner' || me.status === 'out') return;
+
+    const runners = Object.values(mg.participants).filter(p => p.role === 'runner');
+
+    if (skill === 'freeze' && me.status === 'normal' && me.freezeCooldown <= 0) {
+      me.status = 'frozen';
+      me.isMoving = false;
+      io.emit('freezetagAction', { type: 'freeze', actorId: me.id, targetId: me.id, participants: mg.participants });
+
+    } else if (skill === 'fire' && me.status === 'normal') {
+      // 주변 2.8m 이내 얼음 상태인 동료 1명 해제
+      const target = runners.find(r => r.id !== me.id && r.status === 'frozen' && Math.hypot(r.x - me.x, r.z - me.z) <= 2.8);
+      if (target) {
+        target.status = 'normal';
+        target.freezeCooldown = 2.0;
+        io.emit('freezetagAction', { type: 'fire', actorId: me.id, targetId: target.id, participants: mg.participants });
+      }
+
+    } else if (skill === 'clang' && me.status === 'frozen') {
+      // 얼음 상태인 사람 반경 3.2m 내 인원 체크: 정확히 2명(나 + 동료 1명)일 때만 쨍그랑 가능 (3명 이상 불가!)
+      const nearbyFrozen = runners.filter(r => r.status === 'frozen' && Math.hypot(r.x - me.x, r.z - me.z) <= 3.2);
+      if (nearbyFrozen.length === 2) {
+        nearbyFrozen.forEach(r => {
+          r.status = 'normal';
+          r.freezeCooldown = 2.0;
+        });
+        io.emit('freezetagAction', {
+          type: 'clang',
+          actorId: me.id,
+          targetId: nearbyFrozen.find(r => r.id !== me.id).id,
+          participants: mg.participants
+        });
+      }
+    }
+  });
+
+  socket.on('disconnect', () => {
+    delete players[socket.id];
+    if (mg.participants[socket.id]) delete mg.participants[socket.id];
+    io.emit('playerDisconnected', socket.id);
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server v1.3-20261122 running on port ${PORT}`);
+});
