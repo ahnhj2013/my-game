@@ -300,3 +300,969 @@
         <div class="color-swatch" style="background:#f8fafc" data-color="#f8fafc"></div>
         <div class="color-swatch" style="background:#1e293b" data-color="#1e293b"></div>
         <input type="color" id="top-picker" value="#3b82f6">
+      </div>
+    </div>
+    <div class="field-group">
+      <label>하의 스타일 & 색상</label>
+      <div class="btn-grid" id="bottom-options">
+        <button class="opt-btn active" data-val="pants">👖 기본 긴바지</button>
+        <button class="opt-btn" data-val="shorts">🩳 반바지</button>
+        <button class="opt-btn" data-val="skirt">👗 플레어 치마</button>
+        <button class="opt-btn" data-val="overalls">👖 멜빵바지</button>
+      </div>
+      <div class="color-row" id="bottom-colors">
+        <div class="color-swatch active" style="background:#1e293b" data-color="#1e293b"></div>
+        <div class="color-swatch" style="background:#3b82f6" data-color="#3b82f6"></div>
+        <div class="color-swatch" style="background:#d97706" data-color="#d97706"></div>
+        <div class="color-swatch" style="background:#ec4899" data-color="#ec4899"></div>
+        <div class="color-swatch" style="background:#10b981" data-color="#10b981"></div>
+        <div class="color-swatch" style="background:#f8fafc" data-color="#f8fafc"></div>
+        <div class="color-swatch" style="background:#64748b" data-color="#64748b"></div>
+        <input type="color" id="bottom-picker" value="#1e293b">
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 월드 테마 선택 패널 -->
+  <div class="side-panel" id="theme-panel">
+    <div class="panel-header">
+      <span>월드 테마 & 분위기 선택</span>
+      <button class="close-btn" data-close="theme-panel">✕</button>
+    </div>
+    <div class="btn-grid" id="theme-options">
+      <button class="opt-btn active" data-theme="original">🌐 오리지널</button>
+      <button class="opt-btn" data-theme="cute">🌸 귀엽게</button>
+      <button class="opt-btn" data-theme="dreamy">✨ 몽환적으로</button>
+      <button class="opt-btn" data-theme="colorful">🌈 알록달록하게</button>
+      <button class="opt-btn" data-theme="simple">⬜ 심플하게</button>
+      <button class="opt-btn" data-theme="jungle">🌲 정글 통나무집</button>
+      <button class="opt-btn" data-theme="cathouse" style="grid-column: span 2;">🐱 아늑한 고양이 집</button>
+    </div>
+  </div>
+
+  <!-- 3. 미니게임 선택 및 시작 패널 -->
+  <div class="side-panel" id="minigame-panel">
+    <div class="panel-header">
+      <span>🎮 미니게임 선택</span>
+      <button class="close-btn" data-close="minigame-panel">✕</button>
+    </div>
+    <div style="background:rgba(128,128,128,0.14);padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:8px;">
+      <div style="font-weight:bold;font-size:14px;">🎨 1. 색깔 뒤집기 (Color Flip)</div>
+      <p style="font-size:12px;opacity:0.88;line-height:1.4;">
+        전용 타일 경기장으로 이동해 35초 동안 바닥을 밟아 내 색으로 칠하세요! 가장 많이 칠한 우승자에게 <b>+100점</b> 지급!
+      </p>
+      <div class="field-group">
+        <label>함께 뛸 CPU(봇) 인원 (0 ~ 10명):</label>
+        <input type="number" id="cpu-count-input" min="0" max="10" value="4">
+      </div>
+      <button class="ui-btn primary" id="start-colorflip-btn" style="width:100%;padding:9px;background:#10b981;">
+        🚀 게임 시작 & 모두 초대하기
+      </button>
+    </div>
+    <div style="opacity:0.6;font-size:12px;text-align:center;padding:6px;">
+      🔒 다음 미니게임 (폭탄 돌리기 / 점프 맵) 준비 중...
+    </div>
+  </div>
+
+  <!-- 제스처 바 -->
+  <div id="gesture-bar">
+    <button class="gest-btn" data-gest="wave">👋 인사</button>
+    <button class="gest-btn" data-gest="peace">✌️ 브이</button>
+    <button class="gest-btn" data-gest="cheer">🎉 날뛰기</button>
+    <button class="gest-btn" data-gest="dance">💃 댄스</button>
+  </div>
+
+  <!-- 왼쪽 아래 조이스틱 & 오른쪽 아래 점프 버튼 -->
+  <div id="joystick-zone"><div id="joystick-knob"></div></div>
+  <button id="jump-btn">JUMP</button>
+
+  <script>
+    const socket = io();
+
+    // ==========================================
+    // 1. Three.js 씬 & 렌더러 설정
+    // ==========================================
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 350);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.85);
+    scene.add(hemiLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    dirLight.position.set(35, 60, 35);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const worldGroup = new THREE.Group();
+    const arenaGroup = new THREE.Group(); // 미니게임 전용 경기장 그룹
+    scene.add(worldGroup);
+    scene.add(arenaGroup);
+    arenaGroup.visible = false;
+
+    let floatingParticles = [];
+    let currentTheme = 'original';
+    let inMinigame = false;
+
+    // ==========================================
+    // 2. 오픈월드 7종 테마 빌더
+    // ==========================================
+    function buildWorldTheme(theme) {
+      currentTheme = theme;
+      document.body.className = `theme-${theme}`;
+      while (worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
+      floatingParticles = [];
+
+      const groundGeo = new THREE.PlaneGeometry(320, 320);
+
+      if (theme === 'original') {
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, 45, 150);
+        hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.85;
+        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x4ade80 }));
+        ground.rotation.x = -Math.PI / 2; worldGroup.add(ground);
+        const grid = new THREE.GridHelper(320, 64, 0x16a34a, 0x22c55e);
+        grid.position.y = 0.01; worldGroup.add(grid);
+        for (let i = 0; i < 16; i++) {
+          const h = 2 + (i % 4) * 1.5;
+          const box = new THREE.Mesh(new THREE.BoxGeometry(2.5, h, 2.5), new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0xfbbf24 : 0xf87171 }));
+          const angle = (i / 16) * Math.PI * 2, dist = 16 + (i % 3) * 10;
+          box.position.set(Math.cos(angle) * dist, h / 2, Math.sin(angle) * dist);
+          worldGroup.add(box);
+        }
+      } else if (theme === 'cute') {
+        scene.background = new THREE.Color(0xffd6e7);
+        scene.fog = new THREE.Fog(0xffd6e7, 40, 140);
+        hemiLight.color.setHex(0xfff0f6); hemiLight.intensity = 0.95;
+        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xfbcfe8 }));
+        ground.rotation.x = -Math.PI / 2; worldGroup.add(ground);
+        const cols = [0xf472b6, 0xc084fc, 0x60a5fa, 0xfbbf24, 0x34d399];
+        for (let i = 0; i < 24; i++) {
+          const angle = (i / 24) * Math.PI * 2, dist = 12 + (i % 4) * 9;
+          const base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 2, 20), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+          const cap = new THREE.Mesh(new THREE.SphereGeometry(2.2, 20, 16), new THREE.MeshStandardMaterial({ color: cols[i % cols.length] }));
+          cap.scale.y = 0.6; cap.position.y = 1.6;
+          const obj = new THREE.Group(); obj.add(base, cap);
+          obj.position.set(Math.cos(angle) * dist, 1, Math.sin(angle) * dist);
+          worldGroup.add(obj);
+        }
+      } else if (theme === 'dreamy') {
+        scene.background = new THREE.Color(0x1e1b4b);
+        scene.fog = new THREE.Fog(0x1e1b4b, 35, 130);
+        hemiLight.color.setHex(0xc4b5fd); hemiLight.intensity = 0.75;
+        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x312e81 }));
+        ground.rotation.x = -Math.PI / 2; worldGroup.add(ground);
+        for (let i = 0; i < 28; i++) {
+          const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(1.2 + (i % 3) * 0.6), new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0xa78bfa : 0x38bdf8, emissive: 0x4c1d95 }));
+          const angle = (i / 28) * Math.PI * 2, dist = 10 + (i % 5) * 9;
+          crystal.position.set(Math.cos(angle) * dist, 2.5 + (i % 4) * 1.5, Math.sin(angle) * dist);
+          worldGroup.add(crystal);
+          floatingParticles.push({ mesh: crystal, baseY: crystal.position.y, phase: i });
+        }
+      } else if (theme === 'colorful') {
+        scene.background = new THREE.Color(0x38bdf8);
+        scene.fog = new THREE.Fog(0x38bdf8, 50, 160);
+        hemiLight.color.setHex(0xffffff); hemiLight.intensity = 1.0;
+        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xfef08a }));
+        ground.rotation.x = -Math.PI / 2; worldGroup.add(ground);
+        const vivid = [0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x06b6d4, 0x3b82f6, 0xa855f7, 0xec4899];
+        for (let i = 0; i < 32; i++) {
+          const geo = i % 3 === 0 ? new THREE.BoxGeometry(2.5, 4, 2.5) : (i % 3 === 1 ? new THREE.ConeGeometry(2, 4.5, 16) : new THREE.TorusGeometry(1.5, 0.5, 12, 24));
+          const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: vivid[i % vivid.length] }));
+          const angle = (i / 32) * Math.PI * 2, dist = 12 + (i % 4) * 10;
+          mesh.position.set(Math.cos(angle) * dist, 2.2, Math.sin(angle) * dist);
+          worldGroup.add(mesh);
+        }
+      } else if (theme === 'simple') {
+        scene.background = new THREE.Color(0xf4f4f5);
+        scene.fog = new THREE.Fog(0xf4f4f5, 50, 160);
+        hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.95;
+        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xe4e4e7 }));
+        ground.rotation.x = -Math.PI / 2; worldGroup.add(ground);
+        const grid = new THREE.GridHelper(320, 64, 0xa1a1aa, 0xd4d4d8);
+        grid.position.y = 0.01; worldGroup.add(grid);
+        for (let i = 0; i < 12; i++) {
+          const pillar = new THREE.Mesh(new THREE.BoxGeometry(2, 5, 2), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+          const angle = (i / 12) * Math.PI * 2;
+          pillar.position.set(Math.cos(angle) * 20, 2.5, Math.sin(angle) * 20);
+          worldGroup.add(pillar);
+        }
+      } else if (theme === 'jungle') {
+        scene.background = new THREE.Color(0xa7f3d0);
+        scene.fog = new THREE.Fog(0x6ee7b7, 30, 120);
+        hemiLight.color.setHex(0xd1fae5); hemiLight.intensity = 0.85;
+        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x15803d }));
+        ground.rotation.x = -Math.PI / 2; worldGroup.add(ground);
+        const cabin = new THREE.Group();
+        const logMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(7, 4.2, 6), logMat); body.position.y = 2.1;
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(5.6, 3, 4), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
+        roof.rotation.y = Math.PI / 4; roof.position.y = 5.6;
+        const door = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.4, 0.2), new THREE.MeshStandardMaterial({ color: 0x92400e }));
+        door.position.set(0, 1.2, 3.1);
+        cabin.add(body, roof, door); cabin.position.set(0, 0, -10);
+        worldGroup.add(cabin);
+        for (let i = 0; i < 45; i++) {
+          const tree = new THREE.Group();
+          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.65, 3.5, 10), new THREE.MeshStandardMaterial({ color: 0x5c2d0c }));
+          trunk.position.y = 1.75;
+          const c1 = new THREE.Mesh(new THREE.ConeGeometry(2.4, 3.5, 10), new THREE.MeshStandardMaterial({ color: 0x166534 })); c1.position.y = 4.2;
+          const c2 = new THREE.Mesh(new THREE.ConeGeometry(1.8, 3.0, 10), new THREE.MeshStandardMaterial({ color: 0x14532d })); c2.position.y = 6.0;
+          tree.add(trunk, c1, c2);
+          const angle = (i / 45) * Math.PI * 2 + (i % 3) * 0.2, dist = 16 + (i % 5) * 8;
+          tree.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+          worldGroup.add(tree);
+        }
+      } else if (theme === 'cathouse') {
+        scene.background = new THREE.Color(0xfef3c7);
+        scene.fog = new THREE.Fog(0xfef3c7, 45, 140);
+        hemiLight.color.setHex(0xfffbeb); hemiLight.intensity = 0.95;
+        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xd97706 }));
+        ground.rotation.x = -Math.PI / 2; worldGroup.add(ground);
+        const rug = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 0.08, 32), new THREE.MeshStandardMaterial({ color: 0xfce7f3 }));
+        rug.position.y = 0.04; worldGroup.add(rug);
+        const tower = new THREE.Group();
+        const postMat = new THREE.MeshStandardMaterial({ color: 0xfde68a });
+        const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 7, 16), postMat); post1.position.set(-2.5, 3.5, 0);
+        const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 5, 16), postMat); post2.position.set(2.5, 2.5, 0);
+        const board1 = new THREE.Mesh(new THREE.BoxGeometry(7, 0.4, 3.5), new THREE.MeshStandardMaterial({ color: 0xf472b6 })); board1.position.set(0, 4.8, 0);
+        const catBox = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 3.2), new THREE.MeshStandardMaterial({ color: 0xfb7185 })); catBox.position.set(-2.5, 7.2, 0);
+        tower.add(post1, post2, board1, catBox); tower.position.set(0, 0, -11);
+        worldGroup.add(tower);
+        const yarnColors = [0xef4444, 0x3b82f6, 0xf59e0b, 0x10b981, 0xa855f7];
+        for (let i = 0; i < 14; i++) {
+          const yarn = new THREE.Mesh(new THREE.SphereGeometry(1.1, 20, 20), new THREE.MeshStandardMaterial({ color: yarnColors[i % yarnColors.length] }));
+          const angle = (i / 14) * Math.PI * 2, dist = 13 + (i % 3) * 5;
+          yarn.position.set(Math.cos(angle) * dist, 1.1, Math.sin(angle) * dist);
+          worldGroup.add(yarn);
+        }
+      }
+    }
+    buildWorldTheme('original');
+
+    // ==========================================
+    // 3. 미니게임 전용 16x16 색깔 뒤집기 경기장
+    // ==========================================
+    const GRID_SIZE = 16;
+    const TILE_SIZE = 2.0;
+    let arenaTileMeshes = [];
+    const cpuAvatars = {};
+
+    function buildColorFlipArena(initialTiles) {
+      while (arenaGroup.children.length > 0) arenaGroup.remove(arenaGroup.children[0]);
+      arenaTileMeshes = [];
+
+      scene.background = new THREE.Color(0x0f172a);
+      scene.fog = new THREE.Fog(0x0f172a, 45, 130);
+
+      // 외곽 테두리 벽
+      const borderMat = new THREE.MeshStandardMaterial({ color: 0x334155 });
+      const wallN = new THREE.Mesh(new THREE.BoxGeometry(34, 1.2, 1), borderMat); wallN.position.set(0, 0.6, -16.5);
+      const wallS = new THREE.Mesh(new THREE.BoxGeometry(34, 1.2, 1), borderMat); wallS.position.set(0, 0.6, 16.5);
+      const wallW = new THREE.Mesh(new THREE.BoxGeometry(1, 1.2, 34), borderMat); wallW.position.set(-16.5, 0.6, 0);
+      const wallE = new THREE.Mesh(new THREE.BoxGeometry(1, 1.2, 34), borderMat); wallE.position.set(16.5, 0.6, 0);
+      arenaGroup.add(wallN, wallS, wallW, wallE);
+
+      // 16x16 타일 생성
+      const tileGeo = new THREE.BoxGeometry(TILE_SIZE - 0.12, 0.25, TILE_SIZE - 0.12);
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const idx = r * GRID_SIZE + c;
+          const mat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0 });
+          const tile = new THREE.Mesh(tileGeo, mat);
+          const x = (c - GRID_SIZE / 2 + 0.5) * TILE_SIZE;
+          const z = (r - GRID_SIZE / 2 + 0.5) * TILE_SIZE;
+          tile.position.set(x, 0, z);
+          arenaGroup.add(tile);
+          arenaTileMeshes.push(tile);
+        }
+      }
+    }
+
+    function enterMinigameArena(data) {
+      inMinigame = true;
+      worldGroup.visible = false;
+      arenaGroup.visible = true;
+      document.getElementById('world-menu-btns').style.display = 'none';
+      document.getElementById('minigame-hud').classList.add('open');
+
+      buildColorFlipArena(data.tiles);
+
+      // 내 참가 정보 확인 및 내 위치 이동
+      const me = data.participants[socket.id];
+      if (me && myAvatar) {
+        myAvatar.position.set(me.x, 0, me.z);
+        document.getElementById('my-tile-color-dot').style.background = me.color;
+      }
+
+      // 기존 CPU 아바타 제거 후 새로 배치
+      Object.values(cpuAvatars).forEach(cpu => scene.remove(cpu));
+      for (const k in cpuAvatars) delete cpuAvatars[k];
+
+      Object.values(data.participants).forEach(p => {
+        if (p.isCpu) {
+          const bot = createAvatar({
+            name: p.name, face: 'robot',
+            topStyle: 'armor', topColor: p.color,
+            bottomStyle: 'pants', bottomColor: p.color,
+            x: p.x, y: 0, z: p.z, rotY: p.rotY
+          });
+          bot.position.set(p.x, 0, p.z);
+          bot.userData.isMoving = true;
+          cpuAvatars[p.id] = bot;
+        }
+      });
+
+      // 이미 칠해진 타일 반영
+      data.tiles.forEach((ownerId, idx) => {
+        if (ownerId && data.participants[ownerId] && arenaTileMeshes[idx]) {
+          arenaTileMeshes[idx].material.color.set(data.participants[ownerId].color);
+        }
+      });
+    }
+
+    function exitMinigameArena() {
+      inMinigame = false;
+      arenaGroup.visible = false;
+      worldGroup.visible = true;
+      document.getElementById('world-menu-btns').style.display = 'flex';
+      document.getElementById('minigame-hud').classList.remove('open');
+
+      Object.values(cpuAvatars).forEach(cpu => scene.remove(cpu));
+      for (const k in cpuAvatars) delete cpuAvatars[k];
+
+      buildWorldTheme(currentTheme);
+      if (myAvatar) myAvatar.position.set((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6);
+    }
+
+    // ==========================================
+    // 4. 아바타 모델 & 애니메이션 (1.1 동일 유지)
+    // ==========================================
+    function createFaceTexture(faceType) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256; canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = faceType === 'robot' ? '#94a3b8' : '#ffedd5';
+      ctx.fillRect(0, 0, 256, 256);
+
+      if (faceType === 'happy') {
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath(); ctx.arc(85, 110, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(171, 110, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.35)';
+        ctx.beginPath(); ctx.arc(65, 140, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(191, 140, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 8; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(128, 142, 26, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+      } else if (faceType === 'cool') {
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(42, 88, 76, 44); ctx.fillRect(138, 88, 76, 44); ctx.fillRect(114, 98, 28, 10);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(52, 95, 18, 8); ctx.fillRect(148, 95, 18, 8);
+        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 8; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(100, 170); ctx.quadraticCurveTo(132, 182, 162, 160); ctx.stroke();
+      } else if (faceType === 'cat') {
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath(); ctx.ellipse(85, 110, 12, 18, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(171, 110, 12, 18, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fb7185';
+        ctx.beginPath(); ctx.arc(128, 138, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(106, 158); ctx.quadraticCurveTo(118, 166, 128, 146);
+        ctx.quadraticCurveTo(138, 166, 150, 158); ctx.stroke();
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(30, 132); ctx.lineTo(72, 138); ctx.moveTo(30, 152); ctx.lineTo(72, 148); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(226, 132); ctx.lineTo(184, 138); ctx.moveTo(226, 152); ctx.lineTo(184, 148); ctx.stroke();
+      } else if (faceType === 'robot') {
+        ctx.fillStyle = '#0f172a'; ctx.fillRect(36, 86, 184, 48);
+        ctx.fillStyle = '#ef4444'; ctx.fillRect(52, 102, 152, 16);
+        ctx.fillStyle = '#334155'; ctx.fillRect(88, 162, 80, 22);
+      }
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    function buildAvatarAppearance(group, data) {
+      if (group.userData.rig) group.remove(group.userData.rig);
+      const rig = new THREE.Group();
+      const skinMat = new THREE.MeshStandardMaterial({ color: data.face === 'robot' ? 0x94a3b8 : 0xffedd5 });
+      const topMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(data.topColor || '#3b82f6') });
+      const bottomMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(data.bottomColor || '#1e293b') });
+
+      function createLeg(isLeft) {
+        const legPivot = new THREE.Group();
+        legPivot.position.set(isLeft ? -0.22 : 0.22, 0.72, 0);
+        if (data.bottomStyle === 'shorts') {
+          const upper = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.34, 0.4), bottomMat); upper.position.y = -0.17;
+          const lower = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.32, 0.32), skinMat); lower.position.y = -0.48;
+          legPivot.add(upper, lower);
+        } else if (data.bottomStyle === 'skirt') {
+          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.64, 0.32), skinMat); leg.position.y = -0.32;
+          legPivot.add(leg);
+        } else {
+          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.66, 0.4), bottomMat); leg.position.y = -0.33;
+          legPivot.add(leg);
+        }
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.48), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        shoe.position.set(0, -0.65, 0.04); legPivot.add(shoe);
+        return legPivot;
+      }
+
+      const leftLegPivot = createLeg(true), rightLegPivot = createLeg(false);
+      rig.add(leftLegPivot, rightLegPivot);
+
+      const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.22, 0.54), bottomMat); pelvis.position.y = 0.75;
+      rig.add(pelvis);
+
+      if (data.bottomStyle === 'skirt') {
+        const skirtMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.72, 0.45, 16), bottomMat); skirtMesh.position.y = 0.64;
+        rig.add(skirtMesh);
+      } else if (data.bottomStyle === 'overalls') {
+        const s1 = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.85, 0.58), bottomMat); s1.position.set(-0.24, 1.15, 0);
+        const s2 = s1.clone(); s2.position.set(0.24, 1.15, 0);
+        rig.add(s1, s2);
+      }
+
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.88, 0.55), topMat); torso.position.y = 1.25;
+      rig.add(torso);
+
+      if (data.topStyle === 'suit') {
+        const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.6, 0.05), new THREE.MeshStandardMaterial({ color: 0xffffff })); shirt.position.set(0, 1.35, 0.26);
+        const tie = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.07), new THREE.MeshStandardMaterial({ color: 0xdc2626 })); tie.position.set(0, 1.32, 0.27);
+        rig.add(shirt, tie);
+      } else if (data.topStyle === 'hoodie') {
+        const hood = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.42, 0.45), topMat); hood.position.set(0, 1.62, -0.25);
+        rig.add(hood);
+      } else if (data.topStyle === 'armor') {
+        const core = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.08, 16), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+        core.rotation.x = Math.PI / 2; core.position.set(0, 1.32, 0.28);
+        rig.add(core);
+      }
+
+      function createArm(isLeft) {
+        const armPivot = new THREE.Group();
+        armPivot.position.set(isLeft ? -0.64 : 0.64, 1.62, 0);
+        if (data.topStyle === 'tshirt') {
+          const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.34, 0.36), topMat); sleeve.position.y = -0.17;
+          const arm = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.52, 0.28), skinMat); arm.position.y = -0.56;
+          armPivot.add(sleeve, arm);
+        } else {
+          const arm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.82, 0.34), topMat); arm.position.y = -0.41;
+          const hand = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 0.24), skinMat); hand.position.y = -0.86;
+          armPivot.add(arm, hand);
+        }
+        if (!isLeft) {
+          const vGroup = new THREE.Group(); vGroup.position.set(0, -0.95, 0.05);
+          const f1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.06), skinMat); f1.position.set(-0.05, -0.08, 0); f1.rotation.z = -0.25;
+          const f2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.06), skinMat); f2.position.set(0.05, -0.08, 0); f2.rotation.z = 0.25;
+          vGroup.add(f1, f2); vGroup.visible = false;
+          armPivot.add(vGroup); group.userData.vFingers = vGroup;
+        }
+        return armPivot;
+      }
+
+      const leftArmPivot = createArm(true), rightArmPivot = createArm(false);
+      rig.add(leftArmPivot, rightArmPivot);
+
+      const faceTex = createFaceTexture(data.face || 'happy');
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.82), [skinMat, skinMat, skinMat, skinMat, new THREE.MeshStandardMaterial({ map: faceTex }), skinMat]);
+      head.position.y = 2.12;
+      rig.add(head);
+
+      if (data.face === 'cat') {
+        const earGeo = new THREE.ConeGeometry(0.16, 0.28, 4);
+        const lEar = new THREE.Mesh(earGeo, skinMat); lEar.position.set(-0.24, 2.62, 0);
+        const rEar = new THREE.Mesh(earGeo, skinMat); rEar.position.set(0.24, 2.62, 0);
+        rig.add(lEar, rEar);
+      }
+
+      group.add(rig);
+      group.userData.rig = rig;
+      group.userData.leftLeg = leftLegPivot;
+      group.userData.rightLeg = rightLegPivot;
+      group.userData.leftArm = leftArmPivot;
+      group.userData.rightArm = rightArmPivot;
+    }
+
+    function createAvatar(playerData) {
+      const group = new THREE.Group();
+      group.userData = {
+        rig: null, leftLeg: null, rightLeg: null, leftArm: null, rightArm: null, vFingers: null,
+        nameSprite: null, chatSprite: null, chatTimeout: null,
+        targetPos: new THREE.Vector3(playerData.x, playerData.y || 0, playerData.z),
+        targetRotY: playerData.rotY || 0,
+        isMoving: false, walkPhase: 0, gesture: 'none', gestureTimer: 0
+      };
+      buildAvatarAppearance(group, playerData);
+      const nameSprite = makeTextSprite(playerData.name, "rgba(15,23,42,0.75)", "#ffffff");
+      nameSprite.position.y = 2.95;
+      group.add(nameSprite);
+      group.userData.nameSprite = nameSprite;
+      scene.add(group);
+      return group;
+    }
+
+    function makeTextSprite(text, bgColor, textColor) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 512; canvas.height = 128;
+      ctx.fillStyle = bgColor; ctx.roundRect(40, 24, 432, 80, 20); ctx.fill();
+      ctx.font = "bold 40px sans-serif"; ctx.fillStyle = textColor;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(text, 256, 64);
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas) }));
+      sprite.scale.set(3.2, 0.8, 1);
+      return sprite;
+    }
+
+    function showSpeechBubble(avatar, text) {
+      if (avatar.userData.chatSprite) avatar.remove(avatar.userData.chatSprite);
+      if (avatar.userData.chatTimeout) clearTimeout(avatar.userData.chatTimeout);
+      const bubble = makeTextSprite(text, "rgba(255,255,255,0.95)", "#0f172a");
+      bubble.position.y = 3.75; avatar.add(bubble);
+      avatar.userData.chatSprite = bubble;
+      avatar.userData.chatTimeout = setTimeout(() => { avatar.remove(bubble); avatar.userData.chatSprite = null; }, 4500);
+    }
+
+    function updateAvatarAnimation(avatar, dt) {
+      const u = avatar.userData;
+      if (!u.rig) return;
+
+      if (u.gesture !== 'none' && u.gestureTimer > 0) {
+        u.gestureTimer -= dt;
+        const t = (2.5 - u.gestureTimer) * 8;
+        if (u.gesture === 'wave') {
+          u.rightArm.rotation.x = 0; u.rightArm.rotation.z = 2.6 + Math.sin(t * 2) * 0.35;
+        } else if (u.gesture === 'peace') {
+          u.rightArm.rotation.x = -0.6; u.rightArm.rotation.z = 2.4;
+          if (u.vFingers) u.vFingers.visible = true;
+          u.rig.position.y = Math.abs(Math.sin(t)) * 0.1;
+        } else if (u.gesture === 'cheer') {
+          u.leftArm.rotation.z = -2.7 + Math.sin(t * 2.5) * 0.3;
+          u.rightArm.rotation.z = 2.7 - Math.sin(t * 2.5) * 0.3;
+          u.rig.position.y = Math.abs(Math.sin(t * 2)) * 0.55;
+        } else if (u.gesture === 'dance') {
+          u.rig.rotation.y += dt * 7;
+          u.leftArm.rotation.z = -1.8 + Math.sin(t * 2) * 0.5;
+          u.rightArm.rotation.z = 1.8 + Math.cos(t * 2) * 0.5;
+        }
+        if (u.gestureTimer <= 0) {
+          u.gesture = 'none'; u.rig.position.y = 0; u.rig.rotation.y = 0;
+          u.leftArm.rotation.set(0, 0, 0); u.rightArm.rotation.set(0, 0, 0);
+          if (u.vFingers) u.vFingers.visible = false;
+        }
+        return;
+      }
+
+      if (u.isMoving) {
+        u.walkPhase += dt * 13;
+        const swing = Math.sin(u.walkPhase) * 0.72;
+        u.leftLeg.rotation.x = swing; u.rightLeg.rotation.x = -swing;
+        u.leftArm.rotation.x = -swing * 0.75; u.rightArm.rotation.x = swing * 0.75;
+        u.rig.position.y = Math.abs(Math.cos(u.walkPhase)) * 0.08;
+      } else {
+        u.leftLeg.rotation.x *= 0.8; u.rightLeg.rotation.x *= 0.8;
+        u.leftArm.rotation.x *= 0.8; u.rightArm.rotation.x *= 0.8;
+        u.rig.position.y *= 0.8;
+      }
+    }
+
+    // ==========================================
+    // 5. UI 컨트롤 (접이식 채팅 / 토스트 알림 / 패널 / 미니게임)
+    // ==========================================
+    const chatMiniBar = document.getElementById('chat-mini-bar');
+    const chatBox = document.getElementById('chat-box');
+    const chatUnreadDot = document.getElementById('chat-unread-dot');
+    const chatPreview = document.getElementById('chat-preview');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const toastContainer = document.getElementById('chat-toast-container');
+
+    chatMiniBar.addEventListener('click', () => {
+      chatBox.classList.toggle('expanded');
+      if (chatBox.classList.contains('expanded')) {
+        chatUnreadDot.style.display = 'none';
+        chatInput.focus();
+      }
+    });
+    document.getElementById('chat-collapse-btn').addEventListener('click', () => {
+      chatBox.classList.remove('expanded');
+    });
+
+    function showLiveToast(name, text) {
+      const toast = document.createElement('div');
+      toast.className = 'chat-toast';
+      toast.innerHTML = `<b>${name}:</b> ${text}`;
+      toastContainer.appendChild(toast);
+      setTimeout(() => { toast.remove(); }, 3800);
+    }
+
+    function addChatLog(name, text) {
+      const div = document.createElement('div');
+      div.className = 'chat-msg';
+      div.innerHTML = `<span>${name}:</span>${text}`;
+      chatMessages.appendChild(div);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      chatPreview.innerText = `${name}: ${text}`;
+      if (!chatBox.classList.contains('expanded')) {
+        chatUnreadDot.style.display = 'inline-block';
+      }
+      showLiveToast(name, text);
+    }
+
+    document.getElementById('chat-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (chatInput.value.trim()) { socket.emit('chatMessage', chatInput.value); chatInput.value = ''; }
+      chatInput.blur();
+    });
+
+    // 사이드 패널 열기/닫기
+    const panels = ['avatar-panel', 'theme-panel', 'minigame-panel'];
+    function togglePanel(id) {
+      panels.forEach(p => {
+        if (p === id) document.getElementById(p).classList.toggle('open');
+        else document.getElementById(p).classList.remove('open');
+      });
+    }
+    document.getElementById('open-avatar-btn').addEventListener('click', () => togglePanel('avatar-panel'));
+    document.getElementById('open-theme-btn').addEventListener('click', () => togglePanel('theme-panel'));
+    document.getElementById('open-minigame-btn').addEventListener('click', () => togglePanel('minigame-panel'));
+    document.querySelectorAll('.close-btn').forEach(btn => {
+      btn.addEventListener('click', () => document.getElementById(btn.dataset.close).classList.remove('open'));
+    });
+
+    // 미니게임 시작 버튼
+    document.getElementById('start-colorflip-btn').addEventListener('click', () => {
+      const cpuCount = parseInt(document.getElementById('cpu-count-input').value) || 0;
+      socket.emit('startMinigame', { type: 'colorflip', cpuCount });
+      document.getElementById('minigame-panel').classList.remove('open');
+    });
+
+    // 초대 팝업 버튼
+    const inviteModal = document.getElementById('invite-modal');
+    document.getElementById('invite-yes-btn').addEventListener('click', () => {
+      inviteModal.classList.remove('open');
+      socket.emit('joinMinigame');
+    });
+    document.getElementById('invite-no-btn').addEventListener('click', () => {
+      inviteModal.classList.remove('open');
+    });
+
+    // 테마 & 제스처 & 프로필 바인딩
+    document.querySelectorAll('#theme-options .opt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#theme-options .opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        buildWorldTheme(btn.dataset.theme);
+      });
+    });
+    document.querySelectorAll('.gest-btn').forEach(btn => {
+      btn.addEventListener('click', () => socket.emit('playGesture', btn.dataset.gest));
+    });
+
+    let myProfile = { name: '', face: 'happy', topStyle: 'tshirt', topColor: '#3b82f6', bottomStyle: 'pants', bottomColor: '#1e293b' };
+    const nameInput = document.getElementById('name-input');
+    function sendProfileUpdate() { socket.emit('updateProfile', myProfile); }
+    nameInput.addEventListener('change', () => { myProfile.name = nameInput.value; sendProfileUpdate(); });
+
+    function bindOptionGroup(selector, key) {
+      document.querySelectorAll(`${selector} .opt-btn`).forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll(`${selector} .opt-btn`).forEach(b => b.classList.remove('active'));
+          btn.classList.add('active'); myProfile[key] = btn.dataset.val; sendProfileUpdate();
+        });
+      });
+    }
+    bindOptionGroup('#face-options', 'face');
+    bindOptionGroup('#top-options', 'topStyle');
+    bindOptionGroup('#bottom-options', 'bottomStyle');
+
+    function bindColorGroup(swatchSelector, pickerId, key) {
+      const picker = document.getElementById(pickerId);
+      document.querySelectorAll(`${swatchSelector} .color-swatch`).forEach(sw => {
+        sw.addEventListener('click', () => {
+          document.querySelectorAll(`${swatchSelector} .color-swatch`).forEach(s => s.classList.remove('active'));
+          sw.classList.add('active'); myProfile[key] = sw.dataset.color; picker.value = sw.dataset.color; sendProfileUpdate();
+        });
+      });
+      picker.addEventListener('input', (e) => {
+        document.querySelectorAll(`${swatchSelector} .color-swatch`).forEach(s => s.classList.remove('active'));
+        myProfile[key] = e.target.value; sendProfileUpdate();
+      });
+    }
+    bindColorGroup('#top-colors', 'top-picker', 'topColor');
+    bindColorGroup('#bottom-colors', 'bottom-picker', 'bottomColor');
+
+    // ==========================================
+    // 6. 소켓 이벤트 수신
+    // ==========================================
+    let myAvatar = null;
+    const otherPlayers = {};
+
+    function updatePlayerCount() {
+      document.getElementById('player-count').innerText = `👥 ${Object.keys(otherPlayers).length + 1}명`;
+    }
+
+    socket.on('currentPlayers', ({ players }) => {
+      Object.keys(players).forEach((id) => {
+        const p = players[id];
+        if (id === socket.id) {
+          myProfile = { name: p.name, face: p.face, topStyle: p.topStyle, topColor: p.topColor, bottomStyle: p.bottomStyle, bottomColor: p.bottomColor };
+          nameInput.value = p.name;
+          document.getElementById('score-badge').innerText = `🏆 ${p.score || 0}점`;
+          myAvatar = createAvatar(p);
+          myAvatar.position.set(p.x, p.y, p.z);
+        } else {
+          otherPlayers[id] = createAvatar(p);
+          otherPlayers[id].position.set(p.x, p.y, p.z);
+        }
+      });
+      updatePlayerCount();
+    });
+
+    socket.on('newPlayer', (p) => {
+      if (p.id !== socket.id && !otherPlayers[p.id]) {
+        otherPlayers[p.id] = createAvatar(p);
+        otherPlayers[p.id].position.set(p.x, p.y, p.z);
+        updatePlayerCount();
+        addChatLog("시스템", `${p.name}님이 입장했습니다.`);
+      }
+    });
+
+    socket.on('playerMoved', (p) => {
+      const target = otherPlayers[p.id];
+      if (target) {
+        target.userData.targetPos.set(p.x, p.y, p.z);
+        target.userData.targetRotY = p.rotY;
+        target.userData.isMoving = p.isMoving;
+      }
+    });
+
+    socket.on('playerUpdated', (p) => {
+      const target = p.id === socket.id ? myAvatar : otherPlayers[p.id];
+      if (target) {
+        buildAvatarAppearance(target, p);
+        target.remove(target.userData.nameSprite);
+        const newSprite = makeTextSprite(p.name, "rgba(15,23,42,0.75)", "#ffffff");
+        newSprite.position.y = 2.95; target.add(newSprite);
+        target.userData.nameSprite = newSprite;
+      }
+    });
+
+    socket.on('playerGesture', (data) => {
+      const target = data.id === socket.id ? myAvatar : otherPlayers[data.id];
+      if (target) { target.userData.gesture = data.gesture; target.userData.gestureTimer = 2.5; }
+    });
+
+    socket.on('chatMessage', (data) => {
+      addChatLog(data.name, data.text);
+      const target = data.id === socket.id ? myAvatar : otherPlayers[data.id];
+      if (target) showSpeechBubble(target, data.text);
+    });
+
+    // 미니게임 초대 & 진행 이벤트
+    socket.on('minigameInvited', (data) => {
+      if (data.hostId === socket.id) {
+        // 내가 방장이면 바로 경기장 입장
+        enterMinigameArena(data);
+      } else {
+        // 다른 사람에게는 초대 알림 팝업 표시
+        document.getElementById('modal-title').innerText = `🎮 ${data.title}`;
+        document.getElementById('modal-desc').innerHTML = `<b>${data.hostName}</b>님이 미니게임을 시작했습니다!<br>지금 경기장으로 이동해 함께 참여할까요?`;
+        document.getElementById('modal-btn-group').style.display = 'flex';
+        inviteModal.classList.add('open');
+      }
+    });
+
+    socket.on('minigamePlayerJoined', (data) => {
+      if (data.participants[socket.id] && !inMinigame) {
+        enterMinigameArena(data);
+      }
+    });
+
+    socket.on('tileFlipped', ({ index, color }) => {
+      if (inMinigame && arenaTileMeshes[index]) {
+        arenaTileMeshes[index].material.color.set(color);
+      }
+    });
+
+    socket.on('minigameCpuUpdate', (participants) => {
+      if (!inMinigame) return;
+      Object.values(participants).forEach(p => {
+        if (p.isCpu && cpuAvatars[p.id]) {
+          cpuAvatars[p.id].userData.targetPos.set(p.x, 0, p.z);
+          cpuAvatars[p.id].userData.targetRotY = p.rotY;
+        }
+      });
+    });
+
+    socket.on('minigameTick', ({ timeLeft }) => {
+      document.getElementById('mg-timer').innerText = `⏱ ${timeLeft}초`;
+    });
+
+    socket.on('minigameEnded', ({ ranking, winner, updatedPlayers }) => {
+      if (updatedPlayers[socket.id]) {
+        document.getElementById('score-badge').innerText = `🏆 ${updatedPlayers[socket.id].score}점`;
+      }
+      inviteModal.classList.remove('open');
+
+      if (inMinigame) {
+        exitMinigameArena();
+        const top3 = ranking.slice(0, 3).map((r, idx) => `${idx + 1}위: ${r.name} (${r.count}칸)`).join('<br>');
+        addChatLog("🏆 미니게임 결과", `우승: ${winner ? winner.name : '없음'} (+100점)!`);
+        document.getElementById('modal-title').innerText = '🏆 색깔 뒤집기 결과!';
+        document.getElementById('modal-desc').innerHTML = `<b>우승자: ${winner ? winner.name : '없음'} (+100점)</b><br><br>${top3}`;
+        document.getElementById('modal-btn-group').style.display = 'none';
+        inviteModal.classList.add('open');
+        setTimeout(() => { inviteModal.classList.remove('open'); }, 4500);
+      }
+    });
+
+    socket.on('playerDisconnected', (id) => {
+      if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; updatePlayerCount(); }
+    });
+
+    // ==========================================
+    // 7. 입력(왼쪽 아래 조이스틱) & 메인 루프 (60Hz)
+    // ==========================================
+    const keys = {};
+    let joyX = 0, joyY = 0;
+    let velY = 0, isGrounded = true;
+    let camYaw = 0, camPitch = 0.42;
+
+    window.addEventListener('keydown', (e) => {
+      if (document.activeElement === chatInput || document.activeElement === nameInput) return;
+      keys[e.code] = true;
+      if (e.code === 'Space' && isGrounded) { velY = 0.22; isGrounded = false; }
+    });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    let isDragging = false, prevX = 0, prevY = 0;
+    renderer.domElement.addEventListener('pointerdown', (e) => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
+    window.addEventListener('pointerup', () => { isDragging = false; });
+    window.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      camYaw -= (e.clientX - prevX) * 0.006;
+      camPitch = Math.max(0.1, Math.min(1.3, camPitch + (e.clientY - prevY) * 0.006));
+      prevX = e.clientX; prevY = e.clientY;
+    });
+
+    // 왼쪽 아래 조이스틱 (터치 + 마우스 드래그 모두 지원)
+    const joyZone = document.getElementById('joystick-zone');
+    const joyKnob = document.getElementById('joystick-knob');
+    let joyActive = false;
+
+    function updateJoystick(clientX, clientY) {
+      const rect = joyZone.getBoundingClientRect();
+      const dx = clientX - (rect.left + rect.width / 2);
+      const dy = clientY - (rect.top + rect.height / 2);
+      const dist = Math.min(34, Math.hypot(dx, dy));
+      const angle = Math.atan2(dy, dx);
+      joyKnob.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px))`;
+      joyX = (Math.cos(angle) * dist) / 34;
+      joyY = (Math.sin(angle) * dist) / 34;
+    }
+    function resetJoystick() {
+      joyActive = false;
+      joyKnob.style.transform = 'translate(-50%, -50%)';
+      joyX = 0; joyY = 0;
+    }
+
+    joyZone.addEventListener('touchstart', (e) => { e.preventDefault(); joyActive = true; updateJoystick(e.touches[0].clientX, e.touches[0].clientY); });
+    joyZone.addEventListener('touchmove', (e) => { e.preventDefault(); if (joyActive) updateJoystick(e.touches[0].clientX, e.touches[0].clientY); });
+    joyZone.addEventListener('touchend', resetJoystick);
+
+    joyZone.addEventListener('mousedown', (e) => { e.stopPropagation(); joyActive = true; updateJoystick(e.clientX, e.clientY); });
+    window.addEventListener('mousemove', (e) => { if (joyActive) updateJoystick(e.clientX, e.clientY); });
+    window.addEventListener('mouseup', () => { if (joyActive) resetJoystick(); });
+
+    document.getElementById('jump-btn').addEventListener('click', () => { if (isGrounded) { velY = 0.22; isGrounded = false; } });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    let lastTime = 0, lastSent = 0;
+    function animate(time) {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.05, (time - lastTime) / 1000 || 0.016);
+      lastTime = time;
+
+      if (!inMinigame) {
+        for (const p of floatingParticles) {
+          p.mesh.position.y = p.baseY + Math.sin(time * 0.002 + p.phase) * 0.5;
+          p.mesh.rotation.y += dt * 0.8;
+        }
+      }
+
+      if (myAvatar) {
+        let moveX = joyX, moveZ = joyY;
+        if (keys['KeyW'] || keys['ArrowUp']) moveZ -= 1;
+        if (keys['KeyS'] || keys['ArrowDown']) moveZ += 1;
+        if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
+        if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
+
+        const isMoving = (moveX !== 0 || moveZ !== 0);
+        myAvatar.userData.isMoving = isMoving;
+
+        if (isMoving) {
+          const len = Math.hypot(moveX, moveZ);
+          moveX /= len; moveZ /= len;
+          const forwardX = -Math.sin(camYaw), forwardZ = -Math.cos(camYaw);
+          const rightX = Math.cos(camYaw), rightZ = -Math.sin(camYaw);
+          const speed = inMinigame ? 0.21 : 0.16; // 미니게임에선 조금 더 빠릿하게 이동
+          const dx = (forwardX * -moveZ + rightX * moveX) * speed;
+          const dz = (forwardZ * -moveZ + rightZ * moveX) * speed;
+
+          myAvatar.position.x += dx;
+          myAvatar.position.z += dz;
+          myAvatar.rotation.y = Math.atan2(dx, dz);
+
+          // 미니게임 경기장 경계 제한 (-15 ~ +15)
+          if (inMinigame) {
+            myAvatar.position.x = Math.max(-15, Math.min(15, myAvatar.position.x));
+            myAvatar.position.z = Math.max(-15, Math.min(15, myAvatar.position.z));
+          }
+        }
+
+        myAvatar.position.y += velY;
+        if (myAvatar.position.y > 0) velY -= 0.012;
+        else { myAvatar.position.y = 0; velY = 0; isGrounded = true; }
+
+        updateAvatarAnimation(myAvatar, dt);
+
+        const camDist = inMinigame ? 13 : 9.5;
+        camera.position.x = myAvatar.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist;
+        camera.position.y = myAvatar.position.y + Math.sin(camPitch) * camDist + 1.8;
+        camera.position.z = myAvatar.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
+        camera.lookAt(myAvatar.position.x, myAvatar.position.y + 1.5, myAvatar.position.z);
+
+        // 초당 60회(16ms 간격) 실시간 전송
+        if (time - lastSent >= 16) {
+          socket.emit('playerMovement', {
+            x: myAvatar.position.x, y: myAvatar.position.y, z: myAvatar.position.z,
+            rotY: myAvatar.rotation.y, isMoving: isMoving
+          });
+          lastSent = time;
+        }
+      }
+
+      // 다른 플레이어 & CPU 봇 보간 + 걷기 애니메이션
+      [...Object.values(otherPlayers), ...Object.values(cpuAvatars)].forEach(other => {
+        other.position.lerp(other.userData.targetPos, 0.38);
+        let diff = other.userData.targetRotY - other.rotation.y;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        other.rotation.y += diff * 0.38;
+        updateAvatarAnimation(other, dt);
+      });
+
+      renderer.render(scene, camera);
+    }
+    animate(0);
+  </script>
+</body>
+</html>
