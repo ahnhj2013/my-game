@@ -3,88 +3,142 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>3D 멀티플레이어 오픈월드</title>
+  <title>3D 멀티플레이어 오픈월드 v1.2-20261121</title>
   <link href="https://fonts.googleapis.com/css2?family=Jua&family=Nanum+Myeongjo:wght@700&family=Noto+Sans+KR:wght@400;700&family=Black+Han+Sans&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-ui: rgba(15, 23, 42, 0.82);
+      --bg-ui: rgba(15, 23, 42, 0.85);
       --text-ui: #f8fafc;
       --accent: #0284c7;
-      --border-ui: rgba(255, 255, 255, 0.2);
+      --border-ui: rgba(255, 255, 255, 0.22);
       --font-main: 'Noto Sans KR', sans-serif;
-      --radius-ui: 16px;
+      --radius-ui: 14px;
     }
 
-    /* 테마별 UI 스타일 */
     body.theme-original {
-      --bg-ui: rgba(15, 23, 42, 0.82); --text-ui: #f8fafc; --accent: #0284c7;
-      --border-ui: rgba(255, 255, 255, 0.2); --font-main: 'Noto Sans KR', sans-serif; --radius-ui: 16px;
+      --bg-ui: rgba(15, 23, 42, 0.85); --text-ui: #f8fafc; --accent: #0284c7;
+      --border-ui: rgba(255, 255, 255, 0.22); --font-main: 'Noto Sans KR', sans-serif; --radius-ui: 14px;
     }
     body.theme-cute {
-      --bg-ui: rgba(255, 240, 246, 0.92); --text-ui: #831843; --accent: #ec4899;
-      --border-ui: #f9a8d4; --font-main: 'Jua', sans-serif; --radius-ui: 24px;
+      --bg-ui: rgba(255, 240, 246, 0.94); --text-ui: #831843; --accent: #ec4899;
+      --border-ui: #f9a8d4; --font-main: 'Jua', sans-serif; --radius-ui: 22px;
     }
     body.theme-dreamy {
-      --bg-ui: rgba(30, 27, 75, 0.85); --text-ui: #e0e7ff; --accent: #8b5cf6;
-      --border-ui: rgba(196, 181, 253, 0.4); --font-main: 'Nanum Myeongjo', serif; --radius-ui: 18px;
+      --bg-ui: rgba(30, 27, 75, 0.88); --text-ui: #e0e7ff; --accent: #8b5cf6;
+      --border-ui: rgba(196, 181, 253, 0.4); --font-main: 'Nanum Myeongjo', serif; --radius-ui: 16px;
     }
     body.theme-colorful {
-      --bg-ui: rgba(24, 24, 27, 0.88); --text-ui: #fef08a; --accent: #f97316;
+      --bg-ui: rgba(24, 24, 27, 0.9); --text-ui: #fef08a; --accent: #f97316;
       --border-ui: #22d3ee; --font-main: 'Black Han Sans', sans-serif; --radius-ui: 12px;
     }
     body.theme-simple {
-      --bg-ui: rgba(255, 255, 255, 0.92); --text-ui: #18181b; --accent: #27272a;
+      --bg-ui: rgba(255, 255, 255, 0.94); --text-ui: #18181b; --accent: #27272a;
       --border-ui: #d4d4d8; --font-main: 'Noto Sans KR', sans-serif; --radius-ui: 6px;
     }
     body.theme-jungle {
-      --bg-ui: rgba(20, 45, 28, 0.88); --text-ui: #ecfdf5; --accent: #16a34a;
+      --bg-ui: rgba(20, 45, 28, 0.9); --text-ui: #ecfdf5; --accent: #16a34a;
       --border-ui: rgba(134, 239, 172, 0.35); --font-main: 'Jua', sans-serif; --radius-ui: 16px;
     }
     body.theme-cathouse {
-      --bg-ui: rgba(254, 243, 199, 0.94); --text-ui: #78350f; --accent: #d97706;
-      --border-ui: #fcd34d; --font-main: 'Jua', sans-serif; --radius-ui: 22px;
+      --bg-ui: rgba(254, 243, 199, 0.95); --text-ui: #78350f; --accent: #d97706;
+      --border-ui: #fcd34d; --font-main: 'Jua', sans-serif; --radius-ui: 20px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; font-family: var(--font-main); }
     body { overflow: hidden; background: #1a1a2e; touch-action: none; }
 
-    /* 상단 바 */
-    #top-bar {
-      position: fixed; top: 12px; left: 12px; right: 12px;
-      display: flex; justify-content: space-between; align-items: flex-start;
-      pointer-events: none; z-index: 15; gap: 8px;
+    /* 상단 좌측 바 (버전, 점수, 메뉴 버튼) */
+    #top-left-bar {
+      position: fixed; top: 10px; left: 10px;
+      display: flex; flex-direction: column; gap: 6px;
+      pointer-events: none; z-index: 15; max-width: 62vw;
     }
-    .top-left { display: flex; gap: 6px; flex-wrap: wrap; max-width: 78%; }
+    .row-flex { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
     .ui-btn, .badge {
-      background: var(--bg-ui); color: var(--text-ui); padding: 8px 13px;
-      border-radius: var(--radius-ui); font-size: 13px; backdrop-filter: blur(8px);
+      background: var(--bg-ui); color: var(--text-ui); padding: 6px 11px;
+      border-radius: var(--radius-ui); font-size: 12px; backdrop-filter: blur(8px);
       border: 1.5px solid var(--border-ui); pointer-events: auto;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.12s, background 0.2s;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.18); transition: transform 0.12s;
     }
     .ui-btn { cursor: pointer; font-weight: bold; }
-    .ui-btn:active { transform: scale(0.95); }
+    .ui-btn:active { transform: scale(0.94); }
     .ui-btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
+    .version-tag { font-size: 11px; opacity: 0.85; padding: 4px 9px; }
 
-    /* 패널 공통 */
+    /* 오른쪽 위 접이식 미니 채팅창 */
+    #chat-wrapper {
+      position: fixed; top: 10px; right: 10px; z-index: 20;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+    }
+    #chat-mini-bar {
+      background: var(--bg-ui); color: var(--text-ui);
+      border: 1.5px solid var(--border-ui); border-radius: var(--radius-ui);
+      padding: 6px 12px; font-size: 12px; font-weight: bold; cursor: pointer;
+      backdrop-filter: blur(8px); box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      display: flex; align-items: center; gap: 6px;
+    }
+    #chat-unread-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #ef4444; display: none;
+    }
+    #chat-box {
+      width: 270px; max-width: 82vw;
+      background: var(--bg-ui); color: var(--text-ui);
+      border: 1.5px solid var(--border-ui); border-radius: var(--radius-ui);
+      padding: 10px; backdrop-filter: blur(10px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+      display: none; flex-direction: column; gap: 6px;
+    }
+    #chat-box.expanded { display: flex; }
+    #chat-messages {
+      height: 130px; overflow-y: auto; font-size: 12px;
+      display: flex; flex-direction: column; gap: 4px; word-break: break-all;
+    }
+    .chat-msg span { font-weight: bold; color: var(--accent); margin-right: 4px; }
+    #chat-form { display: flex; gap: 4px; }
+    #chat-input {
+      flex: 1; background: rgba(128,128,128,0.18); border: 1px solid var(--border-ui);
+      border-radius: 8px; padding: 6px 8px; color: inherit; font-size: 12px; outline: none;
+    }
+    #chat-send {
+      background: var(--accent); color: #fff; border: none; border-radius: 8px;
+      padding: 0 10px; font-size: 12px; cursor: pointer; font-weight: bold;
+    }
+
+    /* 실시간 채팅 알림 토스트 (화면 상단 중앙) */
+    #chat-toast-container {
+      position: fixed; top: 54px; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; gap: 5px; z-index: 30;
+      pointer-events: none; align-items: center; width: 90vw; max-width: 380px;
+    }
+    .chat-toast {
+      background: rgba(15, 23, 42, 0.9); color: #fff; padding: 6px 14px;
+      border-radius: 20px; font-size: 12px; border: 1px solid rgba(56, 189, 248, 0.5);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); animation: fadeSlide 0.25s ease;
+    }
+    .chat-toast b { color: #38bdf8; margin-right: 4px; }
+    @keyframes fadeSlide { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* 사이드 패널 (아바타 / 테마 / 미니게임) */
     .side-panel {
-      position: fixed; top: 58px; left: 12px; width: 300px; max-height: calc(100vh - 210px);
-      overflow-y: auto; background: var(--bg-ui); color: var(--text-ui);
-      border-radius: var(--radius-ui); padding: 16px; backdrop-filter: blur(12px);
+      position: fixed; top: 82px; left: 10px; width: 300px; max-width: calc(100vw - 20px);
+      max-height: calc(100vh - 170px); overflow-y: auto;
+      background: var(--bg-ui); color: var(--text-ui);
+      border-radius: var(--radius-ui); padding: 14px; backdrop-filter: blur(12px);
       border: 1.5px solid var(--border-ui); z-index: 25;
-      display: none; flex-direction: column; gap: 12px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+      display: none; flex-direction: column; gap: 11px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.4);
     }
     .side-panel.open { display: flex; }
-    .panel-header { display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: bold; border-bottom: 1px solid var(--border-ui); padding-bottom: 6px; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: bold; border-bottom: 1px solid var(--border-ui); padding-bottom: 6px; }
     .close-btn { background: none; border: none; color: inherit; font-size: 16px; cursor: pointer; }
     .field-group { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
-    .field-group input[type="text"] {
-      background: rgba(128,128,128,0.15); border: 1px solid var(--border-ui);
+    .field-group input[type="text"], .field-group input[type="number"] {
+      background: rgba(128,128,128,0.18); border: 1px solid var(--border-ui);
       border-radius: 8px; padding: 7px 10px; color: inherit; font-size: 13px; outline: none;
     }
     .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     .opt-btn {
-      background: rgba(128,128,128,0.12); border: 1px solid var(--border-ui);
+      background: rgba(128,128,128,0.14); border: 1px solid var(--border-ui);
       color: inherit; padding: 7px 6px; border-radius: 10px; font-size: 12px; cursor: pointer;
     }
     .opt-btn.active { background: var(--accent); color: #fff; border-color: transparent; font-weight: bold; }
@@ -95,85 +149,131 @@
     .color-swatch.active { transform: scale(1.2); border-color: var(--accent); }
     input[type="color"] { width: 28px; height: 24px; border: none; background: none; cursor: pointer; }
 
-    /* 제스처 바 (화면 하단 중앙) */
+    /* 미니게임 초대 알림 팝업 & 경기장 HUD */
+    #invite-modal {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 310px; max-width: 90vw; background: rgba(15, 23, 42, 0.96); color: #fff;
+      border: 2px solid #38bdf8; border-radius: 18px; padding: 20px; z-index: 50;
+      display: none; flex-direction: column; gap: 14px; text-align: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+    }
+    #invite-modal.open { display: flex; }
+    .modal-btns { display: flex; gap: 10px; justify-content: center; }
+    .modal-btn { flex: 1; padding: 10px; border-radius: 10px; border: none; font-weight: bold; font-size: 14px; cursor: pointer; }
+    .modal-btn.yes { background: #10b981; color: #fff; }
+    .modal-btn.no { background: #475569; color: #fff; }
+
+    #minigame-hud {
+      position: fixed; top: 52px; left: 50%; transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.9); color: #fff; padding: 8px 18px;
+      border-radius: 24px; border: 2px solid #fbbf24; z-index: 22;
+      display: none; align-items: center; gap: 14px; font-size: 14px; font-weight: bold;
+    }
+    #minigame-hud.open { display: flex; }
+    #my-tile-color-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; display: inline-block; }
+
+    /* 제스처 바 (하단 중앙) */
     #gesture-bar {
-      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-      display: flex; gap: 6px; z-index: 15; flex-wrap: wrap; justify-content: center;
-      max-width: 95vw;
+      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 5px; z-index: 15; justify-content: center;
+      max-width: 54vw; flex-wrap: wrap;
     }
     .gest-btn {
       background: var(--bg-ui); color: var(--text-ui); border: 1.5px solid var(--border-ui);
-      padding: 8px 12px; border-radius: var(--radius-ui); font-size: 12px; font-weight: bold;
-      cursor: pointer; backdrop-filter: blur(8px); box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      padding: 6px 9px; border-radius: var(--radius-ui); font-size: 11px; font-weight: bold;
+      cursor: pointer; backdrop-filter: blur(8px);
     }
     .gest-btn:active { transform: scale(0.92); background: var(--accent); color: #fff; }
 
-    /* 채팅창 */
-    #chat-container {
-      position: fixed; bottom: 64px; left: 12px; width: 270px; max-width: calc(100vw - 130px);
-      background: var(--bg-ui); color: var(--text-ui); border-radius: var(--radius-ui); padding: 10px;
-      backdrop-filter: blur(8px); border: 1.5px solid var(--border-ui);
-      display: flex; flex-direction: column; gap: 6px; z-index: 10;
-    }
-    #chat-messages {
-      height: 95px; overflow-y: auto; font-size: 12px;
-      display: flex; flex-direction: column; gap: 4px; word-break: break-all;
-    }
-    .chat-msg span { font-weight: bold; color: var(--accent); margin-right: 4px; }
-    #chat-form { display: flex; gap: 4px; }
-    #chat-input {
-      flex: 1; background: rgba(128,128,128,0.15); border: 1px solid var(--border-ui);
-      border-radius: 8px; padding: 5px 8px; color: inherit; font-size: 12px; outline: none;
-    }
-    #chat-send {
-      background: var(--accent); color: #fff; border: none; border-radius: 8px;
-      padding: 0 10px; font-size: 12px; cursor: pointer; font-weight: bold;
-    }
-
-    /* 모바일 조이스틱 & 점프 */
+    /* 조이스틱: 왼쪽 아래! / 점프 버튼: 오른쪽 아래 */
     #joystick-zone {
-      position: fixed; bottom: 68px; right: 20px; width: 96px; height: 96px;
-      background: rgba(128,128,128,0.2); border: 2px solid var(--border-ui);
-      border-radius: 50%; z-index: 10; display: none;
+      position: fixed; bottom: 20px; left: 20px; width: 98px; height: 98px;
+      background: rgba(128,128,128,0.24); border: 2px solid var(--border-ui);
+      border-radius: 50%; z-index: 18;
     }
     #joystick-knob {
-      position: absolute; top: 50%; left: 50%; width: 38px; height: 38px;
+      position: absolute; top: 50%; left: 50%; width: 40px; height: 40px;
       background: var(--accent); border-radius: 50%;
       transform: translate(-50%, -50%); pointer-events: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
     #jump-btn {
-      position: fixed; bottom: 175px; right: 32px; width: 58px; height: 58px;
+      position: fixed; bottom: 26px; right: 22px; width: 64px; height: 64px;
       background: var(--accent); color: #fff; font-weight: bold;
-      border: none; border-radius: 50%; font-size: 12px; z-index: 10; display: none;
+      border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; font-size: 13px;
+      z-index: 18; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
-    @media (pointer: coarse) {
-      #joystick-zone, #jump-btn { display: block; }
-    }
+    #jump-btn:active { transform: scale(0.92); }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="theme-original">
-  <div id="top-bar">
-    <div class="top-left">
-      <button class="ui-btn primary" id="open-avatar-btn">👕 아바타 꾸미기</button>
-      <button class="ui-btn" id="open-theme-btn">🌍 월드 분위기 바꾸기</button>
+
+  <!-- 상단 좌측 상태 & 메뉴 -->
+  <div id="top-left-bar">
+    <div class="row-flex">
+      <div class="badge version-tag">v1.2-20261121</div>
+      <div class="badge" id="score-badge">🏆 0점</div>
+      <div class="badge" id="player-count">👥 1명</div>
     </div>
-    <div class="badge" id="player-count">접속자: 1명</div>
+    <div class="row-flex" id="world-menu-btns">
+      <button class="ui-btn primary" id="open-avatar-btn">👕 아바타</button>
+      <button class="ui-btn" id="open-theme-btn">🌍 테마</button>
+      <button class="ui-btn" id="open-minigame-btn" style="background:#10b981;color:#fff;border-color:transparent;">🎮 미니게임</button>
+    </div>
   </div>
 
-  <!-- 1. 아바타 커스터마이징 패널 (얼굴 / 상의 / 하의 분리) -->
+  <!-- 오른쪽 위 접이식 미니 채팅창 -->
+  <div id="chat-wrapper">
+    <div id="chat-mini-bar" title="클릭해서 채팅창 열기/닫기">
+      <span>💬 채팅</span>
+      <span id="chat-preview" style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:normal;opacity:0.8;">터치하여 입력</span>
+      <span id="chat-unread-dot"></span>
+    </div>
+    <div id="chat-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:bold;">
+        <span>실시간 채팅</span>
+        <button id="chat-collapse-btn" style="background:none;border:none;color:inherit;cursor:pointer;font-size:14px;">➖</button>
+      </div>
+      <div id="chat-messages"></div>
+      <form id="chat-form">
+        <input id="chat-input" type="text" placeholder="메시지 입력..." autocomplete="off">
+        <button id="chat-send" type="submit">전송</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 실시간 채팅 알림 토스트 -->
+  <div id="chat-toast-container"></div>
+
+  <!-- 미니게임 경기장 상단 HUD -->
+  <div id="minigame-hud">
+    <span>🎨 색깔 뒤집기</span>
+    <span id="mg-timer" style="color:#fbbf24;">⏱ 35초</span>
+    <span style="display:flex;align-items:center;gap:5px;">내 색: <i id="my-tile-color-dot"></i></span>
+  </div>
+
+  <!-- 미니게임 초대/결과 팝업 -->
+  <div id="invite-modal">
+    <h3 id="modal-title" style="color:#38bdf8;">🎮 미니게임 초대!</h3>
+    <p id="modal-desc" style="font-size:13px;line-height:1.5;color:#e2e8f0;"></p>
+    <div class="modal-btns" id="modal-btn-group">
+      <button class="modal-btn yes" id="invite-yes-btn">예 (참가)</button>
+      <button class="modal-btn no" id="invite-no-btn">아니오</button>
+    </div>
+  </div>
+
+  <!-- 1. 아바타 커스터마이징 패널 -->
   <div class="side-panel" id="avatar-panel">
     <div class="panel-header">
       <span>아바타 스타일 & 의상</span>
       <button class="close-btn" data-close="avatar-panel">✕</button>
     </div>
-
     <div class="field-group">
       <label>닉네임</label>
       <input id="name-input" type="text" placeholder="닉네임 입력" maxlength="12">
     </div>
-
     <div class="field-group">
       <label>얼굴 표정</label>
       <div class="btn-grid" id="face-options">
@@ -183,9 +283,8 @@
         <button class="opt-btn" data-val="robot">🤖 사이보그</button>
       </div>
     </div>
-
     <div class="field-group">
-      <label>상의 스타일</label>
+      <label>상의 스타일 & 색상</label>
       <div class="btn-grid" id="top-options">
         <button class="opt-btn active" data-val="tshirt">👕 반팔 티셔츠</button>
         <button class="opt-btn" data-val="suit">👔 정장 재킷</button>
@@ -201,958 +300,3 @@
         <div class="color-swatch" style="background:#f8fafc" data-color="#f8fafc"></div>
         <div class="color-swatch" style="background:#1e293b" data-color="#1e293b"></div>
         <input type="color" id="top-picker" value="#3b82f6">
-      </div>
-    </div>
-
-    <div class="field-group">
-      <label>하의 스타일</label>
-      <div class="btn-grid" id="bottom-options">
-        <button class="opt-btn active" data-val="pants">👖 기본 긴바지</button>
-        <button class="opt-btn" data-val="shorts">🩳 반바지</button>
-        <button class="opt-btn" data-val="skirt">👗 플레어 치마</button>
-        <button class="opt-btn" data-val="overalls">👖 멜빵바지</button>
-      </div>
-      <div class="color-row" id="bottom-colors">
-        <div class="color-swatch active" style="background:#1e293b" data-color="#1e293b"></div>
-        <div class="color-swatch" style="background:#3b82f6" data-color="#3b82f6"></div>
-        <div class="color-swatch" style="background:#d97706" data-color="#d97706"></div>
-        <div class="color-swatch" style="background:#ec4899" data-color="#ec4899"></div>
-        <div class="color-swatch" style="background:#10b981" data-color="#10b981"></div>
-        <div class="color-swatch" style="background:#f8fafc" data-color="#f8fafc"></div>
-        <div class="color-swatch" style="background:#64748b" data-color="#64748b"></div>
-        <input type="color" id="bottom-picker" value="#1e293b">
-      </div>
-    </div>
-  </div>
-
-  <!-- 2. 월드 테마 & 분위기 변경 패널 -->
-  <div class="side-panel" id="theme-panel">
-    <div class="panel-header">
-      <span>월드 테마 & 분위기 선택</span>
-      <button class="close-btn" data-close="theme-panel">✕</button>
-    </div>
-    <div class="btn-grid" id="theme-options">
-      <button class="opt-btn active" data-theme="original">🌐 오리지널</button>
-      <button class="opt-btn" data-theme="cute">🌸 귀엽게</button>
-      <button class="opt-btn" data-theme="dreamy">✨ 몽환적으로</button>
-      <button class="opt-btn" data-theme="colorful">🌈 알록달록하게</button>
-      <button class="opt-btn" data-theme="simple">⬜ 심플하게</button>
-      <button class="opt-btn" data-theme="jungle">🌲 정글 통나무집</button>
-      <button class="opt-btn" data-theme="cathouse" style="grid-column: span 2;">🐱 아늑한 고양이 집</button>
-    </div>
-  </div>
-
-  <!-- 3. 아바타 제스처(모션) 버튼 바 -->
-  <div id="gesture-bar">
-    <button class="gest-btn" data-gest="wave">👋 손 흔들기</button>
-    <button class="gest-btn" data-gest="peace">✌️ 브이(V) 포즈</button>
-    <button class="gest-btn" data-gest="cheer">🎉 행복하게 날뛰기</button>
-    <button class="gest-btn" data-gest="dance">💃 빙글빙글 댄스</button>
-  </div>
-
-  <!-- 채팅창 -->
-  <div id="chat-container">
-    <div id="chat-messages"></div>
-    <form id="chat-form">
-      <input id="chat-input" type="text" placeholder="메시지 입력 (Enter)" autocomplete="off">
-      <button id="chat-send" type="submit">전송</button>
-    </form>
-  </div>
-
-  <div id="joystick-zone"><div id="joystick-knob"></div></div>
-  <button id="jump-btn">JUMP</button>
-
-  <script>
-    const socket = io();
-
-    // ==========================================
-    // 1. Three.js 씬 & 조명 & 렌더러 초기화
-    // ==========================================
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 350);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    document.body.appendChild(renderer.domElement);
-
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.85);
-    scene.add(hemiLight);
-
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
-    dirLight.position.set(35, 60, 35);
-    dirLight.castShadow = true;
-    scene.add(dirLight);
-
-    // 월드 오브젝트를 담는 그룹 (테마 바꿀 때마다 내부 물체를 싹 교체)
-    const worldGroup = new THREE.Group();
-    scene.add(worldGroup);
-    let floatingParticles = [];
-
-    // ==========================================
-    // 2. 월드 테마 빌더 (7가지 분위기 완벽 변환)
-    // ==========================================
-    function buildWorldTheme(theme) {
-      document.body.className = `theme-${theme}`;
-      while (worldGroup.children.length > 0) {
-        worldGroup.remove(worldGroup.children[0]);
-      }
-      floatingParticles = [];
-
-      const groundGeo = new THREE.PlaneGeometry(320, 320);
-
-      if (theme === 'original') {
-        scene.background = new THREE.Color(0x87ceeb);
-        scene.fog = new THREE.Fog(0x87ceeb, 45, 150);
-        hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.85;
-
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x4ade80 }));
-        ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
-        worldGroup.add(ground);
-
-        const grid = new THREE.GridHelper(320, 64, 0x16a34a, 0x22c55e);
-        grid.position.y = 0.01;
-        worldGroup.add(grid);
-
-        for (let i = 0; i < 16; i++) {
-          const h = 2 + (i % 4) * 1.5;
-          const box = new THREE.Mesh(
-            new THREE.BoxGeometry(2.5, h, 2.5),
-            new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0xfbbf24 : 0xf87171 })
-          );
-          const angle = (i / 16) * Math.PI * 2;
-          const dist = 16 + (i % 3) * 10;
-          box.position.set(Math.cos(angle) * dist, h / 2, Math.sin(angle) * dist);
-          box.castShadow = true;
-          worldGroup.add(box);
-        }
-
-      } else if (theme === 'cute') {
-        // 🌸 귀엽게: 파스텔 핑크 하늘 + 젤리 곰/마카롱/솜사탕 오브젝트
-        scene.background = new THREE.Color(0xffd6e7);
-        scene.fog = new THREE.Fog(0xffd6e7, 40, 140);
-        hemiLight.color.setHex(0xfff0f6); hemiLight.intensity = 0.95;
-
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xfbcfe8 }));
-        ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
-        worldGroup.add(ground);
-
-        const pastelColors = [0xf472b6, 0xc084fc, 0x60a5fa, 0xfbbf24, 0x34d399];
-        for (let i = 0; i < 24; i++) {
-          const angle = (i / 24) * Math.PI * 2;
-          const dist = 12 + (i % 4) * 9;
-          const col = pastelColors[i % pastelColors.length];
-          // 둥글둥글한 젤리 버섯/마카롱 조형물
-          const base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 2, 20), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-          const cap = new THREE.Mesh(new THREE.SphereGeometry(2.2, 20, 16), new THREE.MeshStandardMaterial({ color: col }));
-          cap.scale.y = 0.6;
-          cap.position.y = 1.6;
-          const obj = new THREE.Group();
-          obj.add(base, cap);
-          obj.position.set(Math.cos(angle) * dist, 1, Math.sin(angle) * dist);
-          worldGroup.add(obj);
-        }
-
-      } else if (theme === 'dreamy') {
-        // ✨ 몽환적으로: 보랏빛 밤하늘 + 떠다니는 크리스탈 & 반딧불이
-        scene.background = new THREE.Color(0x1e1b4b);
-        scene.fog = new THREE.Fog(0x1e1b4b, 35, 130);
-        hemiLight.color.setHex(0xc4b5fd); hemiLight.intensity = 0.75;
-
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x312e81, roughness: 0.4 }));
-        ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
-        worldGroup.add(ground);
-
-        for (let i = 0; i < 28; i++) {
-          const crystal = new THREE.Mesh(
-            new THREE.OctahedronGeometry(1.2 + (i % 3) * 0.6),
-            new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0xa78bfa : 0x38bdf8, emissive: 0x4c1d95 })
-          );
-          const angle = (i / 28) * Math.PI * 2;
-          const dist = 10 + (i % 5) * 9;
-          crystal.position.set(Math.cos(angle) * dist, 2.5 + (i % 4) * 1.5, Math.sin(angle) * dist);
-          worldGroup.add(crystal);
-          floatingParticles.push({ mesh: crystal, baseY: crystal.position.y, phase: i });
-        }
-
-      } else if (theme === 'colorful') {
-        // 🌈 알록달록하게: 비비드 원색 팝 월드
-        scene.background = new THREE.Color(0x38bdf8);
-        scene.fog = new THREE.Fog(0x38bdf8, 50, 160);
-        hemiLight.color.setHex(0xffffff); hemiLight.intensity = 1.0;
-
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xfef08a }));
-        ground.rotation.x = -Math.PI / 2;
-        worldGroup.add(ground);
-
-        const vivid = [0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x06b6d4, 0x3b82f6, 0xa855f7, 0xec4899];
-        for (let i = 0; i < 32; i++) {
-          const geo = i % 3 === 0 ? new THREE.BoxGeometry(2.5, 4, 2.5) : (i % 3 === 1 ? new THREE.ConeGeometry(2, 4.5, 16) : new THREE.TorusGeometry(1.5, 0.5, 12, 24));
-          const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: vivid[i % vivid.length] }));
-          const angle = (i / 32) * Math.PI * 2;
-          const dist = 12 + (i % 4) * 10;
-          mesh.position.set(Math.cos(angle) * dist, 2.2, Math.sin(angle) * dist);
-          worldGroup.add(mesh);
-        }
-
-      } else if (theme === 'simple') {
-        // ⬜ 심플하게: 미니멀 화이트 & 라이트 그레이 스튜디오
-        scene.background = new THREE.Color(0xf4f4f5);
-        scene.fog = new THREE.Fog(0xf4f4f5, 50, 160);
-        hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.95;
-
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xe4e4e7 }));
-        ground.rotation.x = -Math.PI / 2;
-        worldGroup.add(ground);
-
-        const grid = new THREE.GridHelper(320, 64, 0xa1a1aa, 0xd4d4d8);
-        grid.position.y = 0.01;
-        worldGroup.add(grid);
-
-        for (let i = 0; i < 12; i++) {
-          const pillar = new THREE.Mesh(
-            new THREE.BoxGeometry(2, 5, 2),
-            new THREE.MeshStandardMaterial({ color: 0xffffff })
-          );
-          const angle = (i / 12) * Math.PI * 2;
-          pillar.position.set(Math.cos(angle) * 20, 2.5, Math.sin(angle) * 20);
-          worldGroup.add(pillar);
-        }
-
-      } else if (theme === 'jungle') {
-        // 🌲 정글 통나무집: 울창한 숲과 중앙 통나무집(오두막)
-        scene.background = new THREE.Color(0xa7f3d0);
-        scene.fog = new THREE.Fog(0x6ee7b7, 30, 120);
-        hemiLight.color.setHex(0xd1fae5); hemiLight.intensity = 0.85;
-
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x15803d }));
-        ground.rotation.x = -Math.PI / 2;
-        worldGroup.add(ground);
-
-        // 중앙 통나무집 (원점 근처 z = -8 위치에 아늑하게 배치)
-        const cabin = new THREE.Group();
-        const logMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
-        const roofMat = new THREE.MeshStandardMaterial({ color: 0x451a03 });
-        const body = new THREE.Mesh(new THREE.BoxGeometry(7, 4.2, 6), logMat);
-        body.position.y = 2.1;
-        // 통나무 디테일 가로줄
-        for (let y = 0.5; y <= 3.8; y += 0.65) {
-          const logBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 7.4, 12), logMat);
-          logBeam.rotation.z = Math.PI / 2;
-          logBeam.position.set(0, y, 3.05);
-          cabin.add(logBeam);
-        }
-        // 삼각 지붕
-        const roof = new THREE.Mesh(new THREE.ConeGeometry(5.6, 3, 4), roofMat);
-        roof.rotation.y = Math.PI / 4;
-        roof.position.y = 5.6;
-        // 문 & 따뜻한 불빛 창문
-        const door = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.4, 0.2), new THREE.MeshStandardMaterial({ color: 0x92400e }));
-        door.position.set(0, 1.2, 3.1);
-        const win1 = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, 0.2), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-        win1.position.set(-2, 2.3, 3.1);
-        const win2 = win1.clone();
-        win2.position.set(2, 2.3, 3.1);
-        cabin.add(body, roof, door, win1, win2);
-        cabin.position.set(0, 0, -10);
-        worldGroup.add(cabin);
-
-        // 주변을 둘러싼 울창한 정글 나무들
-        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c2d0c });
-        const leafMat1 = new THREE.MeshStandardMaterial({ color: 0x166534 });
-        const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x14532d });
-        for (let i = 0; i < 45; i++) {
-          const tree = new THREE.Group();
-          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.65, 3.5, 10), trunkMat);
-          trunk.position.y = 1.75;
-          const c1 = new THREE.Mesh(new THREE.ConeGeometry(2.4, 3.5, 10), leafMat1);
-          c1.position.y = 4.2;
-          const c2 = new THREE.Mesh(new THREE.ConeGeometry(1.8, 3.0, 10), leafMat2);
-          c2.position.y = 6.0;
-          tree.add(trunk, c1, c2);
-
-          const angle = (i / 45) * Math.PI * 2 + (i % 3) * 0.2;
-          const dist = 16 + (i % 5) * 8;
-          tree.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
-          worldGroup.add(tree);
-        }
-
-      } else if (theme === 'cathouse') {
-        // 🐱 아늑한 고양이 집: 따뜻한 실내 원목 바닥 + 초대형 캣타워 + 털실 공 + 고양이 쿠션
-        scene.background = new THREE.Color(0xfef3c7);
-        scene.fog = new THREE.Fog(0xfef3c7, 45, 140);
-        hemiLight.color.setHex(0xfffbeb); hemiLight.intensity = 0.95;
-
-        // 따뜻한 원목 마루 바닥
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xd97706 }));
-        ground.rotation.x = -Math.PI / 2;
-        worldGroup.add(ground);
-
-        // 중앙 푹신한 고양이 발바닥 러그
-        const rug = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 0.08, 32), new THREE.MeshStandardMaterial({ color: 0xfce7f3 }));
-        rug.position.y = 0.04;
-        worldGroup.add(rug);
-
-        // 뒤쪽 대형 캣타워 & 고양이 스크래처 기둥
-        const tower = new THREE.Group();
-        const postMat = new THREE.MeshStandardMaterial({ color: 0xfde68a });
-        const plushMat = new THREE.MeshStandardMaterial({ color: 0xf472b6 });
-        const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 7, 16), postMat);
-        post1.position.set(-2.5, 3.5, 0);
-        const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 5, 16), postMat);
-        post2.position.set(2.5, 2.5, 0);
-        const board1 = new THREE.Mesh(new THREE.BoxGeometry(7, 0.4, 3.5), plushMat);
-        board1.position.set(0, 4.8, 0);
-        const catBox = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 3.2), new THREE.MeshStandardMaterial({ color: 0xfb7185 }));
-        catBox.position.set(-2.5, 7.2, 0);
-        tower.add(post1, post2, board1, catBox);
-        tower.position.set(0, 0, -11);
-        worldGroup.add(tower);
-
-        // 주변에 굴러다니는 알록달록 대형 털실 공들
-        const yarnColors = [0xef4444, 0x3b82f6, 0xf59e0b, 0x10b981, 0xa855f7];
-        for (let i = 0; i < 14; i++) {
-          const yarn = new THREE.Mesh(
-            new THREE.SphereGeometry(1.1, 20, 20),
-            new THREE.MeshStandardMaterial({ color: yarnColors[i % yarnColors.length], roughness: 0.9 })
-          );
-          const angle = (i / 14) * Math.PI * 2;
-          const dist = 13 + (i % 3) * 5;
-          yarn.position.set(Math.cos(angle) * dist, 1.1, Math.sin(angle) * dist);
-          worldGroup.add(yarn);
-        }
-      }
-    }
-
-    // 초기 월드 생성
-    buildWorldTheme('original');
-
-    // ==========================================
-    // 3. 얼굴 텍스처 & 상·하의 분리 3D 아바타 모델
-    // ==========================================
-    function createFaceTexture(faceType) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 256; canvas.height = 256;
-      const ctx = canvas.getContext('2d');
-
-      ctx.fillStyle = faceType === 'robot' ? '#94a3b8' : '#ffedd5';
-      ctx.fillRect(0, 0, 256, 256);
-
-      if (faceType === 'happy') {
-        ctx.fillStyle = '#1e293b';
-        ctx.beginPath(); ctx.arc(85, 110, 14, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(171, 110, 14, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(244, 63, 94, 0.35)';
-        ctx.beginPath(); ctx.arc(65, 140, 16, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(191, 140, 16, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 8; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.arc(128, 142, 26, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
-      } else if (faceType === 'cool') {
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(42, 88, 76, 44); ctx.fillRect(138, 88, 76, 44); ctx.fillRect(114, 98, 28, 10);
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(52, 95, 18, 8); ctx.fillRect(148, 95, 18, 8);
-        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 8; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(100, 170); ctx.quadraticCurveTo(132, 182, 162, 160); ctx.stroke();
-      } else if (faceType === 'cat') {
-        ctx.fillStyle = '#1e293b';
-        ctx.beginPath(); ctx.ellipse(85, 110, 12, 18, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(171, 110, 12, 18, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fb7185';
-        ctx.beginPath(); ctx.arc(128, 138, 8, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 6;
-        ctx.beginPath(); ctx.moveTo(106, 158); ctx.quadraticCurveTo(118, 166, 128, 146);
-        ctx.quadraticCurveTo(138, 166, 150, 158); ctx.stroke();
-        ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.moveTo(30, 132); ctx.lineTo(72, 138); ctx.moveTo(30, 152); ctx.lineTo(72, 148); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(226, 132); ctx.lineTo(184, 138); ctx.moveTo(226, 152); ctx.lineTo(184, 148); ctx.stroke();
-      } else if (faceType === 'robot') {
-        ctx.fillStyle = '#0f172a'; ctx.fillRect(36, 86, 184, 48);
-        ctx.fillStyle = '#ef4444'; ctx.fillRect(52, 102, 152, 16);
-        ctx.fillStyle = '#334155'; ctx.fillRect(88, 162, 80, 22);
-      }
-
-      return new THREE.CanvasTexture(canvas);
-    }
-
-    function buildAvatarAppearance(group, data) {
-      if (group.userData.rig) group.remove(group.userData.rig);
-
-      const rig = new THREE.Group();
-      const skinMat = new THREE.MeshStandardMaterial({ color: data.face === 'robot' ? 0x94a3b8 : 0xffedd5 });
-      const topMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(data.topColor || '#3b82f6') });
-      const bottomMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(data.bottomColor || '#1e293b') });
-
-      // 1. 관절이 살아있는 다리 (피벗 그룹으로 엉덩이 관절 기준 회전!)
-      function createLeg(isLeft) {
-        const legPivot = new THREE.Group();
-        legPivot.position.set(isLeft ? -0.22 : 0.22, 0.72, 0);
-
-        if (data.bottomStyle === 'shorts') {
-          const upper = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.34, 0.4), bottomMat);
-          upper.position.y = -0.17;
-          const lower = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.32, 0.32), skinMat);
-          lower.position.y = -0.48;
-          legPivot.add(upper, lower);
-        } else if (data.bottomStyle === 'skirt') {
-          // 치마는 골반에 붙이고 다리는 맨다리+신발
-          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.64, 0.32), skinMat);
-          leg.position.y = -0.32;
-          legPivot.add(leg);
-        } else {
-          // 긴바지 & 멜빵바지
-          const leg = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.66, 0.4), bottomMat);
-          leg.position.y = -0.33;
-          legPivot.add(leg);
-        }
-        // 신발
-        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.48), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-        shoe.position.set(0, -0.65, 0.04);
-        legPivot.add(shoe);
-        return legPivot;
-      }
-
-      const leftLegPivot = createLeg(true);
-      const rightLegPivot = createLeg(false);
-      rig.add(leftLegPivot, rightLegPivot);
-
-      // 골반/치마/멜빵 디테일
-      const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.22, 0.54), bottomMat);
-      pelvis.position.y = 0.75;
-      rig.add(pelvis);
-
-      if (data.bottomStyle === 'skirt') {
-        const skirtMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.72, 0.45, 16), bottomMat);
-        skirtMesh.position.y = 0.64;
-        rig.add(skirtMesh);
-      } else if (data.bottomStyle === 'overalls') {
-        const strap1 = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.85, 0.58), bottomMat);
-        strap1.position.set(-0.24, 1.15, 0);
-        const strap2 = strap1.clone();
-        strap2.position.set(0.24, 1.15, 0);
-        rig.add(strap1, strap2);
-      }
-
-      // 2. 몸통 (상의)
-      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.88, 0.55), topMat);
-      torso.position.y = 1.25;
-      torso.castShadow = true;
-      rig.add(torso);
-
-      if (data.topStyle === 'suit') {
-        const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.6, 0.05), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-        shirt.position.set(0, 1.35, 0.26);
-        const tie = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.07), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
-        tie.position.set(0, 1.32, 0.27);
-        rig.add(shirt, tie);
-      } else if (data.topStyle === 'hoodie') {
-        const hood = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.42, 0.45), topMat);
-        hood.position.set(0, 1.62, -0.25);
-        rig.add(hood);
-      } else if (data.topStyle === 'armor') {
-        const core = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.08, 16), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
-        core.rotation.x = Math.PI / 2;
-        core.position.set(0, 1.32, 0.28);
-        rig.add(core);
-      }
-
-      // 3. 관절이 살아있는 팔 (어깨 관절 피벗 그룹 + V자 손가락 파츠 포함)
-      function createArm(isLeft) {
-        const armPivot = new THREE.Group();
-        armPivot.position.set(isLeft ? -0.64 : 0.64, 1.62, 0);
-
-        if (data.topStyle === 'tshirt') {
-          const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.34, 0.36), topMat);
-          sleeve.position.y = -0.17;
-          const arm = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.52, 0.28), skinMat);
-          arm.position.y = -0.56;
-          armPivot.add(sleeve, arm);
-        } else {
-          const arm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.82, 0.34), topMat);
-          arm.position.y = -0.41;
-          const hand = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 0.24), skinMat);
-          hand.position.y = -0.86;
-          armPivot.add(arm, hand);
-        }
-
-        // 오른손에 브이(V) 포즈용 손가락 그룹 추가 (평소엔 숨김)
-        if (!isLeft) {
-          const vGroup = new THREE.Group();
-          vGroup.position.set(0, -0.95, 0.05);
-          const f1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.06), skinMat);
-          f1.position.set(-0.05, -0.08, 0); f1.rotation.z = -0.25;
-          const f2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.06), skinMat);
-          f2.position.set(0.05, -0.08, 0); f2.rotation.z = 0.25;
-          vGroup.add(f1, f2);
-          vGroup.visible = false;
-          armPivot.add(vGroup);
-          group.userData.vFingers = vGroup;
-        }
-        return armPivot;
-      }
-
-      const leftArmPivot = createArm(true);
-      const rightArmPivot = createArm(false);
-      rig.add(leftArmPivot, rightArmPivot);
-
-      // 4. 머리
-      const faceTex = createFaceTexture(data.face || 'happy');
-      const headMats = [skinMat, skinMat, skinMat, skinMat, new THREE.MeshStandardMaterial({ map: faceTex }), skinMat];
-      const head = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.82), headMats);
-      head.position.y = 2.12;
-      rig.add(head);
-
-      if (data.face === 'cat') {
-        const earGeo = new THREE.ConeGeometry(0.16, 0.28, 4);
-        const lEar = new THREE.Mesh(earGeo, skinMat); lEar.position.set(-0.24, 2.62, 0);
-        const rEar = new THREE.Mesh(earGeo, skinMat); rEar.position.set(0.24, 2.62, 0);
-        rig.add(lEar, rEar);
-      }
-
-      group.add(rig);
-      group.userData.rig = rig;
-      group.userData.leftLeg = leftLegPivot;
-      group.userData.rightLeg = rightLegPivot;
-      group.userData.leftArm = leftArmPivot;
-      group.userData.rightArm = rightArmPivot;
-    }
-
-    function createAvatar(playerData) {
-      const group = new THREE.Group();
-      group.userData = {
-        rig: null, leftLeg: null, rightLeg: null, leftArm: null, rightArm: null, vFingers: null,
-        nameSprite: null, chatSprite: null, chatTimeout: null,
-        targetPos: new THREE.Vector3(playerData.x, playerData.y, playerData.z),
-        targetRotY: playerData.rotY || 0,
-        isMoving: false,
-        walkPhase: 0,
-        gesture: 'none',
-        gestureTimer: 0
-      };
-
-      buildAvatarAppearance(group, playerData);
-
-      const nameSprite = makeTextSprite(playerData.name, "rgba(15,23,42,0.75)", "#ffffff");
-      nameSprite.position.y = 2.95;
-      group.add(nameSprite);
-      group.userData.nameSprite = nameSprite;
-
-      scene.add(group);
-      return group;
-    }
-
-    function makeTextSprite(text, bgColor, textColor) {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = 512; canvas.height = 128;
-      ctx.fillStyle = bgColor;
-      ctx.roundRect(40, 24, 432, 80, 20);
-      ctx.fill();
-      ctx.font = "bold 40px sans-serif";
-      ctx.fillStyle = textColor;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(text, 256, 64);
-
-      const texture = new THREE.CanvasTexture(canvas);
-      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
-      sprite.scale.set(3.2, 0.8, 1);
-      return sprite;
-    }
-
-    function showSpeechBubble(avatar, text) {
-      if (avatar.userData.chatSprite) avatar.remove(avatar.userData.chatSprite);
-      if (avatar.userData.chatTimeout) clearTimeout(avatar.userData.chatTimeout);
-
-      const bubble = makeTextSprite(text, "rgba(255,255,255,0.95)", "#0f172a");
-      bubble.position.y = 3.75;
-      avatar.add(bubble);
-      avatar.userData.chatSprite = bubble;
-
-      avatar.userData.chatTimeout = setTimeout(() => {
-        avatar.remove(bubble);
-        avatar.userData.chatSprite = null;
-      }, 4500);
-    }
-
-    // ==========================================
-    // 4. 아바타 걷기 & 제스처 애니메이션 엔진
-    // ==========================================
-    function updateAvatarAnimation(avatar, dt) {
-      const u = avatar.userData;
-      if (!u.rig) return;
-
-      // 제스처 재생 중일 때
-      if (u.gesture !== 'none' && u.gestureTimer > 0) {
-        u.gestureTimer -= dt;
-        const t = (2.5 - u.gestureTimer) * 8;
-
-        if (u.gesture === 'wave') {
-          // 오른팔을 높이 들고 좌우로 살랑살랑 손 흔들기
-          u.rightArm.rotation.x = 0;
-          u.rightArm.rotation.z = 2.6 + Math.sin(t * 2) * 0.35;
-          u.leftArm.rotation.set(0, 0, 0);
-        } else if (u.gesture === 'peace') {
-          // 브이(V) 포즈: 오른팔을 얼굴 옆으로 들어올리고 V 손가락 표시
-          u.rightArm.rotation.x = -0.6;
-          u.rightArm.rotation.z = 2.4;
-          if (u.vFingers) u.vFingers.visible = true;
-          u.rig.position.y = Math.abs(Math.sin(t)) * 0.1;
-        } else if (u.gesture === 'cheer') {
-          // 행복하게 날뛰기: 양팔 만세 + 연속 점프 흔들기
-          u.leftArm.rotation.z = -2.7 + Math.sin(t * 2.5) * 0.3;
-          u.rightArm.rotation.z = 2.7 - Math.sin(t * 2.5) * 0.3;
-          u.rig.position.y = Math.abs(Math.sin(t * 2)) * 0.55;
-          u.leftLeg.rotation.x = Math.sin(t * 2) * 0.4;
-          u.rightLeg.rotation.x = -Math.sin(t * 2) * 0.4;
-        } else if (u.gesture === 'dance') {
-          // 빙글빙글 댄스
-          u.rig.rotation.y += dt * 7;
-          u.leftArm.rotation.z = -1.8 + Math.sin(t * 2) * 0.5;
-          u.rightArm.rotation.z = 1.8 + Math.cos(t * 2) * 0.5;
-          u.rig.position.y = Math.abs(Math.sin(t * 1.5)) * 0.25;
-        }
-
-        if (u.gestureTimer <= 0) {
-          u.gesture = 'none';
-          u.rig.position.y = 0;
-          u.rig.rotation.y = 0;
-          u.leftArm.rotation.set(0, 0, 0);
-          u.rightArm.rotation.set(0, 0, 0);
-          if (u.vFingers) u.vFingers.visible = false;
-        }
-        return;
-      }
-
-      // 일반 걷기 / 대기 애니메이션
-      if (u.isMoving) {
-        u.walkPhase += dt * 13;
-        const swing = Math.sin(u.walkPhase) * 0.72;
-        u.leftLeg.rotation.x = swing;
-        u.rightLeg.rotation.x = -swing;
-        u.leftArm.rotation.x = -swing * 0.75;
-        u.rightArm.rotation.x = swing * 0.75;
-        // 걸을 때 상하 미세 바운스
-        u.rig.position.y = Math.abs(Math.cos(u.walkPhase)) * 0.08;
-      } else {
-        // 정지 시 부드럽게 원위치 복귀
-        u.leftLeg.rotation.x *= 0.8;
-        u.rightLeg.rotation.x *= 0.8;
-        u.leftArm.rotation.x *= 0.8;
-        u.rightArm.rotation.x *= 0.8;
-        u.rig.position.y *= 0.8;
-      }
-    }
-
-    // ==========================================
-    // 5. UI 이벤트 연결 (커스터마이징 / 테마 / 제스처)
-    // ==========================================
-    const avatarPanel = document.getElementById('avatar-panel');
-    const themePanel = document.getElementById('theme-panel');
-
-    document.getElementById('open-avatar-btn').addEventListener('click', () => {
-      themePanel.classList.remove('open');
-      avatarPanel.classList.toggle('open');
-    });
-    document.getElementById('open-theme-btn').addEventListener('click', () => {
-      avatarPanel.classList.remove('open');
-      themePanel.classList.toggle('open');
-    });
-    document.querySelectorAll('.close-btn').forEach(btn => {
-      btn.addEventListener('click', () => document.getElementById(btn.dataset.close).classList.remove('open'));
-    });
-
-    // 테마 선택 버튼
-    document.querySelectorAll('#theme-options .opt-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('#theme-options .opt-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        buildWorldTheme(btn.dataset.theme);
-      });
-    });
-
-    // 제스처 버튼
-    document.querySelectorAll('.gest-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        socket.emit('playGesture', btn.dataset.gest);
-      });
-    });
-
-    // 프로필(얼굴/상의/하의) 변경 전송
-    let myProfile = {
-      name: '', face: 'happy',
-      topStyle: 'tshirt', topColor: '#3b82f6',
-      bottomStyle: 'pants', bottomColor: '#1e293b'
-    };
-    const nameInput = document.getElementById('name-input');
-    function sendProfileUpdate() { socket.emit('updateProfile', myProfile); }
-
-    nameInput.addEventListener('change', () => { myProfile.name = nameInput.value; sendProfileUpdate(); });
-
-    function bindOptionGroup(selector, key) {
-      document.querySelectorAll(`${selector} .opt-btn`).forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll(`${selector} .opt-btn`).forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          myProfile[key] = btn.dataset.val;
-          sendProfileUpdate();
-        });
-      });
-    }
-    bindOptionGroup('#face-options', 'face');
-    bindOptionGroup('#top-options', 'topStyle');
-    bindOptionGroup('#bottom-options', 'bottomStyle');
-
-    function bindColorGroup(swatchSelector, pickerId, key) {
-      const picker = document.getElementById(pickerId);
-      document.querySelectorAll(`${swatchSelector} .color-swatch`).forEach(sw => {
-        sw.addEventListener('click', () => {
-          document.querySelectorAll(`${swatchSelector} .color-swatch`).forEach(s => s.classList.remove('active'));
-          sw.classList.add('active');
-          myProfile[key] = sw.dataset.color;
-          picker.value = sw.dataset.color;
-          sendProfileUpdate();
-        });
-      });
-      picker.addEventListener('input', (e) => {
-        document.querySelectorAll(`${swatchSelector} .color-swatch`).forEach(s => s.classList.remove('active'));
-        myProfile[key] = e.target.value;
-        sendProfileUpdate();
-      });
-    }
-    bindColorGroup('#top-colors', 'top-picker', 'topColor');
-    bindColorGroup('#bottom-colors', 'bottom-picker', 'bottomColor');
-
-    // ==========================================
-    // 6. 멀티플레이어 소켓 동기화 (60Hz 전송 + 보간)
-    // ==========================================
-    let myAvatar = null;
-    const otherPlayers = {};
-
-    function updatePlayerCount() {
-      document.getElementById('player-count').innerText = `접속자: ${Object.keys(otherPlayers).length + 1}명`;
-    }
-
-    socket.on('currentPlayers', (players) => {
-      Object.keys(players).forEach((id) => {
-        const p = players[id];
-        if (id === socket.id) {
-          myProfile = {
-            name: p.name, face: p.face,
-            topStyle: p.topStyle, topColor: p.topColor,
-            bottomStyle: p.bottomStyle, bottomColor: p.bottomColor
-          };
-          nameInput.value = p.name;
-          myAvatar = createAvatar(p);
-          myAvatar.position.set(p.x, p.y, p.z);
-        } else {
-          otherPlayers[id] = createAvatar(p);
-          otherPlayers[id].position.set(p.x, p.y, p.z);
-          otherPlayers[id].rotation.y = p.rotY;
-        }
-      });
-      updatePlayerCount();
-    });
-
-    socket.on('newPlayer', (p) => {
-      if (p.id !== socket.id && !otherPlayers[p.id]) {
-        otherPlayers[p.id] = createAvatar(p);
-        otherPlayers[p.id].position.set(p.x, p.y, p.z);
-        updatePlayerCount();
-        addChatLog("시스템", `${p.name}님이 입장했습니다.`);
-      }
-    });
-
-    socket.on('playerMoved', (p) => {
-      const target = otherPlayers[p.id];
-      if (target) {
-        target.userData.targetPos.set(p.x, p.y, p.z);
-        target.userData.targetRotY = p.rotY;
-        target.userData.isMoving = p.isMoving;
-      }
-    });
-
-    socket.on('playerUpdated', (p) => {
-      const target = p.id === socket.id ? myAvatar : otherPlayers[p.id];
-      if (target) {
-        buildAvatarAppearance(target, p);
-        target.remove(target.userData.nameSprite);
-        const newSprite = makeTextSprite(p.name, "rgba(15,23,42,0.75)", "#ffffff");
-        newSprite.position.y = 2.95;
-        target.add(newSprite);
-        target.userData.nameSprite = newSprite;
-      }
-    });
-
-    socket.on('playerGesture', (data) => {
-      const target = data.id === socket.id ? myAvatar : otherPlayers[data.id];
-      if (target) {
-        target.userData.gesture = data.gesture;
-        target.userData.gestureTimer = 2.5; // 2.5초간 제스처 재생
-      }
-    });
-
-    socket.on('playerDisconnected', (id) => {
-      if (otherPlayers[id]) {
-        scene.remove(otherPlayers[id]);
-        delete otherPlayers[id];
-        updatePlayerCount();
-      }
-    });
-
-    // 채팅
-    const chatMessages = document.getElementById('chat-messages');
-    const chatInput = document.getElementById('chat-input');
-    function addChatLog(name, text) {
-      const div = document.createElement('div');
-      div.className = 'chat-msg';
-      div.innerHTML = `<span>${name}:</span>${text}`;
-      chatMessages.appendChild(div);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-    document.getElementById('chat-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      if (chatInput.value.trim()) { socket.emit('chatMessage', chatInput.value); chatInput.value = ''; }
-      chatInput.blur();
-    });
-    socket.on('chatMessage', (data) => {
-      addChatLog(data.name, data.text);
-      const target = data.id === socket.id ? myAvatar : otherPlayers[data.id];
-      if (target) showSpeechBubble(target, data.text);
-    });
-
-    // ==========================================
-    // 7. 입력 컨트롤 & 메인 루프 (60fps / 60Hz 전송)
-    // ==========================================
-    const keys = {};
-    let joyX = 0, joyY = 0;
-    let velY = 0, isGrounded = true;
-    let camYaw = 0, camPitch = 0.38;
-
-    window.addEventListener('keydown', (e) => {
-      if (document.activeElement === chatInput || document.activeElement === nameInput) return;
-      keys[e.code] = true;
-      if (e.code === 'Space' && isGrounded) { velY = 0.22; isGrounded = false; }
-    });
-    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
-
-    let isDragging = false, prevX = 0, prevY = 0;
-    renderer.domElement.addEventListener('pointerdown', (e) => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
-    window.addEventListener('pointerup', () => { isDragging = false; });
-    window.addEventListener('pointermove', (e) => {
-      if (!isDragging) return;
-      camYaw -= (e.clientX - prevX) * 0.006;
-      camPitch = Math.max(0.1, Math.min(1.3, camPitch + (e.clientY - prevY) * 0.006));
-      prevX = e.clientX; prevY = e.clientY;
-    });
-
-    const joyZone = document.getElementById('joystick-zone');
-    const joyKnob = document.getElementById('joystick-knob');
-    joyZone.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      const rect = joyZone.getBoundingClientRect();
-      const dx = e.touches[0].clientX - (rect.left + 48);
-      const dy = e.touches[0].clientY - (rect.top + 48);
-      const dist = Math.min(34, Math.hypot(dx, dy));
-      const angle = Math.atan2(dy, dx);
-      joyKnob.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px))`;
-      joyX = (Math.cos(angle) * dist) / 34;
-      joyY = (Math.sin(angle) * dist) / 34;
-    });
-    joyZone.addEventListener('touchend', () => { joyKnob.style.transform = 'translate(-50%, -50%)'; joyX = 0; joyY = 0; });
-    document.getElementById('jump-btn').addEventListener('touchstart', () => { if (isGrounded) { velY = 0.22; isGrounded = false; } });
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    let lastTime = 0;
-    let lastSent = 0;
-
-    function animate(time) {
-      requestAnimationFrame(animate);
-      const dt = Math.min(0.05, (time - lastTime) / 1000 || 0.016);
-      lastTime = time;
-
-      // 몽환적 테마 크리스탈 부유 애니메이션
-      for (const p of floatingParticles) {
-        p.mesh.position.y = p.baseY + Math.sin(time * 0.002 + p.phase) * 0.5;
-        p.mesh.rotation.y += dt * 0.8;
-      }
-
-      if (myAvatar) {
-        let moveX = joyX;
-        let moveZ = joyY;
-        if (keys['KeyW'] || keys['ArrowUp']) moveZ -= 1;
-        if (keys['KeyS'] || keys['ArrowDown']) moveZ += 1;
-        if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
-        if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
-
-        const isMoving = (moveX !== 0 || moveZ !== 0);
-        myAvatar.userData.isMoving = isMoving;
-
-        if (isMoving) {
-          const len = Math.hypot(moveX, moveZ);
-          moveX /= len; moveZ /= len;
-
-          const forwardX = -Math.sin(camYaw);
-          const forwardZ = -Math.cos(camYaw);
-          const rightX = Math.cos(camYaw);
-          const rightZ = -Math.sin(camYaw);
-
-          const dx = (forwardX * -moveZ + rightX * moveX) * 0.16;
-          const dz = (forwardZ * -moveZ + rightZ * moveX) * 0.16;
-
-          myAvatar.position.x += dx;
-          myAvatar.position.z += dz;
-          myAvatar.rotation.y = Math.atan2(dx, dz);
-        }
-
-        myAvatar.position.y += velY;
-        if (myAvatar.position.y > 0) {
-          velY -= 0.012;
-        } else {
-          myAvatar.position.y = 0;
-          velY = 0;
-          isGrounded = true;
-        }
-
-        updateAvatarAnimation(myAvatar, dt);
-
-        const camDist = 9.5;
-        camera.position.x = myAvatar.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist;
-        camera.position.y = myAvatar.position.y + Math.sin(camPitch) * camDist + 1.6;
-        camera.position.z = myAvatar.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
-        camera.lookAt(myAvatar.position.x, myAvatar.position.y + 1.6, myAvatar.position.z);
-
-        // 초당 60회(약 16ms 간격) 위치 및 걷기 상태 전송
-        if (time - lastSent >= 16) {
-          socket.emit('playerMovement', {
-            x: myAvatar.position.x,
-            y: myAvatar.position.y,
-            z: myAvatar.position.z,
-            rotY: myAvatar.rotation.y,
-            isMoving: isMoving
-          });
-          lastSent = time;
-        }
-      }
-
-      // 다른 플레이어 위치 부드럽게 보간(Lerp) 및 걷기/제스처 애니메이션 재생
-      Object.values(otherPlayers).forEach(other => {
-        other.position.lerp(other.userData.targetPos, 0.35);
-        // 회전 보간
-        let diff = other.userData.targetRotY - other.rotation.y;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        other.rotation.y += diff * 0.35;
-
-        updateAvatarAnimation(other, dt);
-      });
-
-      renderer.render(scene, camera);
-    }
-    animate(0);
-  </script>
-</body>
-</html>
