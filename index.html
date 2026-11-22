@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>3D 멀티플레이어 오픈월드 v1.6-20261122</title>
+  <title>3D 멀티플레이어 오픈월드 v2.1-20261122</title>
   <link href="https://fonts.googleapis.com/css2?family=Jua&family=Nanum+Myeongjo:wght@700&family=Noto+Sans+KR:wght@400;700;900&family=Black+Han+Sans&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -24,6 +24,40 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; font-family: var(--font-main); }
     body { overflow: hidden; background: #1a1a2e; touch-action: none; }
+
+    #auth-screen {
+      position: fixed; inset: 0; z-index: 120;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0284c7 100%);
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+    }
+    #auth-screen.hidden { display: none; }
+    #auth-card {
+      width: 380px; max-width: 95vw;
+      background: rgba(15, 23, 42, 0.94); color: #f8fafc;
+      border: 2px solid rgba(56, 189, 248, 0.55); border-radius: 22px;
+      padding: 24px 20px; display: flex; flex-direction: column; gap: 14px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.65); text-align: center;
+    }
+    .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .auth-tab {
+      padding: 10px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.06); color: #cbd5e1; font-weight: bold; font-size: 13px; cursor: pointer;
+    }
+    .auth-tab.active { background: #0284c7; color: #fff; border-color: #38bdf8; }
+    .auth-input {
+      width: 100%; padding: 11px 12px; border-radius: 12px;
+      border: 1.5px solid rgba(255,255,255,0.22); background: rgba(255,255,255,0.08);
+      color: #fff; font-size: 13px; outline: none; user-select: text; -webkit-user-select: text;
+    }
+    .auth-submit {
+      width: 100%; padding: 12px; border-radius: 12px; border: none;
+      background: #10b981; color: #fff; font-weight: 900; font-size: 14px; cursor: pointer;
+    }
+    .auth-guest {
+      width: 100%; padding: 9px; border-radius: 10px; border: 1px dashed rgba(255,255,255,0.3);
+      background: transparent; color: #94a3b8; font-size: 12px; cursor: pointer;
+    }
+    #auth-error { color: #f87171; font-size: 12px; min-height: 18px; font-weight: bold; }
 
     #top-left-bar {
       position: fixed; top: 10px; left: 10px;
@@ -62,7 +96,7 @@
     #chat-messages { height: 125px; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 4px; word-break: break-all; }
     .chat-msg span { font-weight: bold; color: var(--accent); margin-right: 4px; }
     #chat-form { display: flex; gap: 4px; }
-    #chat-input { flex: 1; background: rgba(128,128,128,0.18); border: 1px solid var(--border-ui); border-radius: 8px; padding: 6px 8px; color: inherit; font-size: 12px; outline: none; }
+    #chat-input { flex: 1; background: rgba(128,128,128,0.18); border: 1px solid var(--border-ui); border-radius: 8px; padding: 6px 8px; color: inherit; font-size: 12px; outline: none; user-select: text; -webkit-user-select: text; }
     #chat-send { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 0 10px; font-size: 12px; cursor: pointer; font-weight: bold; }
 
     #chat-toast-container {
@@ -77,7 +111,6 @@
     }
     .chat-toast b { color: #38bdf8; margin-right: 4px; }
 
-    /* Admin 전체 대형 경고 알림 오버레이 */
     #admin-alert-overlay {
       position: fixed; top: 18%; left: 50%; transform: translateX(-50%);
       width: 520px; max-width: 94vw; background: rgba(153, 27, 27, 0.96); color: #fef08a;
@@ -102,7 +135,7 @@
     .field-group { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
     .field-group input[type="text"], .field-group input[type="password"], .field-group input[type="number"], .field-group select {
       background: rgba(128,128,128,0.2); border: 1px solid var(--border-ui);
-      border-radius: 8px; padding: 6px 9px; color: inherit; font-size: 12px; outline: none;
+      border-radius: 8px; padding: 6px 9px; color: inherit; font-size: 12px; outline: none; user-select: text; -webkit-user-select: text;
     }
     .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
     .opt-btn {
@@ -235,9 +268,28 @@
 </head>
 <body class="theme-original">
 
+  <div id="auth-screen">
+    <div id="auth-card">
+      <div style="font-size:20px;font-weight:900;color:#38bdf8;">🌐 3D 오픈월드 v2.1-20261122</div>
+      <div style="font-size:12px;color:#cbd5e1;">회원가입·로그인 시 몽, 옷, 테마, 캐릭터 정보가 DB에 저장됩니다.</div>
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" id="tab-login">🔑 로그인</button>
+        <button type="button" class="auth-tab" id="tab-register">📝 회원가입</button>
+      </div>
+      <form id="auth-form" style="display:flex;flex-direction:column;gap:10px;">
+        <input type="text" class="auth-input" id="auth-username" placeholder="아이디 (2~12자)" maxlength="12" required autocomplete="username">
+        <input type="password" class="auth-input" id="auth-password" placeholder="비밀번호 (2자 이상)" required autocomplete="current-password">
+        <div id="auth-error"></div>
+        <button type="submit" class="auth-submit" id="auth-submit-btn">로그인하고 입장</button>
+      </form>
+      <button type="button" class="auth-guest" id="auth-guest-btn">👀 저장 없이 게스트로 둘러보기</button>
+    </div>
+  </div>
+
   <div id="top-left-bar">
     <div class="row-flex">
-      <div class="badge version-tag">v1.6-20261122</div>
+      <div class="badge version-tag">v2.1-20261122</div>
+      <div class="badge" id="user-badge" style="color:#6ee7b7;font-weight:bold;">👤 미접속</div>
       <div class="badge" id="mong-badge" style="color:#fbbf24;font-weight:bold;">🪙 200몽</div>
       <div class="badge" id="player-count">👥 1명</div>
     </div>
@@ -250,14 +302,12 @@
     </div>
   </div>
 
-  <!-- Admin 전체 대형 경고 알림 -->
   <div id="admin-alert-overlay">
     <div style="font-size:18px;font-weight:900;">🚨 긴급 전체 경고 알림 🚨</div>
     <div id="admin-alert-msg" style="font-size:16px;font-weight:bold;color:#fff;"></div>
     <div id="admin-alert-sender" style="font-size:11px;opacity:0.85;"></div>
   </div>
 
-  <!-- Admin 로그인 & 제어 패널 -->
   <div class="side-panel" id="admin-panel">
     <div class="panel-header">
       <span>🛡️ Admin 관리자 모드</span>
@@ -271,7 +321,8 @@
       <button class="ui-btn primary" id="admin-submit-btn" style="background:#dc2626;margin-top:4px;">🔓 관리자 인증</button>
     </div>
     <div id="admin-controls-box" class="field-group" style="display:none;">
-      <div style="color:#4ade80;font-weight:bold;">✅ 관리자 인증 완료 (1.5배 크기 · 속도/점프 20배 · +1000몽 · 전 의상/테마 해금)</div>
+      <div style="color:#4ade80;font-weight:bold;">✅ 관리자 인증 완료 (+1000몽 · 전 의상/테마 해금 · 1.5배 크기)</div>
+      <button class="ui-btn" id="admin-boost-btn" style="background:#059669;color:#fff;border-color:transparent;">⚡ 속도/점프: 현재 20배 (클릭 시 일반 전환)</button>
       <button class="ui-btn" id="admin-invisible-btn" style="background:#4f46e5;color:#fff;border-color:transparent;">👻 투명 모드 켜기 (현재: OFF)</button>
       <label style="margin-top:4px;">🚨 전체 접속자 대형 경고 알림 보내기</label>
       <input type="text" id="admin-alert-input" placeholder="경고 메시지 입력...">
@@ -351,12 +402,8 @@
       <span>👕 아바타 꾸미기 & 능력치 상점</span>
       <button class="close-btn" data-close="avatar-panel">✕</button>
     </div>
-    <div class="field-group">
-      <label>닉네임</label>
-      <input id="name-input" type="text" placeholder="닉네임 입력" maxlength="12">
-    </div>
     <div class="field-group" style="background:rgba(128,128,128,0.12);padding:8px;border-radius:10px;">
-      <label style="font-weight:bold;">⚡ 능력치 업그레이드 (바닥 코인 +5몽으로 모으세요!)</label>
+      <label style="font-weight:bold;">⚡ 능력치 업그레이드 (바닥 코인 +5몽으로 모으셈)</label>
       <div class="btn-grid">
         <button class="opt-btn" id="upgrade-speed-btn">🏃 달리기 Lv.0 (50몽)</button>
         <button class="opt-btn" id="upgrade-jump-btn">🦘 점프력 Lv.0 (50몽)</button>
@@ -426,7 +473,7 @@
 
     <div style="background:rgba(128,128,128,0.14);padding:10px;border-radius:12px;display:flex;flex-direction:column;gap:6px;">
       <div style="font-weight:bold;font-size:13px;">🧊 2. 얼음땡 (1분 30초 / 최소 5명)</div>
-      <p style="font-size:11px;opacity:0.88;">술래는 빨간 옷, 도망자는 흰 옷! 아웃 시 VIP 생중계 관중석에서 관전 (+200몽).</p>
+      <p style="font-size:11px;opacity:0.88;">술래는 빨간 옷, 도망자는 흰 옷! 아웃 시 관중석에서 관전 (+200몽).</p>
       <div class="field-group"><label>CPU 수 (0~10명 - 총 5명 이상 필요)</label><input type="number" id="ft-cpu-input" min="0" max="10" value="5"></div>
       <button class="ui-btn primary" id="start-ft-btn" style="width:100%;background:#0284c7;">❄️ 얼음땡 모집 시작</button>
     </div>
@@ -482,10 +529,47 @@
     ];
 
     let myAccount = {
-      mong: 200, speedLevel: 0, jumpLevel: 0, isAdmin: false, isInvisible: false,
+      username: '', name: '', isGuest: false,
+      mong: 200, speedLevel: 0, jumpLevel: 0,
+      isAdmin: false, adminBoostActive: false, isInvisible: false,
       ownedTops: ['tshirt'], ownedBottoms: ['pants'], ownedThemes: ['original']
     };
+    let myProfile = { name: '', face: 'happy', topStyle: 'tshirt', topColor: '#3b82f6', bottomStyle: 'pants', bottomColor: '#1e293b' };
     const savedPlayerProfiles = {};
+
+    // 로그인 / 회원가입 UI 처리
+    let authMode = 'login';
+    const authScreen = document.getElementById('auth-screen');
+    const authError = document.getElementById('auth-error');
+    const authSubmitBtn = document.getElementById('auth-submit-btn');
+    const authUserInput = document.getElementById('auth-username');
+    const authPwInput = document.getElementById('auth-password');
+
+    document.getElementById('tab-login').onclick = () => {
+      authMode = 'login';
+      document.getElementById('tab-login').classList.add('active');
+      document.getElementById('tab-register').classList.remove('active');
+      authSubmitBtn.innerText = '로그인하고 입장';
+      authError.innerText = '';
+    };
+    document.getElementById('tab-register').onclick = () => {
+      authMode = 'register';
+      document.getElementById('tab-register').classList.add('active');
+      document.getElementById('tab-login').classList.remove('active');
+      authSubmitBtn.innerText = '회원가입하고 시자악!';
+      authError.innerText = '';
+    };
+    document.getElementById('auth-form').onsubmit = (e) => {
+      e.preventDefault();
+      authError.innerText = '';
+      const payload = { username: authUserInput.value.trim(), password: authPwInput.value.trim() };
+      if (authMode === 'register') socket.emit('authRegister', payload);
+      else socket.emit('authLogin', payload);
+    };
+    document.getElementById('auth-guest-btn').onclick = () => {
+      authError.innerText = '';
+      socket.emit('authGuest');
+    };
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 380);
@@ -1103,8 +1187,6 @@
         '<div class="rank-row"><span>📺 생중계 관중석:</span><b>' + runners.filter(r => r.status === 'out').length + '명</b></div>';
     }
 
-    let myProfile = { name: '', face: 'happy', topStyle: 'tshirt', topColor: '#3b82f6', bottomStyle: 'pants', bottomColor: '#1e293b' };
-
     document.getElementById('switch-world-btn').onclick = () => {
       if (currentWorldMap === 'nature') {
         currentWorldMap = 'city'; document.getElementById('switch-world-btn').innerText = '🌿 자연 월드로 복귀';
@@ -1138,10 +1220,11 @@
     }
 
     function renderShopUI() {
+      document.getElementById('user-badge').innerText = myAccount.isGuest ? ('👀 ' + myAccount.name) : ('👤 ' + myAccount.name);
       document.getElementById('mong-badge').innerText = '🪙 ' + myAccount.mong + '몽';
       const spCost = (myAccount.speedLevel + 1) * 50, jpCost = (myAccount.jumpLevel + 1) * 50;
-      document.getElementById('upgrade-speed-btn').innerText = myAccount.isAdmin ? '🏃 달리기 20배 (ADMIN)' : (myAccount.speedLevel >= 5 ? '🏃 달리기 MAX' : '🏃 달리기 Lv.' + myAccount.speedLevel + ' (' + spCost + '몽)');
-      document.getElementById('upgrade-jump-btn').innerText = myAccount.isAdmin ? '🦘 점프력 20배 (ADMIN)' : (myAccount.jumpLevel >= 5 ? '🦘 점프력 MAX' : '🦘 점프력 Lv.' + myAccount.jumpLevel + ' (' + jpCost + '몽)');
+      document.getElementById('upgrade-speed-btn').innerText = myAccount.isAdmin ? ('🏃 달리기 Lv.' + myAccount.speedLevel + ' (ADMIN)') : (myAccount.speedLevel >= 5 ? '🏃 달리기 MAX' : '🏃 달리기 Lv.' + myAccount.speedLevel + ' (' + spCost + '몽)');
+      document.getElementById('upgrade-jump-btn').innerText = myAccount.isAdmin ? ('🦘 점프력 Lv.' + myAccount.jumpLevel + ' (ADMIN)') : (myAccount.jumpLevel >= 5 ? '🦘 점프력 MAX' : '🦘 점프력 Lv.' + myAccount.jumpLevel + ' (' + jpCost + '몽)');
 
       const topBox = document.getElementById('top-options'); topBox.innerHTML = '';
       TOP_ITEMS.forEach(item => {
@@ -1164,7 +1247,7 @@
         btn.onclick = () => {
           if (owned) { myProfile.bottomStyle = item.id; socket.emit('updateProfile', myProfile); renderShopUI(); }
           else if (myAccount.mong >= item.price) socket.emit('buyItem', { category: 'bottom', itemId: item.id });
-          else showLiveToast('상점', '몽이 부족합니다! (' + item.price + '몽 필요)');
+          else showLiveToast('상점', '몽이 부족해유ㅠㅠ (' + item.price + '몽 필요)');
         };
         botBox.appendChild(btn);
       });
@@ -1177,7 +1260,7 @@
         btn.onclick = () => {
           if (owned) { currentWorldMap = 'nature'; document.getElementById('switch-world-btn').innerText = '🏙️ 도시 월드 이동'; buildWorldTheme(item.id); renderShopUI(); }
           else if (myAccount.mong >= item.price) { socket.emit('buyItem', { category: 'theme', itemId: item.id }); buildWorldTheme(item.id); }
-          else showLiveToast('테마 상점', '몽이 부족합니다! (' + item.price + '몽 필요)');
+          else showLiveToast('테마 상점', '몽이 부족해유ㅠㅠ (' + item.price + '몽 필요)');
         };
         themeBox.appendChild(btn);
       });
@@ -1218,12 +1301,11 @@
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = () => document.getElementById(b.dataset.close).classList.remove('open'));
 
     document.getElementById('admin-submit-btn').onclick = () => socket.emit('adminLogin', { id: document.getElementById('admin-id-input').value.trim(), pw: document.getElementById('admin-pw-input').value.trim() });
+    document.getElementById('admin-boost-btn').onclick = () => socket.emit('adminToggleBoost');
     document.getElementById('admin-invisible-btn').onclick = () => socket.emit('adminToggleInvisible');
     document.getElementById('admin-send-alert-btn').onclick = () => { const inp = document.getElementById('admin-alert-input'); if (inp.value.trim()) { socket.emit('adminBroadcastAlert', inp.value); inp.value = ''; } };
     document.getElementById('admin-kick-btn').onclick = () => { const tid = document.getElementById('admin-kick-select').value; if (tid) socket.emit('adminKickUser', tid); };
 
-    const nameInput = document.getElementById('name-input');
-    nameInput.onchange = () => { myProfile.name = nameInput.value; socket.emit('updateProfile', myProfile); };
     document.querySelectorAll('#face-options .opt-btn').forEach(btn => {
       btn.onclick = () => { document.querySelectorAll('#face-options .opt-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); myProfile.face = btn.dataset.val; socket.emit('updateProfile', myProfile); };
     });
@@ -1261,23 +1343,66 @@
     const otherPlayers = {};
     function updatePlayerCount() { document.getElementById('player-count').innerText = '👥 ' + (Object.keys(otherPlayers).length + 1) + '명'; refreshAdminKickList(); }
 
-    socket.on('currentPlayers', ({ players, worldCoins }) => {
+    socket.on('authError', (msg) => {
+      authError.innerText = msg;
+    });
+
+    socket.on('authSuccess', ({ me, players, worldCoins }) => {
       if (worldCoins) syncWorldCoins(worldCoins);
+      Object.keys(otherPlayers).forEach(k => { scene.remove(otherPlayers[k]); delete otherPlayers[k]; });
+      if (myAvatar) { scene.remove(myAvatar); myAvatar = null; }
+
+      myAccount = {
+        username: me.username, name: me.name, isGuest: !!me.isGuest,
+        mong: me.mong, speedLevel: me.speedLevel, jumpLevel: me.jumpLevel,
+        isAdmin: !!me.isAdmin, adminBoostActive: !!me.adminBoostActive, isInvisible: !!me.isInvisible,
+        ownedTops: me.ownedTops, ownedBottoms: me.ownedBottoms, ownedThemes: me.ownedThemes
+      };
+      myProfile = {
+        name: me.name, face: me.face,
+        topStyle: me.topStyle, topColor: me.topColor,
+        bottomStyle: me.bottomStyle, bottomColor: me.bottomColor
+      };
+
       Object.keys(players).forEach((id) => {
-        const p = players[id]; savedPlayerProfiles[id] = p;
+        const p = players[id];
+        savedPlayerProfiles[id] = p;
         if (id === socket.id) {
-          myAccount = { mong: p.mong, speedLevel: p.speedLevel, jumpLevel: p.jumpLevel, isAdmin: p.isAdmin, isInvisible: p.isInvisible, ownedTops: p.ownedTops, ownedBottoms: p.ownedBottoms, ownedThemes: p.ownedThemes };
-          myProfile = { name: p.name, face: p.face, topStyle: p.topStyle, topColor: p.topColor, bottomStyle: p.bottomStyle, bottomColor: p.bottomColor };
-          nameInput.value = p.name; renderShopUI(); myAvatar = createAvatar(p); myAvatar.position.set(p.x, p.y, p.z);
-        } else { otherPlayers[id] = createAvatar(p); otherPlayers[id].position.set(p.x, p.y, p.z); }
+          myAvatar = createAvatar(p);
+          myAvatar.position.set(p.x, p.y, p.z);
+        } else {
+          otherPlayers[id] = createAvatar(p);
+          otherPlayers[id].position.set(p.x, p.y, p.z);
+        }
       });
+
+      if (me.isAdmin) {
+        document.getElementById('admin-login-box').style.display = 'none';
+        document.getElementById('admin-controls-box').style.display = 'flex';
+        document.getElementById('admin-boost-btn').innerText = me.adminBoostActive
+          ? '⚡ 속도/점프: 현재 20배 (클릭 시 일반 전환)'
+          : '🚶 속도/점프: 현재 일반 (클릭 시 20배 전환)';
+      }
+
+      authScreen.classList.add('hidden');
+      renderShopUI();
       updatePlayerCount();
+      if (me.isGuest) showLiveToast('게스트 모드', '저장 없이 체험 중입니다. 회원가입을 하면 진행상황이 저장됩니다!');
+      else showLiveToast('환영합니다!', me.name + '님의 데이터가 불러와졌어요!! :)');
     });
 
     socket.on('adminAuthSuccess', (p) => {
-      myAccount = { mong: p.mong, speedLevel: p.speedLevel, jumpLevel: p.jumpLevel, isAdmin: p.isAdmin, isInvisible: p.isInvisible, ownedTops: p.ownedTops, ownedBottoms: p.ownedBottoms, ownedThemes: p.ownedThemes };
+      myAccount = {
+        ...myAccount,
+        mong: p.mong, speedLevel: p.speedLevel, jumpLevel: p.jumpLevel,
+        isAdmin: !!p.isAdmin, adminBoostActive: !!p.adminBoostActive, isInvisible: !!p.isInvisible,
+        ownedTops: p.ownedTops, ownedBottoms: p.ownedBottoms, ownedThemes: p.ownedThemes
+      };
       document.getElementById('admin-login-box').style.display = 'none';
       document.getElementById('admin-controls-box').style.display = 'flex';
+      document.getElementById('admin-boost-btn').innerText = p.adminBoostActive
+        ? '⚡ 속도/점프: 현재 20배 (클릭 시 일반 전환)'
+        : '🚶 속도/점프: 현재 일반 (클릭 시 20배 전환)';
       document.getElementById('admin-invisible-btn').innerText = p.isInvisible ? '👻 투명 모드 끄기 (현재: ON)' : '👻 투명 모드 켜기 (현재: OFF)';
       if (myAvatar) buildAvatarAppearance(myAvatar, { ...myProfile, isAdmin: true });
       renderShopUI(); refreshAdminKickList();
@@ -1290,7 +1415,7 @@
       else if (otherPlayers[id]) otherPlayers[id].visible = !isInvisible;
     });
     socket.on('adminKicked', ({ byName }) => {
-      alert('관리자(' + byName + ')에 의해 월드에서 내보내졌습니다.');
+      alert('관리자(' + byName + ')에 의해 월드에서 내보내졌어요. 아쉬운거지 뭐;ㅋ');
       document.body.innerHTML = '<div style="color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;font-weight:bold;">🚫 관리자에 의해 월드에서 퇴장되었습니다.</div>';
     });
 
@@ -1448,9 +1573,12 @@
     socket.on('playerDisconnected', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; delete savedPlayerProfiles[id]; updatePlayerCount(); } });
 
     const keys = {}; let joyX = 0, joyY = 0, velY = 0, isGrounded = true, camYaw = 0, camPitch = 0.42;
-    function getJumpPower() { return myAccount.isAdmin ? (0.22 * 20) : (0.22 + (myAccount.jumpLevel || 0) * 0.035); }
+    function getJumpPower() {
+      if (myAccount.isAdmin && myAccount.adminBoostActive) return 0.22 * 20;
+      return 0.22 + (myAccount.jumpLevel || 0) * 0.035;
+    }
     window.addEventListener('keydown', (e) => {
-      if ([chatInput, nameInput, liarSpeechInput, document.getElementById('admin-id-input'), document.getElementById('admin-pw-input'), document.getElementById('admin-alert-input')].includes(document.activeElement)) return;
+      if ([authUserInput, authPwInput, chatInput, liarSpeechInput, document.getElementById('admin-id-input'), document.getElementById('admin-pw-input'), document.getElementById('admin-alert-input')].includes(document.activeElement)) return;
       keys[e.code] = true; if (e.code === 'Space' && isGrounded && gameState !== 'liar') { velY = getJumpPower(); isGrounded = false; }
     });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
@@ -1519,8 +1647,10 @@
           const len = Math.hypot(moveX, moveZ); moveX /= len; moveZ /= len;
           const fX = -Math.sin(camYaw), fZ = -Math.cos(camYaw), rX = Math.cos(camYaw), rZ = -Math.sin(camYaw);
           let speed = 0.21;
-          if (gameState === 'world') speed = myAccount.isAdmin ? (0.16 * 20) : (0.16 + (myAccount.speedLevel || 0) * 0.025);
-          else if (gameState === 'freezetag' && meFt && meFt.role === 'it') speed = 0.23;
+          if (gameState === 'world') {
+            if (myAccount.isAdmin && myAccount.adminBoostActive) speed = 0.16 * 20;
+            else speed = 0.16 + (myAccount.speedLevel || 0) * 0.025;
+          } else if (gameState === 'freezetag' && meFt && meFt.role === 'it') speed = 0.23;
           const dx = (fX * -moveZ + rX * moveX) * speed, dz = (fZ * -moveZ + rZ * moveX) * speed;
           myAvatar.position.x += dx; myAvatar.position.z += dz; myAvatar.rotation.y = Math.atan2(dx, dz);
           if (gameState === 'colorflip') { myAvatar.position.x = Math.max(-15, Math.min(15, myAvatar.position.x)); myAvatar.position.z = Math.max(-15, Math.min(15, myAvatar.position.z)); }
@@ -1538,13 +1668,17 @@
           else { activeCityBuilding = null; cityInteractBtn.style.display = 'none'; }
         } else cityInteractBtn.style.display = 'none';
 
-        if (!isOutSpectator) { myAvatar.position.y += velY; if (myAvatar.position.y > 0) velY -= (myAccount.isAdmin ? 0.08 : 0.012); else { myAvatar.position.y = 0; velY = 0; isGrounded = true; } }
+        if (!isOutSpectator) {
+          myAvatar.position.y += velY;
+          if (myAvatar.position.y > 0) velY -= ((myAccount.isAdmin && myAccount.adminBoostActive) ? 0.08 : 0.012);
+          else { myAvatar.position.y = 0; velY = 0; isGrounded = true; }
+        }
         updateAvatarAnimation(myAvatar, dt);
 
         if (isOutSpectator) { camera.position.set(myAvatar.position.x, 12.5, myAvatar.position.z - 4); camera.lookAt(0, 0, 0); }
         else if (gameState === 'liar') { camera.position.set(0, 11, 13); camera.lookAt(0, 1.2, 0); }
         else {
-          const cd = (gameState !== 'world') ? 13 : (myAccount.isAdmin ? 13.5 : 9.5);
+          const cd = (gameState !== 'world') ? 13 : ((myAccount.isAdmin && myAccount.adminBoostActive) ? 13.5 : 9.5);
           camera.position.set(myAvatar.position.x + Math.sin(camYaw) * Math.cos(camPitch) * cd, myAvatar.position.y + Math.sin(camPitch) * cd + 1.8, myAvatar.position.z + Math.cos(camYaw) * Math.cos(camPitch) * cd);
           camera.lookAt(myAvatar.position.x, myAvatar.position.y + 1.5, myAvatar.position.z);
         }
