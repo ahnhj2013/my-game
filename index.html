@@ -28,7 +28,7 @@
     #top-left-bar {
       position: fixed; top: 10px; left: 10px;
       display: flex; flex-direction: column; gap: 6px;
-      pointer-events: none; z-index: 15; max-width: 68vw;
+      pointer-events: none; z-index: 15; max-width: 72vw;
     }
     .row-flex { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
     .ui-btn, .badge {
@@ -77,8 +77,18 @@
     }
     .chat-toast b { color: #38bdf8; margin-right: 4px; }
 
+    /* Admin 전체 대형 경고 알림 오버레이 */
+    #admin-alert-overlay {
+      position: fixed; top: 18%; left: 50%; transform: translateX(-50%);
+      width: 520px; max-width: 94vw; background: rgba(153, 27, 27, 0.96); color: #fef08a;
+      border: 3px solid #facc15; border-radius: 20px; padding: 18px 22px; z-index: 80;
+      display: none; flex-direction: column; gap: 6px; text-align: center;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.8); pointer-events: none;
+    }
+    #admin-alert-overlay.open { display: flex; }
+
     .side-panel {
-      position: fixed; top: 82px; left: 10px; width: 320px; max-width: calc(100vw - 20px);
+      position: fixed; top: 82px; left: 10px; width: 325px; max-width: calc(100vw - 20px);
       max-height: calc(100vh - 165px); overflow-y: auto;
       background: var(--bg-ui); color: var(--text-ui);
       border-radius: var(--radius-ui); padding: 14px; backdrop-filter: blur(12px);
@@ -90,7 +100,7 @@
     .panel-header { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: bold; border-bottom: 1px solid var(--border-ui); padding-bottom: 6px; }
     .close-btn { background: none; border: none; color: inherit; font-size: 16px; cursor: pointer; }
     .field-group { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
-    .field-group input[type="text"], .field-group input[type="number"], .field-group select {
+    .field-group input[type="text"], .field-group input[type="password"], .field-group input[type="number"], .field-group select {
       background: rgba(128,128,128,0.2); border: 1px solid var(--border-ui);
       border-radius: 8px; padding: 6px 9px; color: inherit; font-size: 12px; outline: none;
     }
@@ -236,6 +246,39 @@
       <button class="ui-btn" id="open-theme-btn">🎨 테마상점</button>
       <button class="ui-btn" id="switch-world-btn" style="background:#8b5cf6;color:#fff;border-color:transparent;">🏙️ 도시 월드 이동</button>
       <button class="ui-btn" id="open-minigame-btn" style="background:#10b981;color:#fff;border-color:transparent;">🎮 미니게임</button>
+      <button class="ui-btn" id="open-admin-btn" style="background:#dc2626;color:#fff;border-color:transparent;">🛡️ Admin</button>
+    </div>
+  </div>
+
+  <!-- Admin 전체 대형 경고 알림 -->
+  <div id="admin-alert-overlay">
+    <div style="font-size:18px;font-weight:900;">🚨 긴급 전체 경고 알림 🚨</div>
+    <div id="admin-alert-msg" style="font-size:16px;font-weight:bold;color:#fff;"></div>
+    <div id="admin-alert-sender" style="font-size:11px;opacity:0.85;"></div>
+  </div>
+
+  <!-- Admin 로그인 & 제어 패널 -->
+  <div class="side-panel" id="admin-panel">
+    <div class="panel-header">
+      <span>🛡️ Admin 관리자 모드</span>
+      <button class="close-btn" data-close="admin-panel">✕</button>
+    </div>
+    <div id="admin-login-box" class="field-group">
+      <label>관리자 아이디</label>
+      <input type="text" id="admin-id-input" placeholder="아이디 입력">
+      <label>관리자 비밀번호</label>
+      <input type="password" id="admin-pw-input" placeholder="비밀번호 입력">
+      <button class="ui-btn primary" id="admin-submit-btn" style="background:#dc2626;margin-top:4px;">🔓 관리자 인증</button>
+    </div>
+    <div id="admin-controls-box" class="field-group" style="display:none;">
+      <div style="color:#4ade80;font-weight:bold;">✅ 관리자 인증 완료 (1.5배 크기 · 속도/점프 20배 · +1000몽 · 전 의상/테마 해금)</div>
+      <button class="ui-btn" id="admin-invisible-btn" style="background:#4f46e5;color:#fff;border-color:transparent;">👻 투명 모드 켜기 (현재: OFF)</button>
+      <label style="margin-top:4px;">🚨 전체 접속자 대형 경고 알림 보내기</label>
+      <input type="text" id="admin-alert-input" placeholder="경고 메시지 입력...">
+      <button class="ui-btn" id="admin-send-alert-btn" style="background:#d97706;color:#fff;border-color:transparent;">📢 전체 경고 발송</button>
+      <label style="margin-top:4px;">🚫 특정 사용자 월드에서 내보내기</label>
+      <select id="admin-kick-select"></select>
+      <button class="ui-btn" id="admin-kick-btn" style="background:#dc2626;color:#fff;border-color:transparent;">👢 선택한 유저 내보내기</button>
     </div>
   </div>
 
@@ -373,10 +416,10 @@
 
     <div style="background:rgba(128,128,128,0.14);padding:10px;border-radius:12px;display:flex;flex-direction:column;gap:6px;">
       <div style="font-weight:bold;font-size:13px;">🎨 1. 색깔 뒤집기 (1분 / 최소 3명)</div>
-      <p style="font-size:11px;opacity:0.88;">바닥 타일 색칠 승부 (+100몽)! 팀전 시 팀 색상에 맞춰 옷이 단체로 변경됩니다.</p>
+      <p style="font-size:11px;opacity:0.88;">바닥 타일 색칠 승부 (+100몽)! 팀전은 2팀 이상으로 편성됩니다.</p>
       <div class="btn-grid">
         <div class="field-group"><label>CPU 수 (0~10)</label><input type="number" id="cf-cpu-input" min="0" max="10" value="3"></div>
-        <div class="field-group"><label>경기 방식</label><select id="cf-mode-select"><option value="solo">개인전</option><option value="team">팀전 (모둠)</option></select></div>
+        <div class="field-group"><label>경기 방식</label><select id="cf-mode-select"><option value="solo">개인전</option><option value="team">팀전 (2팀 이상)</option></select></div>
       </div>
       <button class="ui-btn primary" id="start-cf-btn" style="width:100%;background:#10b981;">🚀 색깔 뒤집기 모집 시작</button>
     </div>
@@ -395,7 +438,6 @@
       <button class="ui-btn primary" id="start-liar-btn" style="width:100%;background:#d97706;">🔍 거짓말 탐지기 모집 시작</button>
     </div>
   </div>
-
   <button id="city-interact-btn">🏪 건물 들어가기</button>
 
   <div id="gesture-bar">
@@ -440,7 +482,7 @@
     ];
 
     let myAccount = {
-      mong: 200, speedLevel: 0, jumpLevel: 0,
+      mong: 200, speedLevel: 0, jumpLevel: 0, isAdmin: false, isInvisible: false,
       ownedTops: ['tshirt'], ownedBottoms: ['pants'], ownedThemes: ['original']
     };
     const savedPlayerProfiles = {};
@@ -465,31 +507,21 @@
     scene.add(worldGroup, coinGroup, arenaGroup);
     arenaGroup.visible = false;
 
-    let animatedProps = [];
-    let cityCars = [];
-    let clockHands = { hour: null, minute: null };
-    let currentTheme = 'original';
-    let currentWorldMap = 'nature';
-    let gameState = 'world';
-    let ftArenaHalf = 19;
-
+    let animatedProps = [], cityCars = [], clockHands = { hour: null, minute: null };
+    let currentTheme = 'original', currentWorldMap = 'nature', gameState = 'world', ftArenaHalf = 19;
     const coinMeshes = {};
     let coinCollectCooldown = 0;
 
     function syncWorldCoins(coinList) {
       while (coinGroup.children.length > 0) coinGroup.remove(coinGroup.children[0]);
       for (const k in coinMeshes) delete coinMeshes[k];
-
       const coinGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.16, 20);
       const coinMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xb45309, metalness: 0.6, roughness: 0.2 });
-
       coinList.forEach(c => {
         const mesh = new THREE.Mesh(coinGeo, coinMat);
-        mesh.rotation.x = Math.PI / 2;
-        mesh.position.set(c.x, 0.75, c.z);
+        mesh.rotation.x = Math.PI / 2; mesh.position.set(c.x, 0.75, c.z);
         mesh.userData = { id: c.id, x: c.x, z: c.z };
-        coinGroup.add(mesh);
-        coinMeshes[c.id] = mesh;
+        coinGroup.add(mesh); coinMeshes[c.id] = mesh;
       });
     }
 
@@ -498,10 +530,8 @@
       const ctx = c.getContext('2d');
       if (type === 'cute') {
         ctx.fillStyle = '#ffe4e6'; ctx.fillRect(0, 0, 256, 256);
-        ctx.fillStyle = '#fecdd3';
-        ctx.fillRect(0, 0, 128, 128); ctx.fillRect(128, 128, 128, 128);
-        ctx.fillStyle = '#fb7185';
-        ctx.beginPath(); ctx.arc(64, 64, 8, 0, Math.PI * 2); ctx.arc(192, 192, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fecdd3'; ctx.fillRect(0, 0, 128, 128); ctx.fillRect(128, 128, 128, 128);
+        ctx.fillStyle = '#fb7185'; ctx.beginPath(); ctx.arc(64, 64, 8, 0, Math.PI * 2); ctx.arc(192, 192, 8, 0, Math.PI * 2); ctx.fill();
       } else if (type === 'wood') {
         ctx.fillStyle = '#d97706'; ctx.fillRect(0, 0, 256, 256);
         ctx.strokeStyle = '#92400e'; ctx.lineWidth = 4;
@@ -526,115 +556,86 @@
         const cloud = new THREE.Group();
         for (let b = 0; b < 4; b++) {
           const puff = new THREE.Mesh(new THREE.SphereGeometry(2.2 + (b % 2), 12, 12), cloudMat);
-          puff.position.set(b * 2.1, (b % 2) * 0.7, (b % 3) * 0.8);
-          cloud.add(puff);
+          puff.position.set(b * 2.1, (b % 2) * 0.7, (b % 3) * 0.8); cloud.add(puff);
         }
         const ang = (i / 14) * Math.PI * 2, dist = 35 + (i % 3) * 25;
         cloud.position.set(Math.cos(ang) * dist, 28 + (i % 4) * 3, Math.sin(ang) * dist);
-        worldGroup.add(cloud);
-        animatedProps.push({ mesh: cloud, type: 'cloud', speed: 0.4 + (i % 3) * 0.2 });
+        worldGroup.add(cloud); animatedProps.push({ mesh: cloud, type: 'cloud', speed: 0.4 + (i % 3) * 0.2 });
       }
     }
 
     function buildMetroCityWorld() {
       while (worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
-      animatedProps = [];
-      cityCars = [];
-      clockHands = { hour: null, minute: null };
-
-      scene.background = new THREE.Color(0x7dd3fc);
-      scene.fog = new THREE.Fog(0x7dd3fc, 65, 200);
-      hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.95;
-      addClouds(0xffffff);
+      animatedProps = []; cityCars = []; clockHands = { hour: null, minute: null };
+      scene.background = new THREE.Color(0x7dd3fc); scene.fog = new THREE.Fog(0x7dd3fc, 65, 200);
+      hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.95; addClouds(0xffffff);
 
       const baseGround = new THREE.Mesh(new THREE.PlaneGeometry(340, 340), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
-      baseGround.rotation.x = -Math.PI / 2;
-      worldGroup.add(baseGround);
+      baseGround.rotation.x = -Math.PI / 2; worldGroup.add(baseGround);
 
       const roadMat = new THREE.MeshStandardMaterial({ color: 0x334155 });
-      const roadNS = new THREE.Mesh(new THREE.PlaneGeometry(14, 300), roadMat);
-      roadNS.rotation.x = -Math.PI / 2; roadNS.position.set(0, 0.02, 0);
-      const roadEW = new THREE.Mesh(new THREE.PlaneGeometry(300, 14), roadMat);
-      roadEW.rotation.x = -Math.PI / 2; roadEW.position.set(0, 0.02, 0);
+      const roadNS = new THREE.Mesh(new THREE.PlaneGeometry(14, 300), roadMat); roadNS.rotation.x = -Math.PI / 2; roadNS.position.y = 0.02;
+      const roadEW = new THREE.Mesh(new THREE.PlaneGeometry(300, 14), roadMat); roadEW.rotation.x = -Math.PI / 2; roadEW.position.y = 0.02;
       worldGroup.add(roadNS, roadEW);
 
       const lineMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
       for (let d = -130; d <= 130; d += 8) {
         if (Math.abs(d) < 22) continue;
-        const l1 = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 4), lineMat);
-        l1.rotation.x = -Math.PI / 2; l1.position.set(0, 0.03, d);
-        const l2 = new THREE.Mesh(new THREE.PlaneGeometry(4, 0.35), lineMat);
-        l2.rotation.x = -Math.PI / 2; l2.position.set(d, 0.03, 0);
+        const l1 = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 4), lineMat); l1.rotation.x = -Math.PI / 2; l1.position.set(0, 0.03, d);
+        const l2 = new THREE.Mesh(new THREE.PlaneGeometry(4, 0.35), lineMat); l2.rotation.x = -Math.PI / 2; l2.position.set(d, 0.03, 0);
         worldGroup.add(l1, l2);
       }
 
       const gardenBase = new THREE.Mesh(new THREE.CylinderGeometry(16, 16.5, 0.3, 36), new THREE.MeshStandardMaterial({ color: 0x22c55e }));
-      gardenBase.position.y = 0.15;
-      worldGroup.add(gardenBase);
-
+      gardenBase.position.y = 0.15; worldGroup.add(gardenBase);
       const flowerCols = [0xf43f5e, 0xfbbf24, 0xa855f7, 0x38bdf8, 0xf97316];
       for (let i = 0; i < 24; i++) {
         const ang = (i / 24) * Math.PI * 2;
         const flower = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 10), new THREE.MeshStandardMaterial({ color: flowerCols[i % flowerCols.length] }));
-        flower.position.set(Math.cos(ang) * 13.5, 0.5, Math.sin(ang) * 13.5);
-        worldGroup.add(flower);
+        flower.position.set(Math.cos(ang) * 13.5, 0.5, Math.sin(ang) * 13.5); worldGroup.add(flower);
       }
 
       const clockTower = new THREE.Group();
-      const towerBase = new THREE.Mesh(new THREE.BoxGeometry(4.2, 11, 4.2), new THREE.MeshStandardMaterial({ color: 0xb45309 }));
-      towerBase.position.y = 5.5;
-      const towerRoof = new THREE.Mesh(new THREE.ConeGeometry(3.6, 3.8, 4), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
-      towerRoof.rotation.y = Math.PI / 4; towerRoof.position.y = 12.9;
-      const dial = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.25, 24), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-      dial.rotation.x = Math.PI / 2; dial.position.set(0, 8.8, 2.15);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(1.65, 0.12, 12, 24), new THREE.MeshStandardMaterial({ color: 0xfbbf24 }));
-      rim.position.set(0, 8.8, 2.22);
-      const hourHand = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.95, 0.1), new THREE.MeshBasicMaterial({ color: 0x0f172a }));
-      hourHand.position.set(0, 8.8, 2.3);
-      const minHand = new THREE.Mesh(new THREE.BoxGeometry(0.11, 1.35, 0.1), new THREE.MeshBasicMaterial({ color: 0xdc2626 }));
-      minHand.position.set(0, 8.8, 2.33);
+      const towerBase = new THREE.Mesh(new THREE.BoxGeometry(4.2, 11, 4.2), new THREE.MeshStandardMaterial({ color: 0xb45309 })); towerBase.position.y = 5.5;
+      const towerRoof = new THREE.Mesh(new THREE.ConeGeometry(3.6, 3.8, 4), new THREE.MeshStandardMaterial({ color: 0x1e293b })); towerRoof.rotation.y = Math.PI / 4; towerRoof.position.y = 12.9;
+      const dial = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.25, 24), new THREE.MeshBasicMaterial({ color: 0xffffff })); dial.rotation.x = Math.PI / 2; dial.position.set(0, 8.8, 2.15);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(1.65, 0.12, 12, 24), new THREE.MeshStandardMaterial({ color: 0xfbbf24 })); rim.position.set(0, 8.8, 2.22);
+      const hourHand = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.95, 0.1), new THREE.MeshBasicMaterial({ color: 0x0f172a })); hourHand.position.set(0, 8.8, 2.3);
+      const minHand = new THREE.Mesh(new THREE.BoxGeometry(0.11, 1.35, 0.1), new THREE.MeshBasicMaterial({ color: 0xdc2626 })); minHand.position.set(0, 8.8, 2.33);
       clockHands.hour = hourHand; clockHands.minute = minHand;
-      clockTower.add(towerBase, towerRoof, dial, rim, hourHand, minHand);
-      worldGroup.add(clockTower);
+      clockTower.add(towerBase, towerRoof, dial, rim, hourHand, minHand); worldGroup.add(clockTower);
 
-      const shopBuilding = new THREE.Group();
-      const shopBody = new THREE.Mesh(new THREE.BoxGeometry(11, 6.5, 9), new THREE.MeshStandardMaterial({ color: 0x0284c7 })); shopBody.position.y = 3.25;
-      const shopAwning = new THREE.Mesh(new THREE.BoxGeometry(11.6, 0.8, 2.5), new THREE.MeshStandardMaterial({ color: 0xfacc15 })); shopAwning.position.set(0, 3.8, 5.2);
-      const shopSign = makeTextSprite('🏪 메트로 종합상점', 'rgba(15,23,42,0.88)', '#fef08a'); shopSign.position.set(0, 7.6, 0); shopSign.scale.set(6, 1.5, 1);
-      shopBuilding.add(shopBody, shopAwning, shopSign); shopBuilding.position.set(-24, 0, -24);
-      worldGroup.add(shopBuilding);
+      const shopB = new THREE.Group();
+      const sBody = new THREE.Mesh(new THREE.BoxGeometry(11, 6.5, 9), new THREE.MeshStandardMaterial({ color: 0x0284c7 })); sBody.position.y = 3.25;
+      const sAwn = new THREE.Mesh(new THREE.BoxGeometry(11.6, 0.8, 2.5), new THREE.MeshStandardMaterial({ color: 0xfacc15 })); sAwn.position.set(0, 3.8, 5.2);
+      const sSign = makeTextSprite('🏪 메트로 종합상점', 'rgba(15,23,42,0.88)', '#fef08a'); sSign.position.set(0, 7.6, 0); sSign.scale.set(6, 1.5, 1);
+      shopB.add(sBody, sAwn, sSign); shopB.position.set(-24, 0, -24); worldGroup.add(shopB);
 
-      const exBuilding = new THREE.Group();
-      const exBody = new THREE.Mesh(new THREE.BoxGeometry(11, 6.5, 9), new THREE.MeshStandardMaterial({ color: 0x7c3aed })); exBody.position.y = 3.25;
-      const exAwning = new THREE.Mesh(new THREE.BoxGeometry(11.6, 0.8, 2.5), new THREE.MeshStandardMaterial({ color: 0x34d399 })); exAwning.position.set(0, 3.8, 5.2);
-      const exSign = makeTextSprite('🏦 아이템 · 몽 교환소', 'rgba(15,23,42,0.88)', '#6ee7b7'); exSign.position.set(0, 7.6, 0); exSign.scale.set(6.5, 1.5, 1);
-      exBuilding.add(exBody, exAwning, exSign); exBuilding.position.set(24, 0, -24);
-      worldGroup.add(exBuilding);
+      const exB = new THREE.Group();
+      const eBody = new THREE.Mesh(new THREE.BoxGeometry(11, 6.5, 9), new THREE.MeshStandardMaterial({ color: 0x7c3aed })); eBody.position.y = 3.25;
+      const eAwn = new THREE.Mesh(new THREE.BoxGeometry(11.6, 0.8, 2.5), new THREE.MeshStandardMaterial({ color: 0x34d399 })); eAwn.position.set(0, 3.8, 5.2);
+      const eSign = makeTextSprite('🏦 아이템 · 몽 교환소', 'rgba(15,23,42,0.88)', '#6ee7b7'); eSign.position.set(0, 7.6, 0); eSign.scale.set(6.5, 1.5, 1);
+      exB.add(eBody, eAwn, eSign); exB.position.set(24, 0, -24); worldGroup.add(exB);
 
-      const houseColors = [0xf87171, 0xfbbf24, 0x34d399, 0x60a5fa, 0xf472b6, 0xa78bfa];
-      const villageCoords = [[-22, 22], [-34, 22], [-22, 34], [-34, 34], [22, 22], [34, 22], [22, 34], [34, 34]];
-      villageCoords.forEach(([hx, hz], idx) => {
+      const hCols = [0xf87171, 0xfbbf24, 0x34d399, 0x60a5fa, 0xf472b6, 0xa78bfa];
+      [[-22,22],[-34,22],[-22,34],[-34,34],[22,22],[34,22],[22,34],[34,34]].forEach(([hx, hz], idx) => {
         const house = new THREE.Group();
-        const hBody = new THREE.Mesh(new THREE.BoxGeometry(6.5, 4.2, 6.5), new THREE.MeshStandardMaterial({ color: houseColors[idx % houseColors.length] })); hBody.position.y = 2.1;
-        const hRoof = new THREE.Mesh(new THREE.ConeGeometry(5.2, 2.8, 4), new THREE.MeshStandardMaterial({ color: 0x334155 })); hRoof.rotation.y = Math.PI / 4; hRoof.position.y = 5.6;
-        const hDoor = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.2, 0.2), new THREE.MeshStandardMaterial({ color: 0x78350f })); hDoor.position.set(0, 1.1, 3.3);
-        house.add(hBody, hRoof, hDoor); house.position.set(hx, 0, hz); worldGroup.add(house);
+        const hb = new THREE.Mesh(new THREE.BoxGeometry(6.5, 4.2, 6.5), new THREE.MeshStandardMaterial({ color: hCols[idx % hCols.length] })); hb.position.y = 2.1;
+        const hr = new THREE.Mesh(new THREE.ConeGeometry(5.2, 2.8, 4), new THREE.MeshStandardMaterial({ color: 0x334155 })); hr.rotation.y = Math.PI / 4; hr.position.y = 5.6;
+        const hd = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.2, 0.2), new THREE.MeshStandardMaterial({ color: 0x78350f })); hd.position.set(0, 1.1, 3.3);
+        house.add(hb, hr, hd); house.position.set(hx, 0, hz); worldGroup.add(house);
       });
 
       const carCols = [0xef4444, 0x3b82f6, 0xeab308, 0x10b981, 0xec4899, 0xf97316];
       for (let i = 0; i < 6; i++) {
         const car = new THREE.Group();
-        const chassis = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.0, 4.4), new THREE.MeshStandardMaterial({ color: carCols[i] })); chassis.position.y = 0.7;
-        const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.85, 2.3), new THREE.MeshStandardMaterial({ color: 0xf8fafc })); cabin.position.set(0, 1.55, -0.2);
-        car.add(chassis, cabin);
-        const axis = i % 2 === 0 ? 'z' : 'x';
-        const dir = i < 3 ? 1 : -1;
-        const lane = dir * 3.5;
-        const startPos = -80 + i * 32;
-        if (axis === 'z') { car.position.set(lane, 0, startPos); car.rotation.y = dir > 0 ? 0 : Math.PI; }
-        else { car.position.set(startPos, 0, lane); car.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2; }
-        worldGroup.add(car);
-        cityCars.push({ mesh: car, axis, dir, speed: 12 + (i % 3) * 4 });
+        const ch = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.0, 4.4), new THREE.MeshStandardMaterial({ color: carCols[i] })); ch.position.y = 0.7;
+        const cb = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.85, 2.3), new THREE.MeshStandardMaterial({ color: 0xf8fafc })); cb.position.set(0, 1.55, -0.2);
+        car.add(ch, cb);
+        const axis = i % 2 === 0 ? 'z' : 'x', dir = i < 3 ? 1 : -1, lane = dir * 3.5, sp = -80 + i * 32;
+        if (axis === 'z') { car.position.set(lane, 0, sp); car.rotation.y = dir > 0 ? 0 : Math.PI; }
+        else { car.position.set(sp, 0, lane); car.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2; }
+        worldGroup.add(car); cityCars.push({ mesh: car, axis, dir, speed: 12 + (i % 3) * 4 });
       }
     }
 
@@ -642,314 +643,255 @@
       currentTheme = theme;
       document.body.className = 'theme-' + theme;
       if (currentWorldMap === 'city') { buildMetroCityWorld(); return; }
-
       while (worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
-      animatedProps = [];
-      cityCars = [];
+      animatedProps = []; cityCars = [];
       const groundGeo = new THREE.PlaneGeometry(320, 320);
 
       if (theme === 'original') {
         scene.background = new THREE.Color(0x7dd3fc); scene.fog = new THREE.Fog(0x7dd3fc, 50, 160);
         hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.9;
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('grass') }));
-        ground.rotation.x = -Math.PI / 2; worldGroup.add(ground); addClouds(0xffffff);
-        const fountain = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 5, 0.8, 24), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 })); fountain.position.set(0, 0.4, -12);
-        const water = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.9, 24), new THREE.MeshStandardMaterial({ color: 0x38bdf8 })); water.position.set(0, 0.45, -12);
-        worldGroup.add(fountain, water);
+        const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('grass') })); g.rotation.x = -Math.PI / 2; worldGroup.add(g); addClouds(0xffffff);
+        const f = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 5, 0.8, 24), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 })); f.position.set(0, 0.4, -12);
+        const w = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.9, 24), new THREE.MeshStandardMaterial({ color: 0x38bdf8 })); w.position.set(0, 0.45, -12);
+        worldGroup.add(f, w);
         for (let i = 0; i < 18; i++) {
-          const ang = (i / 18) * Math.PI * 2, dist = 16 + (i % 3) * 11;
-          const tree = new THREE.Group();
-          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.55, 2.5, 10), new THREE.MeshStandardMaterial({ color: 0x78350f })); trunk.position.y = 1.25;
-          const crown = new THREE.Mesh(new THREE.DodecahedronGeometry(2.2), new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0x22c55e : 0x4ade80 })); crown.position.y = 3.6;
-          tree.add(trunk, crown); tree.position.set(Math.cos(ang) * dist, 0, Math.sin(ang) * dist); worldGroup.add(tree);
+          const ang = (i / 18) * Math.PI * 2, dist = 16 + (i % 3) * 11, t = new THREE.Group();
+          const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.55, 2.5, 10), new THREE.MeshStandardMaterial({ color: 0x78350f })); tr.position.y = 1.25;
+          const cr = new THREE.Mesh(new THREE.DodecahedronGeometry(2.2), new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0x22c55e : 0x4ade80 })); cr.position.y = 3.6;
+          t.add(tr, cr); t.position.set(Math.cos(ang) * dist, 0, Math.sin(ang) * dist); worldGroup.add(t);
         }
       } else if (theme === 'cute') {
         scene.background = new THREE.Color(0xffe4e6); scene.fog = new THREE.Fog(0xffe4e6, 45, 150);
         hemiLight.color.setHex(0xfff1f2); hemiLight.intensity = 1.0;
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('cute') }));
-        ground.rotation.x = -Math.PI / 2; worldGroup.add(ground); addClouds(0xfff1f2);
+        const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('cute') })); g.rotation.x = -Math.PI / 2; worldGroup.add(g); addClouds(0xfff1f2);
         const cols = [0xf472b6, 0xfb7185, 0xc084fc, 0xfbbf24, 0x60a5fa];
         for (let i = 0; i < 26; i++) {
-          const ang = (i / 26) * Math.PI * 2, dist = 11 + (i % 4) * 9;
-          const obj = new THREE.Group();
-          const cream = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 1.4, 24), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-          const top = new THREE.Mesh(new THREE.SphereGeometry(1.8, 24, 16), new THREE.MeshStandardMaterial({ color: cols[i % cols.length] })); top.scale.y = 0.65; top.position.y = 1.1;
-          const cherry = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), new THREE.MeshStandardMaterial({ color: 0xe11d48 })); cherry.position.y = 2.2;
-          obj.add(cream, top, cherry); obj.position.set(Math.cos(ang) * dist, 0.7, Math.sin(ang) * dist); worldGroup.add(obj);
+          const ang = (i / 26) * Math.PI * 2, dist = 11 + (i % 4) * 9, obj = new THREE.Group();
+          const c = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 1.4, 24), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+          const tp = new THREE.Mesh(new THREE.SphereGeometry(1.8, 24, 16), new THREE.MeshStandardMaterial({ color: cols[i % cols.length] })); tp.scale.y = 0.65; tp.position.y = 1.1;
+          const ch = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), new THREE.MeshStandardMaterial({ color: 0xe11d48 })); ch.position.y = 2.2;
+          obj.add(c, tp, ch); obj.position.set(Math.cos(ang) * dist, 0.7, Math.sin(ang) * dist); worldGroup.add(obj);
         }
       } else if (theme === 'dreamy') {
         scene.background = new THREE.Color(0x1e1b4b); scene.fog = new THREE.Fog(0x1e1b4b, 38, 135);
         hemiLight.color.setHex(0xc4b5fd); hemiLight.intensity = 0.8;
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x312e81 })); ground.rotation.x = -Math.PI / 2; worldGroup.add(ground);
+        const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x312e81 })); g.rotation.x = -Math.PI / 2; worldGroup.add(g);
         for (let i = 0; i < 32; i++) {
-          const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(1.1 + (i % 3) * 0.5), new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0xc084fc : 0x38bdf8, emissive: 0x4c1d95 }));
+          const cr = new THREE.Mesh(new THREE.OctahedronGeometry(1.1 + (i % 3) * 0.5), new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0xc084fc : 0x38bdf8, emissive: 0x4c1d95 }));
           const ang = (i / 32) * Math.PI * 2, dist = 10 + (i % 5) * 9;
-          crystal.position.set(Math.cos(ang) * dist, 2.2 + (i % 4) * 1.4, Math.sin(ang) * dist); worldGroup.add(crystal);
-          animatedProps.push({ mesh: crystal, type: 'float', baseY: crystal.position.y, phase: i });
+          cr.position.set(Math.cos(ang) * dist, 2.2 + (i % 4) * 1.4, Math.sin(ang) * dist); worldGroup.add(cr);
+          animatedProps.push({ mesh: cr, type: 'float', baseY: cr.position.y, phase: i });
         }
       } else if (theme === 'colorful') {
         scene.background = new THREE.Color(0x38bdf8); scene.fog = new THREE.Fog(0x38bdf8, 50, 160);
         hemiLight.color.setHex(0xffffff); hemiLight.intensity = 1.0;
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xfef08a })); ground.rotation.x = -Math.PI / 2; worldGroup.add(ground);
-        addClouds(0xffffff);
+        const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xfef08a })); g.rotation.x = -Math.PI / 2; worldGroup.add(g); addClouds(0xffffff);
         const vivid = [0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x06b6d4, 0x3b82f6, 0xa855f7, 0xec4899];
         for (let i = 0; i < 32; i++) {
           const geo = i % 3 === 0 ? new THREE.BoxGeometry(2.5, 4, 2.5) : (i % 3 === 1 ? new THREE.ConeGeometry(2, 4.5, 16) : new THREE.TorusGeometry(1.5, 0.5, 12, 24));
-          const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: vivid[i % vivid.length] }));
-          const ang = (i / 32) * Math.PI * 2, dist = 12 + (i % 4) * 10;
-          mesh.position.set(Math.cos(ang) * dist, 2.2, Math.sin(ang) * dist); worldGroup.add(mesh);
+          const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: vivid[i % vivid.length] }));
+          const ang = (i / 32) * Math.PI * 2, dist = 12 + (i % 4) * 10; m.position.set(Math.cos(ang) * dist, 2.2, Math.sin(ang) * dist); worldGroup.add(m);
         }
       } else if (theme === 'simple') {
         scene.background = new THREE.Color(0xf4f4f5); scene.fog = new THREE.Fog(0xf4f4f5, 50, 160);
         hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.95;
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xe4e4e7 })); ground.rotation.x = -Math.PI / 2; worldGroup.add(ground);
-        const grid = new THREE.GridHelper(320, 64, 0xa1a1aa, 0xd4d4d8); grid.position.y = 0.01; worldGroup.add(grid);
+        const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xe4e4e7 })); g.rotation.x = -Math.PI / 2; worldGroup.add(g);
+        const gr = new THREE.GridHelper(320, 64, 0xa1a1aa, 0xd4d4d8); gr.position.y = 0.01; worldGroup.add(gr);
         for (let i = 0; i < 12; i++) {
-          const pillar = new THREE.Mesh(new THREE.BoxGeometry(2, 5, 2), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-          const ang = (i / 12) * Math.PI * 2; pillar.position.set(Math.cos(ang) * 20, 2.5, Math.sin(ang) * 20); worldGroup.add(pillar);
+          const p = new THREE.Mesh(new THREE.BoxGeometry(2, 5, 2), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+          const ang = (i / 12) * Math.PI * 2; p.position.set(Math.cos(ang) * 20, 2.5, Math.sin(ang) * 20); worldGroup.add(p);
         }
       } else if (theme === 'jungle') {
         scene.background = new THREE.Color(0xa7f3d0); scene.fog = new THREE.Fog(0x6ee7b7, 35, 130);
         hemiLight.color.setHex(0xd1fae5); hemiLight.intensity = 0.9;
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('jungle') }));
-        ground.rotation.x = -Math.PI / 2; worldGroup.add(ground); addClouds(0xecfdf5);
-        const cabin = new THREE.Group();
-        const body = new THREE.Mesh(new THREE.BoxGeometry(7.5, 4.4, 6.2), new THREE.MeshStandardMaterial({ color: 0x78350f })); body.position.y = 2.2;
-        const roof = new THREE.Mesh(new THREE.ConeGeometry(5.8, 3.2, 4), new THREE.MeshStandardMaterial({ color: 0x451a03 })); roof.rotation.y = Math.PI / 4; roof.position.y = 5.8;
-        const door = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.5, 0.2), new THREE.MeshStandardMaterial({ color: 0x92400e })); door.position.set(0, 1.25, 3.15);
-        cabin.add(body, roof, door); cabin.position.set(0, 0, -11); worldGroup.add(cabin);
+        const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('jungle') })); g.rotation.x = -Math.PI / 2; worldGroup.add(g); addClouds(0xecfdf5);
+        const cb = new THREE.Group();
+        const bd = new THREE.Mesh(new THREE.BoxGeometry(7.5, 4.4, 6.2), new THREE.MeshStandardMaterial({ color: 0x78350f })); bd.position.y = 2.2;
+        const rf = new THREE.Mesh(new THREE.ConeGeometry(5.8, 3.2, 4), new THREE.MeshStandardMaterial({ color: 0x451a03 })); rf.rotation.y = Math.PI / 4; rf.position.y = 5.8;
+        const dr = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.5, 0.2), new THREE.MeshStandardMaterial({ color: 0x92400e })); dr.position.set(0, 1.25, 3.15);
+        cb.add(bd, rf, dr); cb.position.set(0, 0, -11); worldGroup.add(cb);
         for (let i = 0; i < 48; i++) {
-          const tree = new THREE.Group();
-          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.65, 3.6, 10), new THREE.MeshStandardMaterial({ color: 0x5c2d0c })); trunk.position.y = 1.8;
+          const t = new THREE.Group();
+          const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.65, 3.6, 10), new THREE.MeshStandardMaterial({ color: 0x5c2d0c })); tr.position.y = 1.8;
           const c1 = new THREE.Mesh(new THREE.ConeGeometry(2.5, 3.6, 10), new THREE.MeshStandardMaterial({ color: 0x166534 })); c1.position.y = 4.3;
           const c2 = new THREE.Mesh(new THREE.ConeGeometry(1.9, 3.1, 10), new THREE.MeshStandardMaterial({ color: 0x14532d })); c2.position.y = 6.2;
-          tree.add(trunk, c1, c2);
-          const ang = (i / 48) * Math.PI * 2 + (i % 3) * 0.2, dist = 16 + (i % 5) * 8;
-          tree.position.set(Math.cos(ang) * dist, 0, Math.sin(ang) * dist); worldGroup.add(tree);
+          t.add(tr, c1, c2);
+          const ang = (i / 48) * Math.PI * 2 + (i % 3) * 0.2, dist = 16 + (i % 5) * 8; t.position.set(Math.cos(ang) * dist, 0, Math.sin(ang) * dist); worldGroup.add(t);
         }
       } else if (theme === 'cathouse') {
         scene.background = new THREE.Color(0xfef3c7); scene.fog = new THREE.Fog(0xfef3c7, 45, 145);
         hemiLight.color.setHex(0xfffbeb); hemiLight.intensity = 0.95;
-        const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('wood') }));
-        ground.rotation.x = -Math.PI / 2; worldGroup.add(ground);
+        const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('wood') })); g.rotation.x = -Math.PI / 2; worldGroup.add(g);
         const rug = new THREE.Mesh(new THREE.CylinderGeometry(11.5, 11.5, 0.08, 32), new THREE.MeshStandardMaterial({ color: 0xfce7f3 })); rug.position.y = 0.04; worldGroup.add(rug);
-        const tower = new THREE.Group();
-        const postMat = new THREE.MeshStandardMaterial({ color: 0xfde68a });
-        const post1 = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 7, 16), postMat); post1.position.set(-2.5, 3.5, 0);
-        const post2 = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 5, 16), postMat); post2.position.set(2.5, 2.5, 0);
-        const board1 = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.4, 3.6), new THREE.MeshStandardMaterial({ color: 0xf472b6 })); board1.position.set(0, 4.8, 0);
-        const catBox = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 3.2), new THREE.MeshStandardMaterial({ color: 0xfb7185 })); catBox.position.set(-2.5, 7.2, 0);
-        tower.add(post1, post2, board1, catBox); tower.position.set(0, 0, -11); worldGroup.add(tower);
-        const yarnColors = [0xef4444, 0x3b82f6, 0xf59e0b, 0x10b981, 0xa855f7];
+        const tw = new THREE.Group(), pm = new THREE.MeshStandardMaterial({ color: 0xfde68a });
+        const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 7, 16), pm); p1.position.set(-2.5, 3.5, 0);
+        const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 5, 16), pm); p2.position.set(2.5, 2.5, 0);
+        const b1 = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.4, 3.6), new THREE.MeshStandardMaterial({ color: 0xf472b6 })); b1.position.set(0, 4.8, 0);
+        const bx = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 3.2), new THREE.MeshStandardMaterial({ color: 0xfb7185 })); bx.position.set(-2.5, 7.2, 0);
+        tw.add(p1, p2, b1, bx); tw.position.set(0, 0, -11); worldGroup.add(tw);
+        const yc = [0xef4444, 0x3b82f6, 0xf59e0b, 0x10b981, 0xa855f7];
         for (let i = 0; i < 16; i++) {
-          const yarn = new THREE.Mesh(new THREE.SphereGeometry(1.1, 20, 20), new THREE.MeshStandardMaterial({ color: yarnColors[i % yarnColors.length] }));
-          const ang = (i / 16) * Math.PI * 2, dist = 13 + (i % 3) * 5;
-          yarn.position.set(Math.cos(ang) * dist, 1.1, Math.sin(ang) * dist); worldGroup.add(yarn);
+          const y = new THREE.Mesh(new THREE.SphereGeometry(1.1, 20, 20), new THREE.MeshStandardMaterial({ color: yc[i % yc.length] }));
+          const ang = (i / 16) * Math.PI * 2, dist = 13 + (i % 3) * 5; y.position.set(Math.cos(ang) * dist, 1.1, Math.sin(ang) * dist); worldGroup.add(y);
         }
       }
     }
     buildWorldTheme('original');
 
     function createFaceTexture(faceType) {
-      const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256;
-      const ctx = canvas.getContext('2d');
+      const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+      const ctx = c.getContext('2d');
       ctx.fillStyle = faceType === 'robot' ? '#94a3b8' : '#ffedd5'; ctx.fillRect(0, 0, 256, 256);
       if (faceType === 'happy') {
         ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.arc(85, 110, 14, 0, Math.PI * 2); ctx.arc(171, 110, 14, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(244, 63, 94, 0.35)'; ctx.beginPath(); ctx.arc(65, 140, 16, 0, Math.PI * 2); ctx.arc(191, 140, 16, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 8; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.arc(128, 142, 26, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+        ctx.fillStyle = 'rgba(244,63,94,0.35)'; ctx.beginPath(); ctx.arc(65, 140, 16, 0, Math.PI * 2); ctx.arc(191, 140, 16, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(128, 142, 26, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
       } else if (faceType === 'cool') {
         ctx.fillStyle = '#0f172a'; ctx.fillRect(42, 88, 76, 44); ctx.fillRect(138, 88, 76, 44); ctx.fillRect(114, 98, 28, 10);
         ctx.fillStyle = '#38bdf8'; ctx.fillRect(52, 95, 18, 8); ctx.fillRect(148, 95, 18, 8);
-        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 8; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(100, 170); ctx.quadraticCurveTo(132, 182, 162, 160); ctx.stroke();
+        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(100, 170); ctx.quadraticCurveTo(132, 182, 162, 160); ctx.stroke();
       } else if (faceType === 'cat') {
         ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.ellipse(85, 110, 12, 18, 0, 0, Math.PI * 2); ctx.ellipse(171, 110, 12, 18, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fb7185'; ctx.beginPath(); ctx.arc(128, 138, 8, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 6;
-        ctx.beginPath(); ctx.moveTo(106, 158); ctx.quadraticCurveTo(118, 166, 128, 146); ctx.quadraticCurveTo(138, 166, 150, 158); ctx.stroke();
+        ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(106, 158); ctx.quadraticCurveTo(118, 166, 128, 146); ctx.quadraticCurveTo(138, 166, 150, 158); ctx.stroke();
       } else if (faceType === 'robot') {
-        ctx.fillStyle = '#0f172a'; ctx.fillRect(36, 86, 184, 48);
-        ctx.fillStyle = '#ef4444'; ctx.fillRect(52, 102, 152, 16);
-        ctx.fillStyle = '#334155'; ctx.fillRect(88, 162, 80, 22);
+        ctx.fillStyle = '#0f172a'; ctx.fillRect(36, 86, 184, 48); ctx.fillStyle = '#ef4444'; ctx.fillRect(52, 102, 152, 16); ctx.fillStyle = '#334155'; ctx.fillRect(88, 162, 80, 22);
       }
-      return new THREE.CanvasTexture(canvas);
+      return new THREE.CanvasTexture(c);
     }
 
     function buildAvatarAppearance(group, data) {
       if (group.userData.rig) group.remove(group.userData.rig);
       const rig = new THREE.Group();
       const skinMat = new THREE.MeshStandardMaterial({ color: data.face === 'robot' ? 0x94a3b8 : 0xffedd5 });
-      const topBaseColor = new THREE.Color(data.topColor || '#3b82f6');
-      const botBaseColor = new THREE.Color(data.bottomColor || '#1e293b');
-      const topMat = new THREE.MeshStandardMaterial({ color: topBaseColor });
-      const topDarkMat = new THREE.MeshStandardMaterial({ color: topBaseColor.clone().multiplyScalar(0.75) });
-      const bottomMat = new THREE.MeshStandardMaterial({ color: botBaseColor });
-      const bottomDarkMat = new THREE.MeshStandardMaterial({ color: botBaseColor.clone().multiplyScalar(0.72) });
-      const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-      const goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.6, roughness: 0.3 });
+      const topC = new THREE.Color(data.topColor || '#3b82f6'), botC = new THREE.Color(data.bottomColor || '#1e293b');
+      const topMat = new THREE.MeshStandardMaterial({ color: topC }), topDark = new THREE.MeshStandardMaterial({ color: topC.clone().multiplyScalar(0.75) });
+      const botMat = new THREE.MeshStandardMaterial({ color: botC }), botDark = new THREE.MeshStandardMaterial({ color: botC.clone().multiplyScalar(0.72) });
+      const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff }), goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.6, roughness: 0.3 });
 
       function createLeg(isLeft) {
-        const legPivot = new THREE.Group();
-        legPivot.position.set(isLeft ? -0.22 : 0.22, 0.72, 0);
-
+        const lp = new THREE.Group(); lp.position.set(isLeft ? -0.22 : 0.22, 0.72, 0);
         if (data.bottomStyle === 'shorts') {
-          const u = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.32, 0.44), bottomMat); u.position.y = -0.16;
-          const cuff = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.06, 0.46), bottomDarkMat); cuff.position.y = -0.31;
+          const u = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.32, 0.44), botMat); u.position.y = -0.16;
+          const cf = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.06, 0.46), botDark); cf.position.y = -0.31;
           const l = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.34, 0.3), skinMat); l.position.y = -0.48;
-          legPivot.add(u, cuff, l);
+          lp.add(u, cf, l);
         } else if (data.bottomStyle === 'skirt') {
-          const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.36, 0.3), skinMat); thigh.position.y = -0.18;
-          const sock = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.32), whiteMat); sock.position.y = -0.5;
-          legPivot.add(thigh, sock);
+          const th = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.36, 0.3), skinMat); th.position.y = -0.18;
+          const sk = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.32), whiteMat); sk.position.y = -0.5;
+          lp.add(th, sk);
         } else if (data.bottomStyle === 'jeans') {
-          const l = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.62, 0.42), bottomMat); l.position.y = -0.31;
-          const patch = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.05), new THREE.MeshStandardMaterial({ color: botBaseColor.clone().lerp(new THREE.Color(0xffffff), 0.35) }));
-          patch.position.set(0, -0.32, 0.21);
-          const rollup = new THREE.Mesh(new THREE.BoxGeometry(0.41, 0.1, 0.45), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
-          rollup.position.y = -0.58;
-          legPivot.add(l, patch, rollup);
+          const l = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.62, 0.42), botMat); l.position.y = -0.31;
+          const pt = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.05), new THREE.MeshStandardMaterial({ color: botC.clone().lerp(new THREE.Color(0xffffff), 0.35) })); pt.position.set(0, -0.32, 0.21);
+          const ru = new THREE.Mesh(new THREE.BoxGeometry(0.41, 0.1, 0.45), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 })); ru.position.y = -0.58;
+          lp.add(l, pt, ru);
         } else if (data.bottomStyle === 'armorpants') {
-          const l = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.66, 0.42), bottomDarkMat); l.position.y = -0.33;
-          const knee = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.14), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
-          knee.position.set(0, -0.3, 0.22);
-          const sideFin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.35, 0.25), goldMat);
-          sideFin.position.set(isLeft ? -0.22 : 0.22, -0.4, 0);
-          legPivot.add(l, knee, sideFin);
+          const l = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.66, 0.42), botDark); l.position.y = -0.33;
+          const kn = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.14), new THREE.MeshBasicMaterial({ color: 0x38bdf8 })); kn.position.set(0, -0.3, 0.22);
+          const sf = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.35, 0.25), goldMat); sf.position.set(isLeft ? -0.22 : 0.22, -0.4, 0);
+          lp.add(l, kn, sf);
         } else {
-          const l = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.66, 0.41), bottomMat); l.position.y = -0.33;
-          legPivot.add(l);
+          const l = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.66, 0.41), botMat); l.position.y = -0.33; lp.add(l);
         }
-
-        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.39, 0.15, 0.5), data.bottomStyle === 'armorpants' ? goldMat : whiteMat);
-        shoe.position.set(0, -0.65, 0.04);
-        legPivot.add(shoe);
-        return legPivot;
+        const sh = new THREE.Mesh(new THREE.BoxGeometry(0.39, 0.15, 0.5), data.bottomStyle === 'armorpants' ? goldMat : whiteMat);
+        sh.position.set(0, -0.65, 0.04); lp.add(sh); return lp;
       }
 
-      const leftLeg = createLeg(true), rightLeg = createLeg(false);
-      rig.add(leftLeg, rightLeg);
-
-      const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.24, 0.56), bottomMat);
-      pelvis.position.y = 0.75;
-      rig.add(pelvis);
+      const leftLeg = createLeg(true), rightLeg = createLeg(false); rig.add(leftLeg, rightLeg);
+      const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.24, 0.56), botMat); pelvis.position.y = 0.75; rig.add(pelvis);
 
       if (data.bottomStyle === 'skirt') {
-        const sk = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.82, 0.52, 20), bottomMat); sk.position.y = 0.62;
-        const lace = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.85, 0.08, 20), whiteMat); lace.position.y = 0.36;
-        rig.add(sk, lace);
+        const sk = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.82, 0.52, 20), botMat); sk.position.y = 0.62;
+        const lc = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.85, 0.08, 20), whiteMat); lc.position.y = 0.36; rig.add(sk, lc);
       } else if (data.bottomStyle === 'jeans') {
-        const belt = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.1, 0.6), new THREE.MeshStandardMaterial({ color: 0x451a03 })); belt.position.y = 0.83;
-        const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.06), goldMat); buckle.position.set(0, 0.83, 0.3);
-        rig.add(belt, buckle);
+        const bl = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.1, 0.6), new THREE.MeshStandardMaterial({ color: 0x451a03 })); bl.position.y = 0.83;
+        const bk = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.06), goldMat); bk.position.set(0, 0.83, 0.3); rig.add(bl, bk);
       } else if (data.bottomStyle === 'overalls') {
-        const bib = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.52, 0.08), bottomMat); bib.position.set(0, 1.1, 0.28);
-        const s1 = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.86, 0.6), bottomMat); s1.position.set(-0.26, 1.24, 0);
+        const bib = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.52, 0.08), botMat); bib.position.set(0, 1.1, 0.28);
+        const s1 = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.86, 0.6), botMat); s1.position.set(-0.26, 1.24, 0);
         const s2 = s1.clone(); s2.position.set(0.26, 1.24, 0);
         const b1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 12), goldMat); b1.rotation.x = Math.PI / 2; b1.position.set(-0.26, 1.32, 0.32);
-        const b2 = b1.clone(); b2.position.set(0.26, 1.32, 0.32);
-        rig.add(bib, s1, s2, b1, b2);
+        const b2 = b1.clone(); b2.position.set(0.26, 1.32, 0.32); rig.add(bib, s1, s2, b1, b2);
       }
 
-      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.88, 0.56), topMat);
-      torso.position.y = 1.25;
-      rig.add(torso);
-
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.88, 0.56), topMat); torso.position.y = 1.25; rig.add(torso);
       if (data.topStyle === 'tshirt') {
-        const collar = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.05, 8, 16), whiteMat);
-        collar.rotation.x = Math.PI / 2; collar.position.set(0, 1.69, 0.05);
-        const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.24, 0.05), topDarkMat); pocket.position.set(0.22, 1.38, 0.28);
-        rig.add(collar, pocket);
+        const cl = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.05, 8, 16), whiteMat); cl.rotation.x = Math.PI / 2; cl.position.set(0, 1.69, 0.05);
+        const pk = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.24, 0.05), topDark); pk.position.set(0.22, 1.38, 0.28); rig.add(cl, pk);
       } else if (data.topStyle === 'hoodie') {
-        const hood = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.48, 0.52), topDarkMat); hood.position.set(0, 1.62, -0.28);
-        const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.32, 0.09), topDarkMat); pouch.position.set(0, 0.98, 0.29);
-        const str1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.36, 0.04), whiteMat); str1.position.set(-0.12, 1.46, 0.3);
-        const str2 = str1.clone(); str2.position.set(0.12, 1.46, 0.3);
-        rig.add(hood, pouch, str1, str2);
+        const hd = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.48, 0.52), topDark); hd.position.set(0, 1.62, -0.28);
+        const pc = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.32, 0.09), topDark); pc.position.set(0, 0.98, 0.29);
+        const st1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.36, 0.04), whiteMat); st1.position.set(-0.12, 1.46, 0.3);
+        const st2 = st1.clone(); st2.position.set(0.12, 1.46, 0.3); rig.add(hd, pc, st1, st2);
       } else if (data.topStyle === 'sweater') {
-        const turtle = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.3, 0.22, 16), topDarkMat); turtle.position.y = 1.72;
-        const stripe1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 0.6), whiteMat); stripe1.position.y = 1.38;
-        const stripe2 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, 0.6), goldMat); stripe2.position.y = 1.15;
-        rig.add(turtle, stripe1, stripe2);
+        const tt = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.3, 0.22, 16), topDark); tt.position.y = 1.72;
+        const s1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 0.6), whiteMat); s1.position.y = 1.38;
+        const s2 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, 0.6), goldMat); s2.position.y = 1.15; rig.add(tt, s1, s2);
       } else if (data.topStyle === 'suit') {
-        const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.62, 0.05), whiteMat); shirt.position.set(0, 1.36, 0.27);
-        const tie = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.52, 0.07), new THREE.MeshStandardMaterial({ color: 0xdc2626 })); tie.position.set(0, 1.32, 0.29);
-        const btn1 = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), goldMat); btn1.position.set(0, 1.04, 0.3);
-        const btn2 = btn1.clone(); btn2.position.set(0, 0.9, 0.3);
-        rig.add(shirt, tie, btn1, btn2);
+        const sh = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.62, 0.05), whiteMat); sh.position.set(0, 1.36, 0.27);
+        const ti = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.52, 0.07), new THREE.MeshStandardMaterial({ color: 0xdc2626 })); ti.position.set(0, 1.32, 0.29);
+        const b1 = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), goldMat); b1.position.set(0, 1.04, 0.3);
+        const b2 = b1.clone(); b2.position.set(0, 0.9, 0.3); rig.add(sh, ti, b1, b2);
       } else if (data.topStyle === 'uniform') {
-        const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.55, 0.05), whiteMat); shirt.position.set(0, 1.4, 0.27);
-        const ribbon = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.08), goldMat); ribbon.position.set(0, 1.5, 0.29);
-        const badge = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.06), whiteMat); badge.position.set(0.26, 1.42, 0.29);
-        const trim = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.07, 0.6), whiteMat); trim.position.y = 0.86;
-        rig.add(shirt, ribbon, badge, trim);
+        const sh = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.55, 0.05), whiteMat); sh.position.set(0, 1.4, 0.27);
+        const rb = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.08), goldMat); rb.position.set(0, 1.5, 0.29);
+        const bg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.06), whiteMat); bg.position.set(0.26, 1.42, 0.29);
+        const tr = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.07, 0.6), whiteMat); tr.position.y = 0.86; rig.add(sh, rb, bg, tr);
       } else if (data.topStyle === 'hanbok') {
-        const collarL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.55, 0.07), whiteMat); collarL.position.set(-0.12, 1.42, 0.28); collarL.rotation.z = -0.35;
-        const collarR = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.55, 0.07), whiteMat); collarR.position.set(0.12, 1.42, 0.28); collarR.rotation.z = 0.35;
-        const goreum1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.68, 0.08), new THREE.MeshStandardMaterial({ color: 0xf43f5e })); goreum1.position.set(0.14, 1.15, 0.3); goreum1.rotation.z = -0.15;
-        rig.add(collarL, collarR, goreum1);
+        const cL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.55, 0.07), whiteMat); cL.position.set(-0.12, 1.42, 0.28); cL.rotation.z = -0.35;
+        const cR = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.55, 0.07), whiteMat); cR.position.set(0.12, 1.42, 0.28); cR.rotation.z = 0.35;
+        const gr = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.68, 0.08), new THREE.MeshStandardMaterial({ color: 0xf43f5e })); gr.position.set(0.14, 1.15, 0.3); gr.rotation.z = -0.15;
+        rig.add(cL, cR, gr);
       } else if (data.topStyle === 'armor') {
-        const chestPlate = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.55, 0.66), topDarkMat); chestPlate.position.y = 1.38;
-        const core = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 16), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
-        core.rotation.x = Math.PI / 2; core.position.set(0, 1.38, 0.34);
-        const shL = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.36, 0.62), topDarkMat); shL.position.set(-0.68, 1.56, 0);
-        const shR = shL.clone(); shR.position.set(0.68, 1.56, 0);
-        rig.add(chestPlate, core, shL, shR);
+        const cp = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.55, 0.66), topDark); cp.position.y = 1.38;
+        const co = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 16), new THREE.MeshBasicMaterial({ color: 0x38bdf8 })); co.rotation.x = Math.PI / 2; co.position.set(0, 1.38, 0.34);
+        const sL = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.36, 0.62), topDark); sL.position.set(-0.68, 1.56, 0);
+        const sR = sL.clone(); sR.position.set(0.68, 1.56, 0); rig.add(cp, co, sL, sR);
       } else if (data.topStyle === 'royal') {
-        const cape = new THREE.Mesh(new THREE.BoxGeometry(1.16, 1.55, 0.09), new THREE.MeshStandardMaterial({ color: 0xb91c1c }));
-        cape.position.set(0, 1.0, -0.34); cape.rotation.x = 0.14;
-        const epL = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), goldMat); epL.position.set(-0.56, 1.66, 0);
-        const epR = epL.clone(); epR.position.set(0.56, 1.66, 0);
-        const sash = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.96, 0.6), goldMat); sash.rotation.z = 0.55; sash.position.y = 1.25;
-        const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.26, 0.24, 8), goldMat); crown.position.y = 2.64;
-        rig.add(cape, epL, epR, sash, crown);
+        const cp = new THREE.Mesh(new THREE.BoxGeometry(1.16, 1.55, 0.09), new THREE.MeshStandardMaterial({ color: 0xb91c1c })); cp.position.set(0, 1.0, -0.34); cp.rotation.x = 0.14;
+        const eL = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), goldMat); eL.position.set(-0.56, 1.66, 0);
+        const eR = eL.clone(); eR.position.set(0.56, 1.66, 0);
+        const ss = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.96, 0.6), goldMat); ss.rotation.z = 0.55; ss.position.y = 1.25;
+        const cr = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.26, 0.24, 8), goldMat); cr.position.y = 2.64;
+        rig.add(cp, eL, eR, ss, cr);
       }
 
       function createArm(isLeft) {
-        const armPivot = new THREE.Group();
-        armPivot.position.set(isLeft ? -0.64 : 0.64, 1.62, 0);
+        const ap = new THREE.Group(); ap.position.set(isLeft ? -0.64 : 0.64, 1.62, 0);
         if (data.topStyle === 'tshirt') {
           const sl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.38), topMat); sl.position.y = -0.17;
-          const ar = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.52, 0.28), skinMat); ar.position.y = -0.56;
-          armPivot.add(sl, ar);
+          const ar = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.52, 0.28), skinMat); ar.position.y = -0.56; ap.add(sl, ar);
         } else {
           const ar = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.82, 0.36), topMat); ar.position.y = -0.41;
           if (['hanbok', 'uniform', 'sweater'].includes(data.topStyle)) {
-            const cuff = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.14, 0.38), whiteMat);
-            cuff.position.y = -0.75; armPivot.add(cuff);
+            const cf = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.14, 0.38), whiteMat); cf.position.y = -0.75; ap.add(cf);
           }
-          const ha = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 0.24), skinMat); ha.position.y = -0.86;
-          armPivot.add(ar, ha);
+          const ha = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 0.24), skinMat); ha.position.y = -0.86; ap.add(ar, ha);
         }
         if (!isLeft) {
-          const vGroup = new THREE.Group(); vGroup.position.set(0, -0.95, 0.05);
+          const vg = new THREE.Group(); vg.position.set(0, -0.95, 0.05);
           const f1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.06), skinMat); f1.position.set(-0.05, -0.08, 0); f1.rotation.z = -0.25;
           const f2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.06), skinMat); f2.position.set(0.05, -0.08, 0); f2.rotation.z = 0.25;
-          vGroup.add(f1, f2); vGroup.visible = false;
-          armPivot.add(vGroup); group.userData.vFingers = vGroup;
+          vg.add(f1, f2); vg.visible = false; ap.add(vg); group.userData.vFingers = vg;
         }
-        return armPivot;
+        return ap;
       }
 
-      const leftArm = createArm(true), rightArm = createArm(false);
-      rig.add(leftArm, rightArm);
-
+      const leftArm = createArm(true), rightArm = createArm(false); rig.add(leftArm, rightArm);
       const faceTex = createFaceTexture(data.face || 'happy');
       const head = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.82), [skinMat, skinMat, skinMat, skinMat, new THREE.MeshStandardMaterial({ map: faceTex }), skinMat]);
       head.position.y = 2.12; rig.add(head);
 
       if (data.face === 'cat') {
-        const earGeo = new THREE.ConeGeometry(0.16, 0.28, 4);
-        const lEar = new THREE.Mesh(earGeo, skinMat); lEar.position.set(-0.24, 2.62, 0);
-        const rEar = new THREE.Mesh(earGeo, skinMat); rEar.position.set(0.24, 2.62, 0);
-        rig.add(lEar, rEar);
+        const eg = new THREE.ConeGeometry(0.16, 0.28, 4);
+        const lE = new THREE.Mesh(eg, skinMat); lE.position.set(-0.24, 2.62, 0);
+        const rE = new THREE.Mesh(eg, skinMat); rE.position.set(0.24, 2.62, 0); rig.add(lE, rE);
       }
 
       group.add(rig);
-      group.userData.rig = rig;
-      group.userData.leftLeg = leftLeg; group.userData.rightLeg = rightLeg;
-      group.userData.leftArm = leftArm; group.userData.rightArm = rightArm;
+      group.userData.rig = rig; group.userData.leftLeg = leftLeg; group.userData.rightLeg = rightLeg; group.userData.leftArm = leftArm; group.userData.rightArm = rightArm;
+      const sc = data.isAdmin ? 1.5 : 1.0;
+      group.scale.set(sc, sc, sc);
     }
 
     function createAvatar(playerData) {
@@ -958,65 +900,45 @@
         rig: null, leftLeg: null, rightLeg: null, leftArm: null, rightArm: null, vFingers: null, iceBlock: null,
         nameSprite: null, chatSprite: null, chatTimeout: null,
         targetPos: new THREE.Vector3(playerData.x, playerData.y || 0, playerData.z),
-        targetRotY: playerData.rotY || 0,
-        isMoving: false, walkPhase: 0, gesture: 'none', gestureTimer: 0
+        targetRotY: playerData.rotY || 0, isMoving: false, walkPhase: 0, gesture: 'none', gestureTimer: 0
       };
       buildAvatarAppearance(group, playerData);
-      const ns = makeTextSprite(playerData.name, "rgba(15,23,42,0.75)", "#ffffff");
+      const ns = makeTextSprite(playerData.name, playerData.isAdmin ? "rgba(220,38,38,0.88)" : "rgba(15,23,42,0.75)", "#ffffff");
       ns.position.y = 2.95; group.add(ns); group.userData.nameSprite = ns;
-      scene.add(group);
-      return group;
+      if (playerData.isInvisible) group.visible = false;
+      scene.add(group); return group;
     }
 
     function makeTextSprite(text, bgColor, textColor) {
       const c = document.createElement('canvas'); const ctx = c.getContext('2d');
-      c.width = 512; c.height = 128;
-      ctx.fillStyle = bgColor; ctx.roundRect(40, 24, 432, 80, 20); ctx.fill();
-      ctx.font = "bold 40px sans-serif"; ctx.fillStyle = textColor;
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(text, 256, 64);
-      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c) }));
-      sp.scale.set(3.2, 0.8, 1);
-      return sp;
+      c.width = 512; c.height = 128; ctx.fillStyle = bgColor; ctx.roundRect(40, 24, 432, 80, 20); ctx.fill();
+      ctx.font = "bold 40px sans-serif"; ctx.fillStyle = textColor; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, 256, 64);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c) })); sp.scale.set(3.2, 0.8, 1); return sp;
     }
 
     function showSpeechBubble(avatar, text) {
       if (avatar.userData.chatSprite) avatar.remove(avatar.userData.chatSprite);
       if (avatar.userData.chatTimeout) clearTimeout(avatar.userData.chatTimeout);
-      const b = makeTextSprite(text, "rgba(255,255,255,0.95)", "#0f172a");
-      b.position.y = 3.75; avatar.add(b); avatar.userData.chatSprite = b;
+      const b = makeTextSprite(text, "rgba(255,255,255,0.95)", "#0f172a"); b.position.y = 3.75; avatar.add(b); avatar.userData.chatSprite = b;
       avatar.userData.chatTimeout = setTimeout(() => { avatar.remove(b); avatar.userData.chatSprite = null; }, 4500);
     }
 
     function updateAvatarAnimation(avatar, dt) {
-      const u = avatar.userData;
-      if (!u.rig) return;
-
+      const u = avatar.userData; if (!u.rig) return;
       if (u.gesture !== 'none' && u.gestureTimer > 0 && gameState === 'world') {
-        u.gestureTimer -= dt;
-        const t = (2.5 - u.gestureTimer) * 8;
-        if (u.gesture === 'wave') { u.rightArm.rotation.z = 2.6 + Math.sin(t * 2) * 0.35; }
+        u.gestureTimer -= dt; const t = (2.5 - u.gestureTimer) * 8;
+        if (u.gesture === 'wave') u.rightArm.rotation.z = 2.6 + Math.sin(t * 2) * 0.35;
         else if (u.gesture === 'peace') { u.rightArm.rotation.x = -0.6; u.rightArm.rotation.z = 2.4; if (u.vFingers) u.vFingers.visible = true; }
         else if (u.gesture === 'cheer') { u.leftArm.rotation.z = -2.7 + Math.sin(t * 2.5) * 0.3; u.rightArm.rotation.z = 2.7 - Math.sin(t * 2.5) * 0.3; u.rig.position.y = Math.abs(Math.sin(t * 2)) * 0.55; }
         else if (u.gesture === 'dance') { u.rig.rotation.y += dt * 7; u.leftArm.rotation.z = -1.8; u.rightArm.rotation.z = 1.8; }
-        if (u.gestureTimer <= 0) {
-          u.gesture = 'none'; u.rig.position.y = 0; u.rig.rotation.y = 0;
-          u.leftArm.rotation.set(0, 0, 0); u.rightArm.rotation.set(0, 0, 0);
-          if (u.vFingers) u.vFingers.visible = false;
-        }
+        if (u.gestureTimer <= 0) { u.gesture = 'none'; u.rig.position.y = 0; u.rig.rotation.y = 0; u.leftArm.rotation.set(0,0,0); u.rightArm.rotation.set(0,0,0); if (u.vFingers) u.vFingers.visible = false; }
         return;
       }
-
       if (u.isMoving) {
-        u.walkPhase += dt * 13;
-        const swing = Math.sin(u.walkPhase) * 0.72;
-        u.leftLeg.rotation.x = swing; u.rightLeg.rotation.x = -swing;
-        u.leftArm.rotation.x = -swing * 0.75; u.rightArm.rotation.x = swing * 0.75;
-        u.rig.position.y = Math.abs(Math.cos(u.walkPhase)) * 0.08;
+        u.walkPhase += dt * 13; const sw = Math.sin(u.walkPhase) * 0.72;
+        u.leftLeg.rotation.x = sw; u.rightLeg.rotation.x = -sw; u.leftArm.rotation.x = -sw * 0.75; u.rightArm.rotation.x = sw * 0.75; u.rig.position.y = Math.abs(Math.cos(u.walkPhase)) * 0.08;
       } else {
-        u.leftLeg.rotation.x *= 0.8; u.rightLeg.rotation.x *= 0.8;
-        u.leftArm.rotation.x *= 0.8; u.rightArm.rotation.x *= 0.8;
-        u.rig.position.y *= 0.8;
+        u.leftLeg.rotation.x *= 0.8; u.rightLeg.rotation.x *= 0.8; u.leftArm.rotation.x *= 0.8; u.rightArm.rotation.x *= 0.8; u.rig.position.y *= 0.8;
       }
     }
 
@@ -1025,205 +947,124 @@
     const cpuAvatars = {};
 
     function enterColorFlipArena(data) {
-      gameState = 'colorflip';
-      worldGroup.visible = false; coinGroup.visible = false; arenaGroup.visible = true;
-      document.getElementById('world-menu-btns').style.display = 'none';
-      document.getElementById('gesture-bar').style.display = 'none';
-      document.getElementById('city-interact-btn').style.display = 'none';
-      document.getElementById('mg-big-timer').classList.add('open');
-      document.getElementById('mg-live-board').classList.add('open');
-
-      while (arenaGroup.children.length > 0) arenaGroup.remove(arenaGroup.children[0]);
-      arenaTileMeshes = [];
+      gameState = 'colorflip'; worldGroup.visible = false; coinGroup.visible = false; arenaGroup.visible = true;
+      document.getElementById('world-menu-btns').style.display = 'none'; document.getElementById('gesture-bar').style.display = 'none'; document.getElementById('city-interact-btn').style.display = 'none';
+      document.getElementById('mg-big-timer').classList.add('open'); document.getElementById('mg-live-board').classList.add('open');
+      while (arenaGroup.children.length > 0) arenaGroup.remove(arenaGroup.children[0]); arenaTileMeshes = [];
       scene.background = new THREE.Color(0x0f172a); scene.fog = new THREE.Fog(0x0f172a, 50, 140);
-
-      const borderMat = new THREE.MeshStandardMaterial({ color: 0x334155 });
-      const wN = new THREE.Mesh(new THREE.BoxGeometry(34, 1.2, 1), borderMat); wN.position.set(0, 0.6, -16.5);
-      const wS = new THREE.Mesh(new THREE.BoxGeometry(34, 1.2, 1), borderMat); wS.position.set(0, 0.6, 16.5);
-      const wW = new THREE.Mesh(new THREE.BoxGeometry(1, 1.2, 34), borderMat); wW.position.set(-16.5, 0.6, 0);
-      const wE = new THREE.Mesh(new THREE.BoxGeometry(1, 1.2, 34), borderMat); wE.position.set(16.5, 0.6, 0);
+      const bm = new THREE.MeshStandardMaterial({ color: 0x334155 });
+      const wN = new THREE.Mesh(new THREE.BoxGeometry(34,1.2,1), bm); wN.position.set(0,0.6,-16.5);
+      const wS = new THREE.Mesh(new THREE.BoxGeometry(34,1.2,1), bm); wS.position.set(0,0.6,16.5);
+      const wW = new THREE.Mesh(new THREE.BoxGeometry(1,1.2,34), bm); wW.position.set(-16.5,0.6,0);
+      const wE = new THREE.Mesh(new THREE.BoxGeometry(1,1.2,34), bm); wE.position.set(16.5,0.6,0);
       arenaGroup.add(wN, wS, wW, wE);
-
-      const tileGeo = new THREE.BoxGeometry(TILE_SIZE - 0.12, 0.25, TILE_SIZE - 0.12);
-      for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-          const tile = new THREE.Mesh(tileGeo, new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
-          tile.position.set((c - GRID_SIZE / 2 + 0.5) * TILE_SIZE, 0, (r - GRID_SIZE / 2 + 0.5) * TILE_SIZE);
-          arenaGroup.add(tile); arenaTileMeshes.push(tile);
-        }
+      const tg = new THREE.BoxGeometry(TILE_SIZE - 0.12, 0.25, TILE_SIZE - 0.12);
+      for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
+        const t = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
+        t.position.set((c - GRID_SIZE / 2 + 0.5) * TILE_SIZE, 0, (r - GRID_SIZE / 2 + 0.5) * TILE_SIZE);
+        arenaGroup.add(t); arenaTileMeshes.push(t);
       }
-
-      spawnArenaActors(data.participants, (p) => {
-        if (data.mode === 'team') return { topStyle: 'uniform', topColor: p.color, bottomStyle: 'pants', bottomColor: p.color };
-        return null;
-      });
+      spawnArenaActors(data.participants, (p) => data.mode === 'team' ? { topStyle: 'uniform', topColor: p.color, bottomStyle: 'pants', bottomColor: p.color } : null);
     }
 
     function enterFreezeTagArena(data) {
-      gameState = 'freezetag';
-      ftArenaHalf = data.arenaHalfSize || 19;
-      const fullSize = ftArenaHalf * 2;
-
+      gameState = 'freezetag'; ftArenaHalf = data.arenaHalfSize || 19; const fs = ftArenaHalf * 2;
       worldGroup.visible = false; coinGroup.visible = false; arenaGroup.visible = true;
-      document.getElementById('world-menu-btns').style.display = 'none';
-      document.getElementById('gesture-bar').style.display = 'none';
-      document.getElementById('city-interact-btn').style.display = 'none';
-      document.getElementById('mg-big-timer').classList.add('open');
-      document.getElementById('mg-live-board').classList.add('open');
-
+      document.getElementById('world-menu-btns').style.display = 'none'; document.getElementById('gesture-bar').style.display = 'none'; document.getElementById('city-interact-btn').style.display = 'none';
+      document.getElementById('mg-big-timer').classList.add('open'); document.getElementById('mg-live-board').classList.add('open');
       while (arenaGroup.children.length > 0) arenaGroup.remove(arenaGroup.children[0]);
       scene.background = new THREE.Color(0x38bdf8); scene.fog = new THREE.Fog(0x38bdf8, 60, 175);
-
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(fullSize, fullSize), new THREE.MeshStandardMaterial({ color: 0x16a34a }));
-      floor.rotation.x = -Math.PI / 2; arenaGroup.add(floor);
-
-      const centerRing = new THREE.Mesh(new THREE.RingGeometry(4.2, 4.6, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
-      centerRing.rotation.x = -Math.PI / 2; centerRing.position.y = 0.02; arenaGroup.add(centerRing);
-
-      const wallMat = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
-      const wN = new THREE.Mesh(new THREE.BoxGeometry(fullSize + 1, 1.4, 0.8), wallMat); wN.position.set(0, 0.7, -(ftArenaHalf + 0.4));
-      const wS = new THREE.Mesh(new THREE.BoxGeometry(fullSize + 1, 1.4, 0.8), wallMat); wS.position.set(0, 0.7, ftArenaHalf + 0.4);
-      const wW = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.4, fullSize + 1), wallMat); wW.position.set(-(ftArenaHalf + 0.4), 0.7, 0);
-      const wE = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.4, fullSize + 1), wallMat); wE.position.set(ftArenaHalf + 0.4, 0.7, 0);
+      const fl = new THREE.Mesh(new THREE.PlaneGeometry(fs, fs), new THREE.MeshStandardMaterial({ color: 0x16a34a })); fl.rotation.x = -Math.PI / 2; arenaGroup.add(fl);
+      const cr = new THREE.Mesh(new THREE.RingGeometry(4.2, 4.6, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })); cr.rotation.x = -Math.PI / 2; cr.position.y = 0.02; arenaGroup.add(cr);
+      const wm = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
+      const wN = new THREE.Mesh(new THREE.BoxGeometry(fs+1,1.4,0.8), wm); wN.position.set(0,0.7,-(ftArenaHalf+0.4));
+      const wS = new THREE.Mesh(new THREE.BoxGeometry(fs+1,1.4,0.8), wm); wS.position.set(0,0.7,ftArenaHalf+0.4);
+      const wW = new THREE.Mesh(new THREE.BoxGeometry(0.8,1.4,fs+1), wm); wW.position.set(-(ftArenaHalf+0.4),0.7,0);
+      const wE = new THREE.Mesh(new THREE.BoxGeometry(0.8,1.4,fs+1), wm); wE.position.set(ftArenaHalf+0.4,0.7,0);
       arenaGroup.add(wN, wS, wW, wE);
 
-      const studioGroup = new THREE.Group();
-      const standColors = [0x1e293b, 0x334155, 0x475569];
+      const sg = new THREE.Group(), sc = [0x1e293b, 0x334155, 0x475569];
       for (let tier = 0; tier < 4; tier++) {
-        const step = new THREE.Mesh(new THREE.BoxGeometry(fullSize + 8, 1.5, 2.2), new THREE.MeshStandardMaterial({ color: standColors[tier % standColors.length] }));
-        step.position.set(0, 0.75 + tier * 1.5, -(ftArenaHalf + 2.5 + tier * 2.0));
-        studioGroup.add(step);
+        const st = new THREE.Mesh(new THREE.BoxGeometry(fs+8, 1.5, 2.2), new THREE.MeshStandardMaterial({ color: sc[tier % 3] }));
+        st.position.set(0, 0.75 + tier * 1.5, -(ftArenaHalf + 2.5 + tier * 2.0)); sg.add(st);
       }
-      const jumbotron = new THREE.Mesh(new THREE.BoxGeometry(12, 3.6, 0.6), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
-      jumbotron.position.set(0, 10.5, -(ftArenaHalf + 5.5));
-      const onAirSign = makeTextSprite('📺 LIVE 생중계 관중석', 'rgba(220,38,38,0.95)', '#ffffff');
-      onAirSign.position.set(0, 10.5, -(ftArenaHalf + 5.0)); onAirSign.scale.set(9, 2.2, 1);
-      [-6, 6].forEach(cx => {
-        const camBody = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 1.4), new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
-        camBody.position.set(cx, 5.6, -(ftArenaHalf + 3.2));
-        studioGroup.add(camBody);
-      });
-      arenaGroup.add(studioGroup, jumbotron, onAirSign);
+      const jb = new THREE.Mesh(new THREE.BoxGeometry(12, 3.6, 0.6), new THREE.MeshStandardMaterial({ color: 0x0f172a })); jb.position.set(0, 10.5, -(ftArenaHalf + 5.5));
+      const oa = makeTextSprite('📺 LIVE 생중계 관중석', 'rgba(220,38,38,0.95)', '#ffffff'); oa.position.set(0, 10.5, -(ftArenaHalf + 5.0)); oa.scale.set(9, 2.2, 1);
+      [-6, 6].forEach(cx => { const cb = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 1.4), new THREE.MeshStandardMaterial({ color: 0xfacc15 })); cb.position.set(cx, 5.6, -(ftArenaHalf + 3.2)); sg.add(cb); });
+      arenaGroup.add(sg, jb, oa);
 
       for (let i = 0; i < 6; i++) {
         const ang = (i / 6) * Math.PI * 2;
-        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.5, 2.6, 12), new THREE.MeshStandardMaterial({ color: 0xe0f2fe }));
-        pillar.position.set(Math.cos(ang) * (ftArenaHalf * 0.48), 1.3, Math.sin(ang) * (ftArenaHalf * 0.48));
-        arenaGroup.add(pillar);
+        const pl = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.5, 2.6, 12), new THREE.MeshStandardMaterial({ color: 0xe0f2fe }));
+        pl.position.set(Math.cos(ang) * (ftArenaHalf * 0.48), 1.3, Math.sin(ang) * (ftArenaHalf * 0.48)); arenaGroup.add(pl);
       }
-
-      spawnArenaActors(data.participants, (p) => {
-        if (p.role === 'it') return { topStyle: 'armor', topColor: '#ef4444', bottomStyle: 'pants', bottomColor: '#dc2626' };
-        return { topStyle: 'hoodie', topColor: '#ffffff', bottomStyle: 'pants', bottomColor: '#f8fafc' };
-      }, true);
-
+      spawnArenaActors(data.participants, (p) => p.role === 'it' ? { topStyle: 'armor', topColor: '#ef4444', bottomStyle: 'pants', bottomColor: '#dc2626' } : { topStyle: 'hoodie', topColor: '#ffffff', bottomStyle: 'pants', bottomColor: '#f8fafc' }, true);
       updateFreezeTagHud(data.participants);
     }
 
     function enterLiarArena(data) {
-      gameState = 'liar';
-      worldGroup.visible = false; coinGroup.visible = false; arenaGroup.visible = true;
-      document.getElementById('world-menu-btns').style.display = 'none';
-      document.getElementById('gesture-bar').style.display = 'none';
-      document.getElementById('city-interact-btn').style.display = 'none';
-      document.getElementById('mg-big-timer').classList.add('open');
-      document.getElementById('liar-hud').classList.add('open');
-
+      gameState = 'liar'; worldGroup.visible = false; coinGroup.visible = false; arenaGroup.visible = true;
+      document.getElementById('world-menu-btns').style.display = 'none'; document.getElementById('gesture-bar').style.display = 'none'; document.getElementById('city-interact-btn').style.display = 'none';
+      document.getElementById('mg-big-timer').classList.add('open'); document.getElementById('liar-hud').classList.add('open');
       while (arenaGroup.children.length > 0) arenaGroup.remove(arenaGroup.children[0]);
       scene.background = new THREE.Color(0x1e1b4b); scene.fog = new THREE.Fog(0x1e1b4b, 40, 120);
-
-      const floor = new THREE.Mesh(new THREE.CylinderGeometry(16, 16, 0.3, 32), new THREE.MeshStandardMaterial({ color: 0x312e81 }));
-      floor.position.y = -0.15;
-      const table = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.2, 1.1, 32), new THREE.MeshStandardMaterial({ color: 0x78350f }));
-      table.position.y = 0.55;
-      const tableTop = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 0.12, 32), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
-      tableTop.position.y = 1.12;
-      arenaGroup.add(floor, table, tableTop);
-
-      spawnArenaActors(data.participants, null, false);
+      const fl = new THREE.Mesh(new THREE.CylinderGeometry(16, 16, 0.3, 32), new THREE.MeshStandardMaterial({ color: 0x312e81 })); fl.position.y = -0.15;
+      const tb = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.2, 1.1, 32), new THREE.MeshStandardMaterial({ color: 0x78350f })); tb.position.y = 0.55;
+      const tt = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 0.12, 32), new THREE.MeshStandardMaterial({ color: 0xf59e0b })); tt.position.y = 1.12;
+      arenaGroup.add(fl, tb, tt); spawnArenaActors(data.participants, null, false);
     }
 
-    function spawnArenaActors(participants, outfitOverrideFn, isFreezeTag = false) {
+    function spawnArenaActors(participants, outfitOverrideFn, isFreezeTag) {
       Object.values(cpuAvatars).forEach(cpu => scene.remove(cpu));
       for (const k in cpuAvatars) delete cpuAvatars[k];
-
       const me = participants[socket.id];
       if (me && myAvatar) {
-        myAvatar.position.set(me.x, me.y || 0, me.z);
-        myAvatar.rotation.y = me.rotY || 0;
-        if (outfitOverrideFn) {
-          const ov = outfitOverrideFn(me);
-          if (ov) buildAvatarAppearance(myAvatar, { ...myProfile, ...ov });
-        }
+        myAvatar.position.set(me.x, me.y || 0, me.z); myAvatar.rotation.y = me.rotY || 0;
+        if (outfitOverrideFn) { const ov = outfitOverrideFn(me); if (ov) buildAvatarAppearance(myAvatar, { ...myProfile, isAdmin: myAccount.isAdmin, ...ov }); }
         if (isFreezeTag) {
           document.getElementById('ft-skill-bar').style.display = (me.role === 'runner') ? 'flex' : 'none';
-          addChatLog('🧊 역할 배정', me.role === 'it' ? '당신은 [빨간 술래]입니다! 하얀 도망자를 모두 잡으세요!' : '당신은 [하얀 도망자]입니다! 술래를 피해 살아남으세요!');
+          addChatLog('🧊 역할 배정', me.role === 'it' ? '당신은 [빨간 술래]입니다!' : '당신은 [하얀 도망자]입니다!');
         }
       }
-
       Object.values(participants).forEach(p => {
         const ov = outfitOverrideFn ? outfitOverrideFn(p) : null;
         if (p.isCpu) {
           const isIt = isFreezeTag && p.role === 'it';
-          const bot = createAvatar({
-            name: isIt ? '👹[술래]' + p.name : p.name,
-            face: isIt ? 'cool' : 'robot',
-            topStyle: ov ? ov.topStyle : 'hoodie',
-            topColor: ov ? ov.topColor : (p.color || '#3b82f6'),
-            bottomStyle: ov ? ov.bottomStyle : 'pants',
-            bottomColor: ov ? ov.bottomColor : (p.color || '#1e293b'),
-            x: p.x, y: p.y || 0, z: p.z, rotY: p.rotY || 0
-          });
-          bot.position.set(p.x, p.y || 0, p.z);
-          bot.rotation.y = p.rotY || 0;
-          cpuAvatars[p.id] = bot;
+          const bot = createAvatar({ name: isIt ? '👹[술래]' + p.name : p.name, face: isIt ? 'cool' : 'robot', topStyle: ov ? ov.topStyle : 'hoodie', topColor: ov ? ov.topColor : (p.color || '#3b82f6'), bottomStyle: ov ? ov.bottomStyle : 'pants', bottomColor: ov ? ov.bottomColor : (p.color || '#1e293b'), x: p.x, y: p.y || 0, z: p.z, rotY: p.rotY || 0 });
+          bot.position.set(p.x, p.y || 0, p.z); bot.rotation.y = p.rotY || 0; cpuAvatars[p.id] = bot;
         } else if (p.id !== socket.id && otherPlayers[p.id]) {
-          otherPlayers[p.id].position.set(p.x, p.y || 0, p.z);
-          otherPlayers[p.id].rotation.y = p.rotY || 0;
-          if (ov && savedPlayerProfiles[p.id]) {
-            buildAvatarAppearance(otherPlayers[p.id], { ...savedPlayerProfiles[p.id], ...ov });
-          }
+          otherPlayers[p.id].position.set(p.x, p.y || 0, p.z); otherPlayers[p.id].rotation.y = p.rotY || 0;
+          if (ov && savedPlayerProfiles[p.id]) buildAvatarAppearance(otherPlayers[p.id], { ...savedPlayerProfiles[p.id], ...ov });
           if (isFreezeTag && p.role === 'it') {
             otherPlayers[p.id].remove(otherPlayers[p.id].userData.nameSprite);
-            const ns = makeTextSprite('👹[술래] ' + p.name, "rgba(220,38,38,0.9)", "#ffffff");
-            ns.position.y = 2.95; otherPlayers[p.id].add(ns);
-            otherPlayers[p.id].userData.nameSprite = ns;
+            const ns = makeTextSprite('👹[술래] ' + p.name, "rgba(220,38,38,0.9)", "#ffffff"); ns.position.y = 2.95; otherPlayers[p.id].add(ns); otherPlayers[p.id].userData.nameSprite = ns;
           }
         }
       });
     }
 
     function exitMinigameToWorld() {
-      gameState = 'world';
-      arenaGroup.visible = false; worldGroup.visible = true; coinGroup.visible = true;
-      document.getElementById('world-menu-btns').style.display = 'flex';
-      document.getElementById('gesture-bar').style.display = 'flex';
-      document.getElementById('mg-big-timer').classList.remove('open');
-      document.getElementById('mg-live-board').classList.remove('open');
-      document.getElementById('broadcast-hud').classList.remove('open');
-      document.getElementById('ft-skill-bar').style.display = 'none';
-      document.getElementById('liar-hud').classList.remove('open');
-
+      gameState = 'world'; arenaGroup.visible = false; worldGroup.visible = true; coinGroup.visible = true;
+      document.getElementById('world-menu-btns').style.display = 'flex'; document.getElementById('gesture-bar').style.display = 'flex';
+      document.getElementById('mg-big-timer').classList.remove('open'); document.getElementById('mg-live-board').classList.remove('open');
+      document.getElementById('broadcast-hud').classList.remove('open'); document.getElementById('ft-skill-bar').style.display = 'none'; document.getElementById('liar-hud').classList.remove('open');
       Object.values(cpuAvatars).forEach(cpu => scene.remove(cpu));
       for (const k in cpuAvatars) delete cpuAvatars[k];
-
       if (myAvatar) {
         if (myAvatar.userData.iceBlock) { myAvatar.remove(myAvatar.userData.iceBlock); myAvatar.userData.iceBlock = null; }
-        buildAvatarAppearance(myAvatar, myProfile);
+        buildAvatarAppearance(myAvatar, { ...myProfile, isAdmin: myAccount.isAdmin });
         myAvatar.position.set((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6);
       }
       Object.keys(otherPlayers).forEach(id => {
-        const av = otherPlayers[id];
-        if (!av) return;
+        const av = otherPlayers[id]; if (!av) return;
         if (av.userData.iceBlock) { av.remove(av.userData.iceBlock); av.userData.iceBlock = null; }
         if (savedPlayerProfiles[id]) {
           buildAvatarAppearance(av, savedPlayerProfiles[id]);
           av.remove(av.userData.nameSprite);
-          const ns = makeTextSprite(savedPlayerProfiles[id].name, "rgba(15,23,42,0.75)", "#ffffff");
+          const ns = makeTextSprite(savedPlayerProfiles[id].name, savedPlayerProfiles[id].isAdmin ? "rgba(220,38,38,0.88)" : "rgba(15,23,42,0.75)", "#ffffff");
           ns.position.y = 2.95; av.add(ns); av.userData.nameSprite = ns;
         }
       });
-
       buildWorldTheme(currentTheme);
     }
 
@@ -1233,102 +1074,64 @@
       Object.values(participants).forEach(p => {
         const av = (p.id === socket.id) ? myAvatar : (p.isCpu ? cpuAvatars[p.id] : otherPlayers[p.id]);
         if (!av) return;
-
         if (p.status === 'frozen') {
           if (!av.userData.iceBlock) {
-            const ice = new THREE.Mesh(
-              new THREE.BoxGeometry(1.5, 2.5, 1.5),
-              new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.55 })
-            );
+            const ice = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.5, 1.5), new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.55 }));
             ice.position.y = 1.25; av.add(ice); av.userData.iceBlock = ice;
           }
-        } else {
-          if (av.userData.iceBlock) { av.remove(av.userData.iceBlock); av.userData.iceBlock = null; }
-        }
-
-        if (p.status === 'out') {
-          av.position.set(p.x, p.y || 4.6, p.z);
-          av.rotation.y = 0;
-        }
+        } else if (av.userData.iceBlock) { av.remove(av.userData.iceBlock); av.userData.iceBlock = null; }
+        if (p.status === 'out') { av.position.set(p.x, p.y || 4.6, p.z); av.rotation.y = 0; }
       });
-
       const me = participants[socket.id];
       if (me && me.role === 'runner') {
-        const btnFreeze = document.getElementById('btn-freeze');
-        const btnFire = document.getElementById('btn-fire');
-        const btnClang = document.getElementById('btn-clang');
-
-        if (me.status === 'out') {
-          btnFreeze.disabled = true; btnFire.disabled = true; btnClang.disabled = true;
-          document.getElementById('broadcast-hud').classList.add('open');
-        } else if (me.status === 'frozen') {
-          btnFreeze.disabled = true; btnFire.disabled = true;
-          const runners = Object.values(participants).filter(r => r.role === 'runner' && r.status === 'frozen');
-          const nearFrozen = runners.filter(r => Math.hypot(r.x - me.x, r.z - me.z) <= 3.2);
-          btnClang.disabled = (nearFrozen.length !== 2);
-        } else {
-          btnFreeze.disabled = false; btnFire.disabled = false; btnClang.disabled = true;
-        }
+        const bf = document.getElementById('btn-freeze'), bi = document.getElementById('btn-fire'), bc = document.getElementById('btn-clang');
+        if (me.status === 'out') { bf.disabled = true; bi.disabled = true; bc.disabled = true; document.getElementById('broadcast-hud').classList.add('open'); }
+        else if (me.status === 'frozen') {
+          bf.disabled = true; bi.disabled = true;
+          const near = Object.values(participants).filter(r => r.role === 'runner' && r.status === 'frozen' && Math.hypot(r.x - me.x, r.z - me.z) <= 3.2);
+          bc.disabled = (near.length !== 2);
+        } else { bf.disabled = false; bi.disabled = false; bc.disabled = true; }
       }
     }
 
     function updateFreezeTagHud(participants) {
       const runners = Object.values(participants).filter(p => p.role === 'runner');
-      const normalCnt = runners.filter(r => r.status === 'normal').length;
-      const frozenCnt = runners.filter(r => r.status === 'frozen').length;
-      const outCnt = runners.filter(r => r.status === 'out').length;
       document.getElementById('mg-live-board').innerHTML =
         '<div style="font-weight:bold;color:#38bdf8;margin-bottom:2px;">🧊 얼음땡 현황</div>' +
-        '<div class="rank-row"><span>🏃 도망 중:</span><b>' + normalCnt + '명</b></div>' +
-        '<div class="rank-row"><span>🧊 얼음 상태:</span><b>' + frozenCnt + '명</b></div>' +
-        '<div class="rank-row"><span>📺 생중계 관중석:</span><b>' + outCnt + '명</b></div>';
+        '<div class="rank-row"><span>🏃 도망 중:</span><b>' + runners.filter(r => r.status === 'normal').length + '명</b></div>' +
+        '<div class="rank-row"><span>🧊 얼음 상태:</span><b>' + runners.filter(r => r.status === 'frozen').length + '명</b></div>' +
+        '<div class="rank-row"><span>📺 생중계 관중석:</span><b>' + runners.filter(r => r.status === 'out').length + '명</b></div>';
     }
 
     let myProfile = { name: '', face: 'happy', topStyle: 'tshirt', topColor: '#3b82f6', bottomStyle: 'pants', bottomColor: '#1e293b' };
 
     document.getElementById('switch-world-btn').onclick = () => {
       if (currentWorldMap === 'nature') {
-        currentWorldMap = 'city';
-        document.getElementById('switch-world-btn').innerText = '🌿 자연 월드로 복귀';
-        buildMetroCityWorld();
-        if (myAvatar) myAvatar.position.set(0, 0, 18);
-        showLiveToast('🏙️ 메트로 시티', '중앙 시계탑, 상점, 교환소, 자동차 도로가 있는 도시에 도착했습니다!');
+        currentWorldMap = 'city'; document.getElementById('switch-world-btn').innerText = '🌿 자연 월드로 복귀';
+        buildMetroCityWorld(); if (myAvatar) myAvatar.position.set(0, 0, 18);
+        showLiveToast('🏙️ 메트로 시티', '도시에 도착했습니다!');
       } else {
-        currentWorldMap = 'nature';
-        document.getElementById('switch-world-btn').innerText = '🏙️ 도시 월드 이동';
-        buildWorldTheme(currentTheme);
-        if (myAvatar) myAvatar.position.set(0, 0, 0);
+        currentWorldMap = 'nature'; document.getElementById('switch-world-btn').innerText = '🏙️ 도시 월드 이동';
+        buildWorldTheme(currentTheme); if (myAvatar) myAvatar.position.set(0, 0, 0);
       }
     };
 
     function openCityExchangeModal() {
       const onlineOthers = Object.values(savedPlayerProfiles).filter(p => p.id !== socket.id);
-      if (onlineOthers.length === 0) {
-        showLiveToast('🏦 교환소', '현재 온라인에 접속해 있는 다른 플레이어가 없습니다!');
-        return;
-      }
-      document.getElementById('cmodal-title').innerText = '🏦 메트로 시티 아이템 · 몽 교환소';
-      const userOpts = onlineOthers.map(p => '<option value="' + p.id + '">' + p.name + '</option>').join('');
-      const myTopOpts = ['<option value="">(의상 선물 안 함)</option>', ...myAccount.ownedTops.filter(t => t !== 'tshirt').map(t => '<option value="' + t + '">' + t + '</option>')].join('');
-
+      if (onlineOthers.length === 0) { showLiveToast('🏦 교환소', '접속 중인 다른 플레이어가 없습니다!'); return; }
+      document.getElementById('cmodal-title').innerText = '🏦 아이템 · 몽 교환소';
+      const uOpts = onlineOthers.map(p => '<option value="' + p.id + '">' + p.name + '</option>').join('');
+      const tOpts = ['<option value="">(의상 선물 안 함)</option>', ...myAccount.ownedTops.filter(t => t !== 'tshirt').map(t => '<option value="' + t + '">' + t + '</option>')].join('');
       document.getElementById('cmodal-body').innerHTML =
         '<div style="display:flex;flex-direction:column;gap:8px;text-align:left;">' +
-        '<label>받을 플레이어:</label>' +
-        '<select id="ex-target" style="padding:6px;border-radius:8px;background:#1e293b;color:#fff;">' + userOpts + '</select>' +
-        '<label>보낼 몽 (보유: ' + myAccount.mong + '몽):</label>' +
-        '<input type="number" id="ex-mong" min="0" max="' + myAccount.mong + '" value="50" style="padding:6px;border-radius:8px;background:#1e293b;color:#fff;">' +
-        '<label>함께 선물할 보유 상의:</label>' +
-        '<select id="ex-top" style="padding:6px;border-radius:8px;background:#1e293b;color:#fff;">' + myTopOpts + '</select>' +
-        '</div>';
+        '<label>받을 플레이어:</label><select id="ex-target" style="padding:6px;border-radius:8px;background:#1e293b;color:#fff;">' + uOpts + '</select>' +
+        '<label>보낼 몽 (보유: ' + myAccount.mong + '몽):</label><input type="number" id="ex-mong" min="0" max="' + myAccount.mong + '" value="50" style="padding:6px;border-radius:8px;background:#1e293b;color:#fff;">' +
+        '<label>선물할 상의:</label><select id="ex-top" style="padding:6px;border-radius:8px;background:#1e293b;color:#fff;">' + tOpts + '</select></div>';
       document.getElementById('cmodal-footer').innerHTML =
         '<button class="modal-btn" id="ex-send-btn" style="background:#10b981;">🎁 보내기</button>' +
         '<button class="modal-btn" style="background:#475569;" onclick="document.getElementById(\'center-modal\').classList.remove(\'open\')">닫기</button>';
       document.getElementById('ex-send-btn').onclick = () => {
-        socket.emit('exchangeTransfer', {
-          targetId: document.getElementById('ex-target').value,
-          mongAmount: parseInt(document.getElementById('ex-mong').value) || 0,
-          giftTop: document.getElementById('ex-top').value
-        });
+        socket.emit('exchangeTransfer', { targetId: document.getElementById('ex-target').value, mongAmount: parseInt(document.getElementById('ex-mong').value) || 0, giftTop: document.getElementById('ex-top').value });
         cModal.classList.remove('open');
       };
       cModal.classList.add('open');
@@ -1337,118 +1140,97 @@
     function renderShopUI() {
       document.getElementById('mong-badge').innerText = '🪙 ' + myAccount.mong + '몽';
       const spCost = (myAccount.speedLevel + 1) * 50, jpCost = (myAccount.jumpLevel + 1) * 50;
-      document.getElementById('upgrade-speed-btn').innerText = myAccount.speedLevel >= 5 ? '🏃 달리기 MAX' : '🏃 달리기 Lv.' + myAccount.speedLevel + ' (' + spCost + '몽)';
-      document.getElementById('upgrade-jump-btn').innerText = myAccount.jumpLevel >= 5 ? '🦘 점프력 MAX' : '🦘 점프력 Lv.' + myAccount.jumpLevel + ' (' + jpCost + '몽)';
+      document.getElementById('upgrade-speed-btn').innerText = myAccount.isAdmin ? '🏃 달리기 20배 (ADMIN)' : (myAccount.speedLevel >= 5 ? '🏃 달리기 MAX' : '🏃 달리기 Lv.' + myAccount.speedLevel + ' (' + spCost + '몽)');
+      document.getElementById('upgrade-jump-btn').innerText = myAccount.isAdmin ? '🦘 점프력 20배 (ADMIN)' : (myAccount.jumpLevel >= 5 ? '🦘 점프력 MAX' : '🦘 점프력 Lv.' + myAccount.jumpLevel + ' (' + jpCost + '몽)');
 
       const topBox = document.getElementById('top-options'); topBox.innerHTML = '';
       TOP_ITEMS.forEach(item => {
-        const owned = myAccount.ownedTops.includes(item.id);
-        const btn = document.createElement('button');
+        const owned = myAccount.ownedTops.includes(item.id), btn = document.createElement('button');
         btn.className = 'opt-btn ' + (myProfile.topStyle === item.id ? 'active ' : '') + (!owned ? 'locked' : '');
         btn.innerText = owned ? item.label : '🔒 ' + item.label + ' (' + item.price + '몽)';
         btn.onclick = () => {
           if (owned) { myProfile.topStyle = item.id; socket.emit('updateProfile', myProfile); renderShopUI(); }
           else if (myAccount.mong >= item.price) socket.emit('buyItem', { category: 'top', itemId: item.id });
-          else showLiveToast('상점', '몽이 부족합니다! (필요: ' + item.price + '몽)');
+          else showLiveToast('상점', '몽이 부족합니다! (' + item.price + '몽 필요)');
         };
         topBox.appendChild(btn);
       });
 
       const botBox = document.getElementById('bottom-options'); botBox.innerHTML = '';
       BOTTOM_ITEMS.forEach(item => {
-        const owned = myAccount.ownedBottoms.includes(item.id);
-        const btn = document.createElement('button');
+        const owned = myAccount.ownedBottoms.includes(item.id), btn = document.createElement('button');
         btn.className = 'opt-btn ' + (myProfile.bottomStyle === item.id ? 'active ' : '') + (!owned ? 'locked' : '');
         btn.innerText = owned ? item.label : '🔒 ' + item.label + ' (' + item.price + '몽)';
         btn.onclick = () => {
           if (owned) { myProfile.bottomStyle = item.id; socket.emit('updateProfile', myProfile); renderShopUI(); }
           else if (myAccount.mong >= item.price) socket.emit('buyItem', { category: 'bottom', itemId: item.id });
-          else showLiveToast('상점', '몽이 부족합니다! (필요: ' + item.price + '몽)');
+          else showLiveToast('상점', '몽이 부족합니다! (' + item.price + '몽 필요)');
         };
         botBox.appendChild(btn);
       });
 
       const themeBox = document.getElementById('theme-options'); themeBox.innerHTML = '';
       THEME_ITEMS.forEach(item => {
-        const owned = myAccount.ownedThemes.includes(item.id);
-        const btn = document.createElement('button');
+        const owned = myAccount.ownedThemes.includes(item.id), btn = document.createElement('button');
         btn.className = 'opt-btn ' + (currentTheme === item.id ? 'active ' : '') + (!owned ? 'locked' : '');
         btn.innerText = owned ? item.label : '🔒 ' + item.label + ' (' + item.price + '몽)';
         btn.onclick = () => {
           if (owned) { currentWorldMap = 'nature'; document.getElementById('switch-world-btn').innerText = '🏙️ 도시 월드 이동'; buildWorldTheme(item.id); renderShopUI(); }
           else if (myAccount.mong >= item.price) { socket.emit('buyItem', { category: 'theme', itemId: item.id }); buildWorldTheme(item.id); }
-          else showLiveToast('테마 상점', '몽이 부족합니다! (필요: ' + item.price + '몽)');
+          else showLiveToast('테마 상점', '몽이 부족합니다! (' + item.price + '몽 필요)');
         };
         themeBox.appendChild(btn);
       });
     }
 
+    function refreshAdminKickList() {
+      const sel = document.getElementById('admin-kick-select'); if (!sel) return;
+      const others = Object.values(savedPlayerProfiles).filter(p => p.id !== socket.id);
+      sel.innerHTML = others.length === 0 ? '<option value="">(접속 중인 다른 유저 없음)</option>' : others.map(p => '<option value="' + p.id + '">' + p.name + '</option>').join('');
+    }
+
     document.getElementById('upgrade-speed-btn').onclick = () => socket.emit('buyItem', { category: 'speed' });
     document.getElementById('upgrade-jump-btn').onclick = () => socket.emit('buyItem', { category: 'jump' });
 
-    const chatMiniBar = document.getElementById('chat-mini-bar');
-    const chatBox = document.getElementById('chat-box');
-    const chatMessages = document.getElementById('chat-messages');
-    const chatInput = document.getElementById('chat-input');
-    const toastContainer = document.getElementById('chat-toast-container');
-
-    chatMiniBar.onclick = () => {
-      chatBox.classList.toggle('expanded');
-      if (chatBox.classList.contains('expanded')) { document.getElementById('chat-unread-dot').style.display = 'none'; chatInput.focus(); }
-    };
+    const chatMiniBar = document.getElementById('chat-mini-bar'), chatBox = document.getElementById('chat-box'), chatMessages = document.getElementById('chat-messages'), chatInput = document.getElementById('chat-input'), toastContainer = document.getElementById('chat-toast-container');
+    chatMiniBar.onclick = () => { chatBox.classList.toggle('expanded'); if (chatBox.classList.contains('expanded')) { document.getElementById('chat-unread-dot').style.display = 'none'; chatInput.focus(); } };
     document.getElementById('chat-collapse-btn').onclick = () => chatBox.classList.remove('expanded');
 
     function showLiveToast(name, text) {
-      const t = document.createElement('div'); t.className = 'chat-toast';
-      t.innerHTML = '<b>' + name + ':</b> ' + text;
+      const t = document.createElement('div'); t.className = 'chat-toast'; t.innerHTML = '<b>' + name + ':</b> ' + text;
       toastContainer.appendChild(t); setTimeout(() => t.remove(), 3800);
     }
-
     function addChatLog(name, text) {
-      const div = document.createElement('div'); div.className = 'chat-msg';
-      div.innerHTML = '<span>' + name + ':</span>' + text;
+      const div = document.createElement('div'); div.className = 'chat-msg'; div.innerHTML = '<span>' + name + ':</span>' + text;
       chatMessages.appendChild(div); chatMessages.scrollTop = chatMessages.scrollHeight;
       document.getElementById('chat-preview').innerText = name + ': ' + text;
       if (!chatBox.classList.contains('expanded')) document.getElementById('chat-unread-dot').style.display = 'inline-block';
       showLiveToast(name, text);
     }
+    document.getElementById('chat-form').onsubmit = (e) => { e.preventDefault(); if (chatInput.value.trim()) { socket.emit('chatMessage', chatInput.value); chatInput.value = ''; } chatInput.blur(); };
 
-    document.getElementById('chat-form').onsubmit = (e) => {
-      e.preventDefault();
-      if (chatInput.value.trim()) { socket.emit('chatMessage', chatInput.value); chatInput.value = ''; }
-      chatInput.blur();
-    };
-
-    const panels = ['avatar-panel', 'theme-panel', 'minigame-panel'];
-    function togglePanel(id) {
-      panels.forEach(p => {
-        if (p === id) document.getElementById(p).classList.toggle('open');
-        else document.getElementById(p).classList.remove('open');
-      });
-    }
+    const panels = ['avatar-panel', 'theme-panel', 'minigame-panel', 'admin-panel'];
+    function togglePanel(id) { panels.forEach(p => p === id ? document.getElementById(p).classList.toggle('open') : document.getElementById(p).classList.remove('open')); }
     document.getElementById('open-avatar-btn').onclick = () => { renderShopUI(); togglePanel('avatar-panel'); };
     document.getElementById('open-theme-btn').onclick = () => { renderShopUI(); togglePanel('theme-panel'); };
     document.getElementById('open-minigame-btn').onclick = () => togglePanel('minigame-panel');
+    document.getElementById('open-admin-btn').onclick = () => { refreshAdminKickList(); togglePanel('admin-panel'); };
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = () => document.getElementById(b.dataset.close).classList.remove('open'));
+
+    document.getElementById('admin-submit-btn').onclick = () => socket.emit('adminLogin', { id: document.getElementById('admin-id-input').value.trim(), pw: document.getElementById('admin-pw-input').value.trim() });
+    document.getElementById('admin-invisible-btn').onclick = () => socket.emit('adminToggleInvisible');
+    document.getElementById('admin-send-alert-btn').onclick = () => { const inp = document.getElementById('admin-alert-input'); if (inp.value.trim()) { socket.emit('adminBroadcastAlert', inp.value); inp.value = ''; } };
+    document.getElementById('admin-kick-btn').onclick = () => { const tid = document.getElementById('admin-kick-select').value; if (tid) socket.emit('adminKickUser', tid); };
 
     const nameInput = document.getElementById('name-input');
     nameInput.onchange = () => { myProfile.name = nameInput.value; socket.emit('updateProfile', myProfile); };
-
     document.querySelectorAll('#face-options .opt-btn').forEach(btn => {
-      btn.onclick = () => {
-        document.querySelectorAll('#face-options .opt-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active'); myProfile.face = btn.dataset.val; socket.emit('updateProfile', myProfile);
-      };
+      btn.onclick = () => { document.querySelectorAll('#face-options .opt-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); myProfile.face = btn.dataset.val; socket.emit('updateProfile', myProfile); };
     });
-
     function bindColorGroup(sel, pickerId, key) {
       const picker = document.getElementById(pickerId);
       document.querySelectorAll(sel + ' .color-swatch').forEach(sw => {
-        sw.onclick = () => {
-          document.querySelectorAll(sel + ' .color-swatch').forEach(s => s.classList.remove('active'));
-          sw.classList.add('active'); myProfile[key] = sw.dataset.color; picker.value = sw.dataset.color;
-          socket.emit('updateProfile', myProfile);
-        };
+        sw.onclick = () => { document.querySelectorAll(sel + ' .color-swatch').forEach(s => s.classList.remove('active')); sw.classList.add('active'); myProfile[key] = sw.dataset.color; picker.value = sw.dataset.color; socket.emit('updateProfile', myProfile); };
       });
       picker.oninput = (e) => { myProfile[key] = e.target.value; socket.emit('updateProfile', myProfile); };
     }
@@ -1456,25 +1238,12 @@
     bindColorGroup('#bottom-colors', 'bottom-picker', 'bottomColor');
     document.querySelectorAll('.gest-btn').forEach(btn => btn.onclick = () => socket.emit('playGesture', btn.dataset.gest));
 
-    document.getElementById('start-cf-btn').onclick = () => {
-      socket.emit('requestStartLobby', { type: 'colorflip', cpuCount: parseInt(document.getElementById('cf-cpu-input').value) || 0, mode: document.getElementById('cf-mode-select').value });
-      document.getElementById('minigame-panel').classList.remove('open');
-    };
-    document.getElementById('start-ft-btn').onclick = () => {
-      socket.emit('requestStartLobby', { type: 'freezetag', cpuCount: parseInt(document.getElementById('ft-cpu-input').value) || 0, mode: 'solo' });
-      document.getElementById('minigame-panel').classList.remove('open');
-    };
-    document.getElementById('start-liar-btn').onclick = () => {
-      socket.emit('requestStartLobby', { type: 'liar', cpuCount: parseInt(document.getElementById('liar-cpu-input').value) || 0, mode: 'solo' });
-      document.getElementById('minigame-panel').classList.remove('open');
-    };
+    document.getElementById('start-cf-btn').onclick = () => { socket.emit('requestStartLobby', { type: 'colorflip', cpuCount: parseInt(document.getElementById('cf-cpu-input').value) || 0, mode: document.getElementById('cf-mode-select').value }); document.getElementById('minigame-panel').classList.remove('open'); };
+    document.getElementById('start-ft-btn').onclick = () => { socket.emit('requestStartLobby', { type: 'freezetag', cpuCount: parseInt(document.getElementById('ft-cpu-input').value) || 0, mode: 'solo' }); document.getElementById('minigame-panel').classList.remove('open'); };
+    document.getElementById('start-liar-btn').onclick = () => { socket.emit('requestStartLobby', { type: 'liar', cpuCount: parseInt(document.getElementById('liar-cpu-input').value) || 0, mode: 'solo' }); document.getElementById('minigame-panel').classList.remove('open'); };
 
     const lobbyBanner = document.getElementById('lobby-banner');
-    document.getElementById('lobby-yes-btn').onclick = () => {
-      socket.emit('joinMinigameLobby');
-      document.getElementById('lobby-join-btns').style.display = 'none';
-      document.getElementById('lobby-desc').innerText = '✅ 참가 신청 완료! 시작할 때까지 잠시 기다려주세요.';
-    };
+    document.getElementById('lobby-yes-btn').onclick = () => { socket.emit('joinMinigameLobby'); document.getElementById('lobby-join-btns').style.display = 'none'; document.getElementById('lobby-desc').innerText = '✅ 참가 신청 완료!'; };
     document.getElementById('lobby-no-btn').onclick = () => lobbyBanner.classList.remove('open');
     document.getElementById('lobby-force-start-btn').onclick = () => socket.emit('hostForceStartLobby');
     document.getElementById('lobby-cancel-btn').onclick = () => socket.emit('hostCancelLobby');
@@ -1483,376 +1252,218 @@
     document.getElementById('btn-fire').onclick = () => socket.emit('freezetagUseSkill', 'fire');
     document.getElementById('btn-clang').onclick = () => socket.emit('freezetagUseSkill', 'clang');
 
-    const liarSpeechForm = document.getElementById('liar-speech-form');
-    const liarSpeechInput = document.getElementById('liar-speech-input');
-    liarSpeechForm.onsubmit = (e) => {
-      e.preventDefault();
-      if (liarSpeechInput.value.trim()) {
-        socket.emit('submitLiarSpeech', liarSpeechInput.value);
-        liarSpeechInput.value = '';
-        liarSpeechForm.style.display = 'none';
-      }
-    };
+    const liarSpeechForm = document.getElementById('liar-speech-form'), liarSpeechInput = document.getElementById('liar-speech-input');
+    liarSpeechForm.onsubmit = (e) => { e.preventDefault(); if (liarSpeechInput.value.trim()) { socket.emit('submitLiarSpeech', liarSpeechInput.value); liarSpeechInput.value = ''; liarSpeechForm.style.display = 'none'; } };
 
-    function formatTime(sec) {
-      const m = String(Math.floor(sec / 60)).padStart(2, '0');
-      const s = String(sec % 60).padStart(2, '0');
-      return m + ':' + s;
-    }
+    function formatTime(sec) { return String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0'); }
 
     let myAvatar = null;
     const otherPlayers = {};
-
-    function updatePlayerCount() {
-      document.getElementById('player-count').innerText = '👥 ' + (Object.keys(otherPlayers).length + 1) + '명';
-    }
+    function updatePlayerCount() { document.getElementById('player-count').innerText = '👥 ' + (Object.keys(otherPlayers).length + 1) + '명'; refreshAdminKickList(); }
 
     socket.on('currentPlayers', ({ players, worldCoins }) => {
       if (worldCoins) syncWorldCoins(worldCoins);
       Object.keys(players).forEach((id) => {
-        const p = players[id];
-        savedPlayerProfiles[id] = p;
+        const p = players[id]; savedPlayerProfiles[id] = p;
         if (id === socket.id) {
-          myAccount = { mong: p.mong, speedLevel: p.speedLevel, jumpLevel: p.jumpLevel, ownedTops: p.ownedTops, ownedBottoms: p.ownedBottoms, ownedThemes: p.ownedThemes };
+          myAccount = { mong: p.mong, speedLevel: p.speedLevel, jumpLevel: p.jumpLevel, isAdmin: p.isAdmin, isInvisible: p.isInvisible, ownedTops: p.ownedTops, ownedBottoms: p.ownedBottoms, ownedThemes: p.ownedThemes };
           myProfile = { name: p.name, face: p.face, topStyle: p.topStyle, topColor: p.topColor, bottomStyle: p.bottomStyle, bottomColor: p.bottomColor };
-          nameInput.value = p.name; renderShopUI();
-          myAvatar = createAvatar(p); myAvatar.position.set(p.x, p.y, p.z);
-        } else {
-          otherPlayers[id] = createAvatar(p); otherPlayers[id].position.set(p.x, p.y, p.z);
-        }
+          nameInput.value = p.name; renderShopUI(); myAvatar = createAvatar(p); myAvatar.position.set(p.x, p.y, p.z);
+        } else { otherPlayers[id] = createAvatar(p); otherPlayers[id].position.set(p.x, p.y, p.z); }
       });
       updatePlayerCount();
     });
 
-    socket.on('coinCollected', ({ mong, earned }) => {
-      myAccount.mong = mong;
-      renderShopUI();
-      showLiveToast('🪙 코인 획득!', '바닥에서 +' + earned + '몽을 주웠습니다!');
+    socket.on('adminAuthSuccess', (p) => {
+      myAccount = { mong: p.mong, speedLevel: p.speedLevel, jumpLevel: p.jumpLevel, isAdmin: p.isAdmin, isInvisible: p.isInvisible, ownedTops: p.ownedTops, ownedBottoms: p.ownedBottoms, ownedThemes: p.ownedThemes };
+      document.getElementById('admin-login-box').style.display = 'none';
+      document.getElementById('admin-controls-box').style.display = 'flex';
+      document.getElementById('admin-invisible-btn').innerText = p.isInvisible ? '👻 투명 모드 끄기 (현재: ON)' : '👻 투명 모드 켜기 (현재: OFF)';
+      if (myAvatar) buildAvatarAppearance(myAvatar, { ...myProfile, isAdmin: true });
+      renderShopUI(); refreshAdminKickList();
     });
 
-    socket.on('worldCoinMoved', (coin) => {
-      const mesh = coinMeshes[coin.id];
-      if (mesh) {
-        mesh.position.set(coin.x, 0.75, coin.z);
-        mesh.userData.x = coin.x;
-        mesh.userData.z = coin.z;
-      }
+    socket.on('adminAuthFail', (msg) => showLiveToast('🛡️ Admin 오류', msg));
+    socket.on('adminPlayerStealth', ({ id, isInvisible }) => {
+      if (savedPlayerProfiles[id]) savedPlayerProfiles[id].isInvisible = isInvisible;
+      if (id === socket.id) { if (myAvatar) myAvatar.visible = true; }
+      else if (otherPlayers[id]) otherPlayers[id].visible = !isInvisible;
+    });
+    socket.on('adminKicked', ({ byName }) => {
+      alert('관리자(' + byName + ')에 의해 월드에서 내보내졌습니다.');
+      document.body.innerHTML = '<div style="color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;font-weight:bold;">🚫 관리자에 의해 월드에서 퇴장되었습니다.</div>';
     });
 
-    socket.on('shopUpdated', (p) => {
-      myAccount = { mong: p.mong, speedLevel: p.speedLevel, jumpLevel: p.jumpLevel, ownedTops: p.ownedTops, ownedBottoms: p.ownedBottoms, ownedThemes: p.ownedThemes };
-      renderShopUI(); showLiveToast('알림', '업데이트 완료!');
+    let adminAlertTimeout = null;
+    socket.on('adminGlobalAlert', ({ senderName, message }) => {
+      const box = document.getElementById('admin-alert-overlay');
+      document.getElementById('admin-alert-msg').innerText = message;
+      document.getElementById('admin-alert-sender').innerText = '발신 관리자: ' + senderName;
+      box.classList.add('open');
+      if (adminAlertTimeout) clearTimeout(adminAlertTimeout);
+      adminAlertTimeout = setTimeout(() => { box.classList.remove('open'); }, 6000);
     });
 
-    socket.on('newPlayer', (p) => {
-      savedPlayerProfiles[p.id] = p;
-      if (p.id !== socket.id && !otherPlayers[p.id]) {
-        otherPlayers[p.id] = createAvatar(p); otherPlayers[p.id].position.set(p.x, p.y, p.z); updatePlayerCount();
-      }
-    });
-
-    socket.on('playerMoved', (p) => {
-      const t = otherPlayers[p.id];
-      if (t) { t.userData.targetPos.set(p.x, p.y, p.z); t.userData.targetRotY = p.rotY; t.userData.isMoving = p.isMoving; }
-    });
-
+    socket.on('coinCollected', ({ mong, earned }) => { myAccount.mong = mong; renderShopUI(); showLiveToast('🪙 코인 획득!', '+' + earned + '몽!'); });
+    socket.on('worldCoinMoved', (coin) => { const m = coinMeshes[coin.id]; if (m) { m.position.set(coin.x, 0.75, coin.z); m.userData.x = coin.x; m.userData.z = coin.z; } });
+    socket.on('shopUpdated', (p) => { myAccount = { ...myAccount, mong: p.mong, speedLevel: p.speedLevel, jumpLevel: p.jumpLevel, ownedTops: p.ownedTops, ownedBottoms: p.ownedBottoms, ownedThemes: p.ownedThemes }; renderShopUI(); showLiveToast('알림', '업데이트 완료!'); });
+    socket.on('newPlayer', (p) => { savedPlayerProfiles[p.id] = p; if (p.id !== socket.id && !otherPlayers[p.id]) { otherPlayers[p.id] = createAvatar(p); otherPlayers[p.id].position.set(p.x, p.y, p.z); updatePlayerCount(); } });
+    socket.on('playerMoved', (p) => { const t = otherPlayers[p.id]; if (t) { t.userData.targetPos.set(p.x, p.y, p.z); t.userData.targetRotY = p.rotY; t.userData.isMoving = p.isMoving; } });
     socket.on('playerUpdated', (p) => {
-      savedPlayerProfiles[p.id] = p;
-      const t = p.id === socket.id ? myAvatar : otherPlayers[p.id];
+      savedPlayerProfiles[p.id] = p; const t = p.id === socket.id ? myAvatar : otherPlayers[p.id];
       if (t && gameState === 'world') {
-        buildAvatarAppearance(t, p);
-        t.remove(t.userData.nameSprite);
-        const ns = makeTextSprite(p.name, "rgba(15,23,42,0.75)", "#ffffff"); ns.position.y = 2.95;
-        t.add(ns); t.userData.nameSprite = ns;
+        buildAvatarAppearance(t, p); t.remove(t.userData.nameSprite);
+        const ns = makeTextSprite(p.name, p.isAdmin ? "rgba(220,38,38,0.88)" : "rgba(15,23,42,0.75)", "#ffffff"); ns.position.y = 2.95; t.add(ns); t.userData.nameSprite = ns;
       }
+      refreshAdminKickList();
     });
-
-    socket.on('playerGesture', (d) => {
-      const t = d.id === socket.id ? myAvatar : otherPlayers[d.id];
-      if (t) { t.userData.gesture = d.gesture; t.userData.gestureTimer = 2.5; }
-    });
-
-    socket.on('chatMessage', (d) => {
-      addChatLog(d.name, d.text);
-      const t = d.id === socket.id ? myAvatar : otherPlayers[d.id];
-      if (t) showSpeechBubble(t, d.text);
-    });
+    socket.on('playerGesture', (d) => { const t = d.id === socket.id ? myAvatar : otherPlayers[d.id]; if (t) { t.userData.gesture = d.gesture; t.userData.gestureTimer = 2.5; } });
+    socket.on('chatMessage', (d) => { addChatLog(d.name, d.text); const t = d.id === socket.id ? myAvatar : otherPlayers[d.id]; if (t) showSpeechBubble(t, d.text); });
 
     socket.on('minigameLobbyStarted', (data) => {
       document.getElementById('lobby-title').innerText = '🎮 ' + data.title + ' 모집 중!';
       document.getElementById('lobby-timer').innerText = data.timeLeft + '초 남음';
-      const hostBtns = document.getElementById('lobby-host-btns');
-
       if (data.hostId === socket.id) {
-        document.getElementById('lobby-join-btns').style.display = 'none';
-        hostBtns.style.display = 'flex';
-        document.getElementById('lobby-desc').innerText = '참가자 모집 중 (현재 ' + Object.keys(data.participants).length + '명). 바로 시작하거나 취소할 수 있습니다.';
+        document.getElementById('lobby-join-btns').style.display = 'none'; document.getElementById('lobby-host-btns').style.display = 'flex';
+        document.getElementById('lobby-desc').innerText = '참가자 모집 중 (' + Object.keys(data.participants).length + '명)';
       } else {
-        document.getElementById('lobby-join-btns').style.display = 'flex';
-        hostBtns.style.display = 'none';
-        document.getElementById('lobby-desc').innerHTML = '<b>' + data.hostName + '</b>님이 미니게임을 시작했습니다! 함께 참여할까요?';
+        document.getElementById('lobby-join-btns').style.display = 'flex'; document.getElementById('lobby-host-btns').style.display = 'none';
+        document.getElementById('lobby-desc').innerHTML = '<b>' + data.hostName + '</b>님이 미니게임을 시작했습니다!';
       }
       lobbyBanner.classList.add('open');
     });
-
-    socket.on('minigameLobbyTick', ({ timeLeft, participants }) => {
-      document.getElementById('lobby-timer').innerText = timeLeft + '초 남음';
-      if (participants[socket.id]) {
-        document.getElementById('lobby-desc').innerText = '참가 대기 중! (현재 유저 ' + Object.keys(participants).length + '명 모임)';
-      }
-    });
-
-    socket.on('minigameCancelled', ({ reason }) => {
-      lobbyBanner.classList.remove('open');
-      showLiveToast('알림', reason); addChatLog('시스템', reason);
-    });
+    socket.on('minigameLobbyTick', ({ timeLeft, participants }) => { document.getElementById('lobby-timer').innerText = timeLeft + '초 남음'; if (participants[socket.id]) document.getElementById('lobby-desc').innerText = '참가 대기 중 (유저 ' + Object.keys(participants).length + '명)'; });
+    socket.on('minigameCancelled', ({ reason }) => { lobbyBanner.classList.remove('open'); showLiveToast('알림', reason); addChatLog('시스템', reason); });
 
     const cModal = document.getElementById('center-modal');
     socket.on('colorflipTeamSetup', ({ hostId, participants, assignments }) => {
       lobbyBanner.classList.remove('open');
-      if (socket.id !== hostId) {
-        document.getElementById('cmodal-title').innerText = '⏳ 팀 편성 대기 중';
-        document.getElementById('cmodal-body').innerText = '방장이 팀 개수와 모둠원을 배정하고 있습니다. 잠시만 기다려주세요!';
-        document.getElementById('cmodal-footer').innerHTML = ''; cModal.classList.add('open'); return;
-      }
-
-      document.getElementById('cmodal-title').innerText = '👥 방장 권한: 팀 편성하기';
-      const list = Object.values(participants);
-      let teamCount = 2;
+      if (socket.id !== hostId) { document.getElementById('cmodal-title').innerText = '⏳ 팀 편성 대기 중'; document.getElementById('cmodal-body').innerText = '방장이 팀을 배정 중입니다.'; document.getElementById('cmodal-footer').innerHTML = ''; cModal.classList.add('open'); return; }
+      document.getElementById('cmodal-title').innerText = '👥 방장 권한: 팀 편성 (최소 2팀 이상)';
+      const list = Object.values(participants); let teamCount = 2;
       function renderTeamForm() {
-        let html = '<div style="margin-bottom:8px;"><label>팀 개수 선택: </label>' +
-          '<select id="team-cnt-sel" style="padding:4px 8px;border-radius:6px;background:#1e293b;color:#fff;">' +
-          '<option value="2"' + (teamCount === 2 ? ' selected' : '') + '>2팀 (레드 vs 블루)</option>' +
-          '<option value="3"' + (teamCount === 3 ? ' selected' : '') + '>3팀 (레드/블루/그린)</option>' +
-          '<option value="4"' + (teamCount === 4 ? ' selected' : '') + '>4팀 (레드/블루/그린/옐로우)</option>' +
-          '</select></div><div style="display:flex;flex-direction:column;gap:5px;text-align:left;max-height:220px;overflow-y:auto;">';
+        let html = '<div style="margin-bottom:8px;"><label>팀 개수: </label><select id="team-cnt-sel" style="padding:4px 8px;border-radius:6px;background:#1e293b;color:#fff;">' +
+          '<option value="2"' + (teamCount===2?' selected':'') + '>2팀</option><option value="3"' + (teamCount===3?' selected':'') + '>3팀</option><option value="4"' + (teamCount===4?' selected':'') + '>4팀</option></select></div>' +
+          '<div style="display:flex;flex-direction:column;gap:5px;text-align:left;max-height:220px;overflow-y:auto;">';
         list.forEach((p, idx) => {
-          const curT = (assignments[p.id] !== undefined ? assignments[p.id] : (idx % teamCount)) % teamCount;
-          assignments[p.id] = curT;
-          html += '<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);padding:5px 8px;border-radius:8px;">' +
-            '<span>' + p.name + '</span>' +
+          const curT = (assignments[p.id] !== undefined ? assignments[p.id] : (idx % teamCount)) % teamCount; assignments[p.id] = curT;
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);padding:5px 8px;border-radius:8px;"><span>' + p.name + '</span>' +
             '<select class="member-team-sel" data-id="' + p.id + '" style="padding:3px 6px;border-radius:6px;background:#0f172a;color:#fff;">' +
-            Array.from({ length: teamCount }, (_, t) => '<option value="' + t + '"' + (curT === t ? ' selected' : '') + '>' + (t + 1) + '팀</option>').join('') +
-            '</select></div>';
+            Array.from({ length: teamCount }, (_, t) => '<option value="' + t + '"' + (curT===t?' selected':'') + '>' + (t+1) + '팀</option>').join('') + '</select></div>';
         });
-        html += '</div>';
-        document.getElementById('cmodal-body').innerHTML = html;
-        document.getElementById('team-cnt-sel').onchange = (e) => { teamCount = parseInt(e.target.value); renderTeamForm(); };
+        document.getElementById('cmodal-body').innerHTML = html + '</div>';
+        document.getElementById('team-cnt-sel').onchange = (e) => { teamCount = Math.max(2, parseInt(e.target.value) || 2); renderTeamForm(); };
         document.querySelectorAll('.member-team-sel').forEach(sel => { sel.onchange = (e) => { assignments[sel.dataset.id] = parseInt(e.target.value); }; });
       }
       renderTeamForm();
-      document.getElementById('cmodal-footer').innerHTML = '<button class="modal-btn" id="confirm-teams-btn" style="background:#10b981;">팀 확정 및 경기 시작!</button>';
-      document.getElementById('confirm-teams-btn').onclick = () => { cModal.classList.remove('open'); socket.emit('confirmColorflipTeams', { teamCount, assignments }); };
+      document.getElementById('cmodal-footer').innerHTML = '<button class="modal-btn" id="confirm-teams-btn" style="background:#10b981;">팀 확정 및 시작!</button>';
+      document.getElementById('confirm-teams-btn').onclick = () => {
+        if (new Set(Object.values(assignments)).size < 2) { showLiveToast('팀 편성 오류', '최소 2개 이상의 팀으로 나누어야 합니다!'); return; }
+        cModal.classList.remove('open'); socket.emit('confirmColorflipTeams', { teamCount, assignments });
+      };
       cModal.classList.add('open');
     });
 
-    socket.on('colorflipMatchStarted', (data) => {
-      lobbyBanner.classList.remove('open'); cModal.classList.remove('open');
-      if (!data.participants[socket.id]) return;
-      document.getElementById('mg-big-timer').innerText = formatTime(data.timeLeft);
-      enterColorFlipArena(data);
-    });
-
-    socket.on('tileFlipped', ({ index, color }) => {
-      if (gameState === 'colorflip' && arenaTileMeshes[index]) arenaTileMeshes[index].material.color.set(color);
-    });
-
+    socket.on('colorflipMatchStarted', (data) => { lobbyBanner.classList.remove('open'); cModal.classList.remove('open'); if (!data.participants[socket.id]) return; document.getElementById('mg-big-timer').innerText = formatTime(data.timeLeft); enterColorFlipArena(data); });
+    socket.on('tileFlipped', ({ index, color }) => { if (gameState === 'colorflip' && arenaTileMeshes[index]) arenaTileMeshes[index].material.color.set(color); });
     socket.on('colorflipTick', ({ timeLeft, scoreboard }) => {
       if (gameState !== 'colorflip') return;
       document.getElementById('mg-big-timer').innerText = formatTime(timeLeft);
-      document.getElementById('mg-live-board').innerHTML =
-        '<div style="font-weight:bold;color:#fbbf24;margin-bottom:2px;">👑 실시간 순위 (칸 수)</div>' +
-        scoreboard.slice(0, 6).map((item, i) =>
-          '<div class="rank-row">' +
-          '<span style="display:flex;align-items:center;gap:4px;"><i style="width:9px;height:9px;border-radius:50%;background:' + item.color + ';display:inline-block;"></i>' + (i === 0 ? '👑' : (i + 1) + '.') + ' ' + item.name + '</span>' +
-          '<b>' + item.count + '칸</b></div>'
-        ).join('');
+      document.getElementById('mg-live-board').innerHTML = '<div style="font-weight:bold;color:#fbbf24;margin-bottom:2px;">👑 실시간 순위</div>' +
+        scoreboard.slice(0, 6).map((item, i) => '<div class="rank-row"><span style="display:flex;align-items:center;gap:4px;"><i style="width:9px;height:9px;border-radius:50%;background:' + item.color + ';display:inline-block;"></i>' + (i===0?'👑':(i+1)+'.') + ' ' + item.name + '</span><b>' + item.count + '칸</b></div>').join('');
     });
 
     socket.on('rpsRoundStarted', ({ targetItCount, groups, participants, timeLeft }) => {
-      lobbyBanner.classList.remove('open');
-      if (!participants[socket.id]) return;
+      lobbyBanner.classList.remove('open'); if (!participants[socket.id]) return;
       const myGroup = groups.find(g => g.memberIds.includes(socket.id));
-      document.getElementById('cmodal-title').innerText = '✊✌️🖐️ 술래 선발 가위바위보 (목표 술래 ' + targetItCount + '명)';
-      if (!myGroup) {
-        document.getElementById('cmodal-body').innerHTML = '당신은 이미 승리하여 <b>도망자</b>로 확정되었습니다!<br>패배자 조의 재대결 대기 중... (' + timeLeft + '초)';
-        document.getElementById('cmodal-footer').innerHTML = '';
-      } else {
-        const oppNames = myGroup.memberIds.map(id => participants[id] ? participants[id].name : '').join(' vs ');
-        document.getElementById('cmodal-body').innerHTML = '<div style="margin-bottom:8px;color:#fbbf24;">대결 조: <b>' + oppNames + '</b></div><div>지면 술래 후보가 됩니다! (<span id="rps-sec">' + timeLeft + '</span>초)</div>';
-        document.getElementById('cmodal-footer').innerHTML =
-          '<button class="modal-btn" style="background:#3b82f6;" onclick="pickRps(\'scissors\')">✌️ 가위</button>' +
-          '<button class="modal-btn" style="background:#ef4444;" onclick="pickRps(\'rock\')">✊ 바위</button>' +
-          '<button class="modal-btn" style="background:#10b981;" onclick="pickRps(\'paper\')">🖐️ 보</button>';
+      document.getElementById('cmodal-title').innerText = '✊✌️🖐️ 술래 선발 (목표 ' + targetItCount + '명)';
+      if (!myGroup) { document.getElementById('cmodal-body').innerHTML = '도망자 확정! 대기 중... (' + timeLeft + '초)'; document.getElementById('cmodal-footer').innerHTML = ''; }
+      else {
+        const opp = myGroup.memberIds.map(id => participants[id] ? participants[id].name : '').join(' vs ');
+        document.getElementById('cmodal-body').innerHTML = '<div style="margin-bottom:8px;color:#fbbf24;">' + opp + '</div><div>선택하세요 (<span id="rps-sec">' + timeLeft + '</span>초)</div>';
+        document.getElementById('cmodal-footer').innerHTML = '<button class="modal-btn" style="background:#3b82f6;" onclick="pickRps(\'scissors\')">✌️ 가위</button><button class="modal-btn" style="background:#ef4444;" onclick="pickRps(\'rock\')">✊ 바위</button><button class="modal-btn" style="background:#10b981;" onclick="pickRps(\'paper\')">🖐️ 보</button>';
       }
       cModal.classList.add('open');
     });
-    window.pickRps = (choice) => { socket.emit('submitRps', choice); document.getElementById('cmodal-footer').innerHTML = '<div style="color:#34d399;font-weight:bold;">선택 완료! 결과 대기 중...</div>'; };
+    window.pickRps = (c) => { socket.emit('submitRps', c); document.getElementById('cmodal-footer').innerHTML = '<div style="color:#34d399;font-weight:bold;">선택 완료!</div>'; };
     socket.on('rpsTick', ({ timeLeft }) => { const el = document.getElementById('rps-sec'); if (el) el.innerText = timeLeft; });
-    socket.on('rpsRoundResult', ({ losers, participants }) => {
-      const loserNames = losers.map(id => participants[id] ? participants[id].name : '').join(', ');
-      document.getElementById('cmodal-body').innerHTML = '이번 라운드 패배(술래 후보):<br><b style="color:#f87171;">' + loserNames + '</b>';
-      document.getElementById('cmodal-footer').innerHTML = '';
-    });
+    socket.on('rpsRoundResult', ({ losers, participants }) => { document.getElementById('cmodal-body').innerHTML = '패배(술래 후보): <b style="color:#f87171;">' + losers.map(id => participants[id] ? participants[id].name : '').join(', ') + '</b>'; document.getElementById('cmodal-footer').innerHTML = ''; });
 
-    socket.on('freezetagMatchStarted', (data) => {
-      cModal.classList.remove('open');
-      if (!data.participants[socket.id]) return;
-      document.getElementById('mg-big-timer').innerText = formatTime(data.timeLeft);
-      enterFreezeTagArena(data);
-      applyFreezeVisuals(data.participants);
-    });
-
+    socket.on('freezetagMatchStarted', (data) => { cModal.classList.remove('open'); if (!data.participants[socket.id]) return; document.getElementById('mg-big-timer').innerText = formatTime(data.timeLeft); enterFreezeTagArena(data); applyFreezeVisuals(data.participants); });
     socket.on('freezetagAction', ({ type, actorId, targetId, participants, updatedPlayers }) => {
       if (updatedPlayers && updatedPlayers[socket.id]) { myAccount.mong = updatedPlayers[socket.id].mong; renderShopUI(); }
       if (gameState !== 'freezetag') return;
-      const actorName = participants[actorId] ? participants[actorId].name : '';
-      const targetName = participants[targetId] ? participants[targetId].name : '';
-      if (type === 'freeze') showLiveToast('🧊 얼음!', actorName + '님이 얼음 상태가 되었습니다!');
-      else if (type === 'fire') showLiveToast('🔥 불!', actorName + '님이 ' + targetName + '님의 얼음을 녹였습니다!');
-      else if (type === 'clang') showLiveToast('💥 쨍그랑!', actorName + '님과 ' + targetName + '님이 부딪혀 얼음이 풀렸습니다!');
-      else if (type === 'out') {
-        showLiveToast('📺 아웃!', targetName + '님이 잡혀 생중계 관중석으로 이동했습니다! (-10몽)');
-        if (targetId === socket.id) {
-          addChatLog('📺 생중계 관중석', '아웃되어 VIP 생중계 방송 스튜디오 관중석으로 이동했습니다!');
-        }
-      }
-      applyFreezeVisuals(participants);
-      updateFreezeTagHud(participants);
+      const aN = participants[actorId] ? participants[actorId].name : '', tN = participants[targetId] ? participants[targetId].name : '';
+      if (type === 'freeze') showLiveToast('🧊 얼음!', aN + '님 얼음!');
+      else if (type === 'fire') showLiveToast('🔥 불!', aN + '님이 ' + tN + '님 해제!');
+      else if (type === 'clang') showLiveToast('💥 쨍그랑!', aN + '님 & ' + tN + '님 해제!');
+      else if (type === 'out') showLiveToast('📺 아웃!', tN + '님 생중계 관중석 이동 (-10몽)');
+      applyFreezeVisuals(participants); updateFreezeTagHud(participants);
     });
-
-    socket.on('freezetagTick', ({ timeLeft }) => {
-      if (gameState === 'freezetag') document.getElementById('mg-big-timer').innerText = formatTime(timeLeft);
-    });
+    socket.on('freezetagTick', ({ timeLeft }) => { if (gameState === 'freezetag') document.getElementById('mg-big-timer').innerText = formatTime(timeLeft); });
 
     socket.on('liarGameStarted', (data) => {
       lobbyBanner.classList.remove('open');
       const badge = document.getElementById('liar-my-word-badge');
-      if (data.isLiar) {
-        badge.style.background = '#ef4444'; badge.style.color = '#fff';
-        badge.innerText = '😈 당신은 라이어입니다';
-        document.getElementById('liar-big-speech').innerText = '당신은 라이어입니다! 앞사람의 구체적인 설명을 듣고 제시어를 추론해 들키지 마세요!';
-      } else {
-        badge.style.background = '#f59e0b'; badge.style.color = '#000';
-        badge.innerText = '[' + data.category + '] 제시어: ' + data.word;
-        document.getElementById('liar-big-speech').innerText = '제시어 [' + data.word + ']를 확인하세요! 사람당 1분씩 구체적으로 설명합니다.';
-      }
-      document.getElementById('liar-speech-log').innerHTML = '';
-      enterLiarArena(data);
+      if (data.isLiar) { badge.style.background = '#ef4444'; badge.style.color = '#fff'; badge.innerText = '😈 당신은 라이어입니다'; document.getElementById('liar-big-speech').innerText = '당신은 라이어입니다! 들키지 않게 설명하세요!'; }
+      else { badge.style.background = '#f59e0b'; badge.style.color = '#000'; badge.innerText = '[' + data.category + '] 제시어: ' + data.word; document.getElementById('liar-big-speech').innerText = '제시어 [' + data.word + ']를 설명하세요!'; }
+      document.getElementById('liar-speech-log').innerHTML = ''; enterLiarArena(data);
     });
-
     socket.on('liarTurnUpdate', ({ speakerId, speakerName, label, timeLeft }) => {
       document.getElementById('mg-big-timer').innerText = formatTime(timeLeft);
-      document.getElementById('liar-turn-badge').innerText = label + ' — 현재 차례: ' + speakerName;
-      if (speakerId === socket.id) {
-        liarSpeechForm.style.display = 'flex';
-        liarSpeechInput.focus();
-      } else {
-        liarSpeechForm.style.display = 'none';
-      }
+      document.getElementById('liar-turn-badge').innerText = label + ' — 차례: ' + speakerName;
+      if (speakerId === socket.id) { liarSpeechForm.style.display = 'flex'; liarSpeechInput.focus(); } else liarSpeechForm.style.display = 'none';
     });
-
-    socket.on('liarTurnTick', ({ timeLeft }) => {
-      if (gameState === 'liar') document.getElementById('mg-big-timer').innerText = formatTime(timeLeft);
-    });
-
+    socket.on('liarTurnTick', ({ timeLeft }) => { if (gameState === 'liar') document.getElementById('mg-big-timer').innerText = formatTime(timeLeft); });
     socket.on('liarNewSpeech', ({ entry }) => {
       document.getElementById('liar-big-speech').innerHTML = '💬 <span style="color:#38bdf8;">' + entry.name + '</span>: "' + entry.text + '"';
-      const logBox = document.getElementById('liar-speech-log');
-      const div = document.createElement('div');
-      div.innerHTML = '<b>' + entry.name + ':</b> ' + entry.text;
-      logBox.appendChild(div); logBox.scrollTop = logBox.scrollHeight;
+      const lb = document.getElementById('liar-speech-log'), d = document.createElement('div'); d.innerHTML = '<b>' + entry.name + ':</b> ' + entry.text; lb.appendChild(d); lb.scrollTop = lb.scrollHeight;
     });
-
-    socket.on('liarRunoffAnnounced', ({ tieNames }) => {
-      document.getElementById('liar-big-speech').innerHTML = '⚖️ 동점 발생! (<b>' + tieNames + '</b>) 최후 변론 후 재투표합니다!';
-    });
-
+    socket.on('liarRunoffAnnounced', ({ tieNames }) => { document.getElementById('liar-big-speech').innerHTML = '⚖️ 동점! (<b>' + tieNames + '</b>) 최후 변론 후 재투표!'; });
     socket.on('liarVoteStarted', ({ candidateIds, participants, timeLeft, isRunoff }) => {
-      liarSpeechForm.style.display = 'none';
-      document.getElementById('mg-big-timer').innerText = formatTime(timeLeft);
-      document.getElementById('cmodal-title').innerText = isRunoff ? '⚖️ 동점자 결선 재투표!' : '🗳️ 라이어 지목 투표!';
-      document.getElementById('cmodal-body').innerHTML = '제시어를 모르는 <b>라이어</b>로 의심되는 사람을 선택하세요! (<span id="vote-sec">' + timeLeft + '</span>초)';
-      document.getElementById('cmodal-footer').innerHTML = candidateIds.map(cid =>
-        '<button class="modal-btn" style="background:#ef4444;" onclick="castLiarVote(\'' + cid + '\')">' + (participants[cid] ? participants[cid].name : '') + '</button>'
-      ).join('');
+      liarSpeechForm.style.display = 'none'; document.getElementById('mg-big-timer').innerText = formatTime(timeLeft);
+      document.getElementById('cmodal-title').innerText = isRunoff ? '⚖️ 동점자 재투표!' : '🗳️ 라이어 지목 투표!';
+      document.getElementById('cmodal-body').innerHTML = '라이어를 선택하세요! (<span id="vote-sec">' + timeLeft + '</span>초)';
+      document.getElementById('cmodal-footer').innerHTML = candidateIds.map(cid => '<button class="modal-btn" style="background:#ef4444;" onclick="castLiarVote(\'' + cid + '\')">' + (participants[cid] ? participants[cid].name : '') + '</button>').join('');
       cModal.classList.add('open');
     });
-
-    window.castLiarVote = (targetId) => {
-      socket.emit('submitLiarVote', targetId);
-      document.getElementById('cmodal-footer').innerHTML = '<div style="color:#34d399;font-weight:bold;">투표 완료! 개표 대기 중...</div>';
-    };
-
-    socket.on('liarVoteTick', ({ timeLeft }) => {
-      const el = document.getElementById('vote-sec');
-      if (el) el.innerText = timeLeft;
-      if (gameState === 'liar') document.getElementById('mg-big-timer').innerText = formatTime(timeLeft);
-    });
+    window.castLiarVote = (tid) => { socket.emit('submitLiarVote', tid); document.getElementById('cmodal-footer').innerHTML = '<div style="color:#34d399;font-weight:bold;">투표 완료!</div>'; };
+    socket.on('liarVoteTick', ({ timeLeft }) => { const el = document.getElementById('vote-sec'); if (el) el.innerText = timeLeft; if (gameState === 'liar') document.getElementById('mg-big-timer').innerText = formatTime(timeLeft); });
 
     socket.on('minigameActorsUpdate', (participants) => {
       if (gameState === 'world' || gameState === 'liar') return;
-      Object.values(participants).forEach(p => {
-        if (p.isCpu && cpuAvatars[p.id]) {
-          cpuAvatars[p.id].userData.targetPos.set(p.x, p.y || 0, p.z);
-          cpuAvatars[p.id].userData.targetRotY = p.rotY;
-          cpuAvatars[p.id].userData.isMoving = p.isMoving;
-        }
-      });
+      Object.values(participants).forEach(p => { if (p.isCpu && cpuAvatars[p.id]) { cpuAvatars[p.id].userData.targetPos.set(p.x, p.y || 0, p.z); cpuAvatars[p.id].userData.targetRotY = p.rotY; cpuAvatars[p.id].userData.isMoving = p.isMoving; } });
       if (gameState === 'freezetag') applyFreezeVisuals(participants);
     });
-
     socket.on('minigameEnded', ({ title, summaryText, updatedPlayers }) => {
-      lobbyBanner.classList.remove('open');
-      cModal.classList.remove('open');
-      if (updatedPlayers && updatedPlayers[socket.id]) {
-        myAccount.mong = updatedPlayers[socket.id].mong;
-        renderShopUI();
-      }
+      lobbyBanner.classList.remove('open'); cModal.classList.remove('open');
+      if (updatedPlayers && updatedPlayers[socket.id]) { myAccount.mong = updatedPlayers[socket.id].mong; renderShopUI(); }
       if (gameState !== 'world') {
         exitMinigameToWorld();
-        document.getElementById('cmodal-title').innerText = title;
-        document.getElementById('cmodal-body').innerHTML = summaryText;
+        document.getElementById('cmodal-title').innerText = title; document.getElementById('cmodal-body').innerHTML = summaryText;
         document.getElementById('cmodal-footer').innerHTML = '<button class="modal-btn" style="background:#0284c7;" onclick="document.getElementById(\'center-modal\').classList.remove(\'open\')">확인</button>';
         cModal.classList.add('open');
       }
     });
+    socket.on('playerDisconnected', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; delete savedPlayerProfiles[id]; updatePlayerCount(); } });
 
-    socket.on('playerDisconnected', (id) => {
-      if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; delete savedPlayerProfiles[id]; updatePlayerCount(); }
-    });
-
-    const keys = {};
-    let joyX = 0, joyY = 0;
-    let velY = 0, isGrounded = true;
-    let camYaw = 0, camPitch = 0.42;
-
-    function getJumpPower() { return 0.22 + (myAccount.jumpLevel || 0) * 0.035; }
-
+    const keys = {}; let joyX = 0, joyY = 0, velY = 0, isGrounded = true, camYaw = 0, camPitch = 0.42;
+    function getJumpPower() { return myAccount.isAdmin ? (0.22 * 20) : (0.22 + (myAccount.jumpLevel || 0) * 0.035); }
     window.addEventListener('keydown', (e) => {
-      if (document.activeElement === chatInput || document.activeElement === nameInput || document.activeElement === liarSpeechInput) return;
-      keys[e.code] = true;
-      if (e.code === 'Space' && isGrounded && gameState !== 'liar') { velY = getJumpPower(); isGrounded = false; }
+      if ([chatInput, nameInput, liarSpeechInput, document.getElementById('admin-id-input'), document.getElementById('admin-pw-input'), document.getElementById('admin-alert-input')].includes(document.activeElement)) return;
+      keys[e.code] = true; if (e.code === 'Space' && isGrounded && gameState !== 'liar') { velY = getJumpPower(); isGrounded = false; }
     });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
     let isDragging = false, prevX = 0, prevY = 0;
     renderer.domElement.addEventListener('pointerdown', (e) => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
     window.addEventListener('pointerup', () => { isDragging = false; });
-    window.addEventListener('pointermove', (e) => {
-      if (!isDragging) return;
-      camYaw -= (e.clientX - prevX) * 0.006;
-      camPitch = Math.max(0.1, Math.min(1.3, camPitch + (e.clientY - prevY) * 0.006));
-      prevX = e.clientX; prevY = e.clientY;
-    });
+    window.addEventListener('pointermove', (e) => { if (!isDragging) return; camYaw -= (e.clientX - prevX) * 0.006; camPitch = Math.max(0.1, Math.min(1.3, camPitch + (e.clientY - prevY) * 0.006)); prevX = e.clientX; prevY = e.clientY; });
 
-    const joyZone = document.getElementById('joystick-zone'), joyKnob = document.getElementById('joystick-knob');
-    let joyActive = false;
+    const joyZone = document.getElementById('joystick-zone'), joyKnob = document.getElementById('joystick-knob'); let joyActive = false;
     function updateJoystick(cx, cy) {
-      const rect = joyZone.getBoundingClientRect();
-      const dx = cx - (rect.left + rect.width / 2), dy = cy - (rect.top + rect.height / 2);
-      const dist = Math.min(34, Math.hypot(dx, dy));
-      const ang = Math.atan2(dy, dx);
+      const rect = joyZone.getBoundingClientRect(), dx = cx - (rect.left + rect.width / 2), dy = cy - (rect.top + rect.height / 2);
+      const dist = Math.min(34, Math.hypot(dx, dy)), ang = Math.atan2(dy, dx);
       joyKnob.style.transform = 'translate(calc(-50% + ' + (Math.cos(ang)*dist) + 'px), calc(-50% + ' + (Math.sin(ang)*dist) + 'px))';
       joyX = (Math.cos(ang) * dist) / 34; joyY = (Math.sin(ang) * dist) / 34;
     }
@@ -1863,56 +1474,30 @@
     joyZone.addEventListener('mousedown', (e) => { e.stopPropagation(); joyActive = true; updateJoystick(e.clientX, e.clientY); });
     window.addEventListener('mousemove', (e) => { if (joyActive) updateJoystick(e.clientX, e.clientY); });
     window.addEventListener('mouseup', () => { if (joyActive) resetJoystick(); });
-
     document.getElementById('jump-btn').onclick = () => { if (isGrounded && gameState !== 'liar') { velY = getJumpPower(); isGrounded = false; } };
+    window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    const cityInteractBtn = document.getElementById('city-interact-btn');
-    let activeCityBuilding = null;
-    cityInteractBtn.onclick = () => {
-      if (activeCityBuilding === 'shop') { renderShopUI(); togglePanel('avatar-panel'); }
-      else if (activeCityBuilding === 'exchange') openCityExchangeModal();
-    };
+    const cityInteractBtn = document.getElementById('city-interact-btn'); let activeCityBuilding = null;
+    cityInteractBtn.onclick = () => { if (activeCityBuilding === 'shop') { renderShopUI(); togglePanel('avatar-panel'); } else if (activeCityBuilding === 'exchange') openCityExchangeModal(); };
 
     let lastTime = 0, lastSent = 0;
     function animate(time) {
       requestAnimationFrame(animate);
-      const dt = Math.min(0.05, (time - lastTime) / 1000 || 0.016);
-      lastTime = time;
+      const dt = Math.min(0.05, (time - lastTime) / 1000 || 0.016); lastTime = time;
       if (coinCollectCooldown > 0) coinCollectCooldown -= dt;
 
       if (gameState === 'world') {
-        Object.values(coinMeshes).forEach((cm, idx) => {
-          cm.rotation.z += dt * 3.0;
-          cm.position.y = 0.75 + Math.sin(time * 0.004 + idx) * 0.16;
-        });
-
+        Object.values(coinMeshes).forEach((cm, idx) => { cm.rotation.z += dt * 3.0; cm.position.y = 0.75 + Math.sin(time * 0.004 + idx) * 0.16; });
         for (const p of animatedProps) {
           if (p.type === 'float') { p.mesh.position.y = p.baseY + Math.sin(time * 0.002 + p.phase) * 0.5; p.mesh.rotation.y += dt * 0.8; }
           else if (p.type === 'cloud') { p.mesh.position.x += dt * p.speed; if (p.mesh.position.x > 110) p.mesh.position.x = -110; }
         }
-
         if (currentWorldMap === 'city') {
           const now = new Date();
-          if (clockHands.hour && clockHands.minute) {
-            clockHands.minute.rotation.z = -(now.getMinutes() / 60) * Math.PI * 2;
-            clockHands.hour.rotation.z = -((now.getHours() % 12) / 12) * Math.PI * 2;
-          }
+          if (clockHands.hour && clockHands.minute) { clockHands.minute.rotation.z = -(now.getMinutes() / 60) * Math.PI * 2; clockHands.hour.rotation.z = -((now.getHours() % 12) / 12) * Math.PI * 2; }
           for (const c of cityCars) {
-            if (c.axis === 'z') {
-              c.mesh.position.z += c.dir * c.speed * dt;
-              if (c.mesh.position.z > 130) c.mesh.position.z = -130;
-              if (c.mesh.position.z < -130) c.mesh.position.z = 130;
-            } else {
-              c.mesh.position.x += c.dir * c.speed * dt;
-              if (c.mesh.position.x > 130) c.mesh.position.x = -130;
-              if (c.mesh.position.x < -130) c.mesh.position.x = 130;
-            }
+            if (c.axis === 'z') { c.mesh.position.z += c.dir * c.speed * dt; if (c.mesh.position.z > 130) c.mesh.position.z = -130; if (c.mesh.position.z < -130) c.mesh.position.z = 130; }
+            else { c.mesh.position.x += c.dir * c.speed * dt; if (c.mesh.position.x > 130) c.mesh.position.x = -130; if (c.mesh.position.x < -130) c.mesh.position.x = 130; }
           }
         }
       }
@@ -1921,112 +1506,57 @@
         const meFt = latestFtParticipants[socket.id];
         const isOutSpectator = (gameState === 'freezetag' && meFt && meFt.status === 'out');
         const isLocked = (gameState === 'liar') || (gameState === 'freezetag' && meFt && (meFt.status === 'frozen' || meFt.status === 'out'));
-
-        let moveX = isLocked ? 0 : joyX;
-        let moveZ = isLocked ? 0 : joyY;
-        if (!isLocked && document.activeElement !== chatInput && document.activeElement !== nameInput && document.activeElement !== liarSpeechInput) {
+        let moveX = isLocked ? 0 : joyX, moveZ = isLocked ? 0 : joyY;
+        if (!isLocked) {
           if (keys['KeyW'] || keys['ArrowUp']) moveZ -= 1;
           if (keys['KeyS'] || keys['ArrowDown']) moveZ += 1;
           if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
           if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
         }
-
-        const isMoving = (moveX !== 0 || moveZ !== 0);
-        myAvatar.userData.isMoving = isMoving;
+        const isMoving = (moveX !== 0 || moveZ !== 0); myAvatar.userData.isMoving = isMoving;
 
         if (isMoving) {
-          const len = Math.hypot(moveX, moveZ);
-          moveX /= len; moveZ /= len;
-          const forwardX = -Math.sin(camYaw), forwardZ = -Math.cos(camYaw);
-          const rightX = Math.cos(camYaw), rightZ = -Math.sin(camYaw);
-
-          let speed = (gameState === 'world') ? (0.16 + (myAccount.speedLevel || 0) * 0.025) : 0.21;
-          if (gameState === 'freezetag' && meFt && meFt.role === 'it') speed = 0.23;
-
-          const dx = (forwardX * -moveZ + rightX * moveX) * speed;
-          const dz = (forwardZ * -moveZ + rightZ * moveX) * speed;
-
-          myAvatar.position.x += dx;
-          myAvatar.position.z += dz;
-          myAvatar.rotation.y = Math.atan2(dx, dz);
-
-          if (gameState === 'colorflip') {
-            myAvatar.position.x = Math.max(-15, Math.min(15, myAvatar.position.x));
-            myAvatar.position.z = Math.max(-15, Math.min(15, myAvatar.position.z));
-          } else if (gameState === 'freezetag') {
-            const lim = ftArenaHalf - 1.0;
-            myAvatar.position.x = Math.max(-lim, Math.min(lim, myAvatar.position.x));
-            myAvatar.position.z = Math.max(-lim, Math.min(lim, myAvatar.position.z));
-          }
+          const len = Math.hypot(moveX, moveZ); moveX /= len; moveZ /= len;
+          const fX = -Math.sin(camYaw), fZ = -Math.cos(camYaw), rX = Math.cos(camYaw), rZ = -Math.sin(camYaw);
+          let speed = 0.21;
+          if (gameState === 'world') speed = myAccount.isAdmin ? (0.16 * 20) : (0.16 + (myAccount.speedLevel || 0) * 0.025);
+          else if (gameState === 'freezetag' && meFt && meFt.role === 'it') speed = 0.23;
+          const dx = (fX * -moveZ + rX * moveX) * speed, dz = (fZ * -moveZ + rZ * moveX) * speed;
+          myAvatar.position.x += dx; myAvatar.position.z += dz; myAvatar.rotation.y = Math.atan2(dx, dz);
+          if (gameState === 'colorflip') { myAvatar.position.x = Math.max(-15, Math.min(15, myAvatar.position.x)); myAvatar.position.z = Math.max(-15, Math.min(15, myAvatar.position.z)); }
+          else if (gameState === 'freezetag') { const lim = ftArenaHalf - 1.0; myAvatar.position.x = Math.max(-lim, Math.min(lim, myAvatar.position.x)); myAvatar.position.z = Math.max(-lim, Math.min(lim, myAvatar.position.z)); }
         }
 
         if (gameState === 'world' && coinCollectCooldown <= 0) {
           for (const cm of Object.values(coinMeshes)) {
-            if (Math.hypot(myAvatar.position.x - cm.userData.x, myAvatar.position.z - cm.userData.z) < 1.6) {
-              coinCollectCooldown = 0.5;
-              socket.emit('collectWorldCoin', cm.userData.id);
-              break;
-            }
+            if (Math.hypot(myAvatar.position.x - cm.userData.x, myAvatar.position.z - cm.userData.z) < 2.2) { coinCollectCooldown = 0.5; socket.emit('collectWorldCoin', cm.userData.id); break; }
           }
         }
-
         if (gameState === 'world' && currentWorldMap === 'city') {
-          const distShop = Math.hypot(myAvatar.position.x - (-24), myAvatar.position.z - (-18));
-          const distEx = Math.hypot(myAvatar.position.x - 24, myAvatar.position.z - (-18));
-          if (distShop < 6.5) {
-            activeCityBuilding = 'shop';
-            cityInteractBtn.innerText = '🏪 메트로 종합상점 열기';
-            cityInteractBtn.style.display = 'block';
-          } else if (distEx < 6.5) {
-            activeCityBuilding = 'exchange';
-            cityInteractBtn.innerText = '🏦 아이템 · 몽 교환소 열기';
-            cityInteractBtn.style.display = 'block';
-          } else {
-            activeCityBuilding = null;
-            cityInteractBtn.style.display = 'none';
-          }
-        } else {
-          cityInteractBtn.style.display = 'none';
-        }
+          if (Math.hypot(myAvatar.position.x + 24, myAvatar.position.z + 18) < 6.5) { activeCityBuilding = 'shop'; cityInteractBtn.innerText = '🏪 메트로 종합상점 열기'; cityInteractBtn.style.display = 'block'; }
+          else if (Math.hypot(myAvatar.position.x - 24, myAvatar.position.z + 18) < 6.5) { activeCityBuilding = 'exchange'; cityInteractBtn.innerText = '🏦 아이템 · 몽 교환소 열기'; cityInteractBtn.style.display = 'block'; }
+          else { activeCityBuilding = null; cityInteractBtn.style.display = 'none'; }
+        } else cityInteractBtn.style.display = 'none';
 
-        if (!isOutSpectator) {
-          myAvatar.position.y += velY;
-          if (myAvatar.position.y > 0) velY -= 0.012;
-          else { myAvatar.position.y = 0; velY = 0; isGrounded = true; }
-        }
-
+        if (!isOutSpectator) { myAvatar.position.y += velY; if (myAvatar.position.y > 0) velY -= (myAccount.isAdmin ? 0.08 : 0.012); else { myAvatar.position.y = 0; velY = 0; isGrounded = true; } }
         updateAvatarAnimation(myAvatar, dt);
 
-        if (isOutSpectator) {
-          camera.position.set(myAvatar.position.x, 12.5, myAvatar.position.z - 4);
-          camera.lookAt(0, 0, 0);
-        } else if (gameState === 'liar') {
-          camera.position.set(0, 11, 13);
-          camera.lookAt(0, 1.2, 0);
-        } else {
-          const camDist = (gameState !== 'world') ? 13 : 9.5;
-          camera.position.x = myAvatar.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist;
-          camera.position.y = myAvatar.position.y + Math.sin(camPitch) * camDist + 1.8;
-          camera.position.z = myAvatar.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
+        if (isOutSpectator) { camera.position.set(myAvatar.position.x, 12.5, myAvatar.position.z - 4); camera.lookAt(0, 0, 0); }
+        else if (gameState === 'liar') { camera.position.set(0, 11, 13); camera.lookAt(0, 1.2, 0); }
+        else {
+          const cd = (gameState !== 'world') ? 13 : (myAccount.isAdmin ? 13.5 : 9.5);
+          camera.position.set(myAvatar.position.x + Math.sin(camYaw) * Math.cos(camPitch) * cd, myAvatar.position.y + Math.sin(camPitch) * cd + 1.8, myAvatar.position.z + Math.cos(camYaw) * Math.cos(camPitch) * cd);
           camera.lookAt(myAvatar.position.x, myAvatar.position.y + 1.5, myAvatar.position.z);
         }
 
-        if (time - lastSent >= 16) {
-          socket.emit('playerMovement', {
-            x: myAvatar.position.x, y: myAvatar.position.y, z: myAvatar.position.z,
-            rotY: myAvatar.rotation.y, isMoving: isMoving
-          });
-          lastSent = time;
-        }
+        if (time - lastSent >= 16) { socket.emit('playerMovement', { x: myAvatar.position.x, y: myAvatar.position.y, z: myAvatar.position.z, rotY: myAvatar.rotation.y, isMoving }); lastSent = time; }
       }
 
       [...Object.values(otherPlayers), ...Object.values(cpuAvatars)].forEach(other => {
         other.position.lerp(other.userData.targetPos, 0.38);
         let diff = other.userData.targetRotY - other.rotation.y;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        other.rotation.y += diff * 0.38;
-        updateAvatarAnimation(other, dt);
+        while (diff < -Math.PI) diff += Math.PI * 2; while (diff > Math.PI) diff -= Math.PI * 2;
+        other.rotation.y += diff * 0.38; updateAvatarAnimation(other, dt);
       });
 
       renderer.render(scene, camera);
