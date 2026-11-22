@@ -21,8 +21,14 @@ const rooms = {};
 const ADMIN_ID = 'hajun1234adminuser';
 const ADMIN_PW = '2cv8cF';
 
-const ALL_TOPS = ['tshirt', 'hoodie', 'sweater', 'suit', 'uniform', 'hanbok', 'armor', 'royal'];
-const ALL_BOTTOMS = ['pants', 'shorts', 'skirt', 'jeans', 'overalls', 'armorpants'];
+const ALL_TOPS = [
+  'tshirt', 'hoodie', 'sweater', 'suit', 'uniform', 'hanbok', 'armor', 'royal',
+  'admin_coat', 'admin_robe'
+];
+const ALL_BOTTOMS = [
+  'pants', 'shorts', 'skirt', 'jeans', 'overalls', 'armorpants',
+  'admin_greaves', 'admin_leggings'
+];
 const ALL_THEMES = ['original', 'simple', 'cute', 'colorful', 'dreamy', 'jungle', 'cathouse'];
 
 const GAME_COLORS = [
@@ -40,8 +46,8 @@ const TEAM_PALETTE = [
 ];
 
 const SHOP_PRICES = {
-  tops: { tshirt: 0, hoodie: 40, sweater: 50, suit: 70, uniform: 80, hanbok: 100, armor: 120, royal: 150 },
-  bottoms: { pants: 0, shorts: 30, skirt: 50, jeans: 50, overalls: 70, armorpants: 110 },
+  tops: { tshirt: 0, hoodie: 40, sweater: 50, suit: 70, uniform: 80, hanbok: 100, armor: 120, royal: 150, admin_coat: 999999, admin_robe: 999999 },
+  bottoms: { pants: 0, shorts: 30, skirt: 50, jeans: 50, overalls: 70, armorpants: 110, admin_greaves: 999999, admin_leggings: 999999 },
   themes: { original: 0, simple: 40, cute: 60, colorful: 70, dreamy: 90, jungle: 110, cathouse: 120 }
 };
 
@@ -76,8 +82,8 @@ const WORLD_COINS = [];
 function spawnCoinPosition(id) {
   return {
     id,
-    x: (Math.random() - 0.5) * 85,
-    z: (Math.random() - 0.5) * 85
+    x: (Math.random() - 0.5) * 80,
+    z: (Math.random() - 0.5) * 80
   };
 }
 for (let i = 0; i < 20; i++) {
@@ -539,7 +545,7 @@ function finishFreezeTagRoom(roomId, itsWon) {
         savePlayerToDB(players[p.id]);
       }
     });
-    summaryText = '👹 술래 팀 승리! — 술래 +200몽 지급!';
+    summaryText = '👹 술래 팀 승리! 전원 얼음/아웃 성공 — 술래 전원 +200몽 지급!';
   } else {
     allP.forEach(p => {
       if (p.role === 'runner' && !p.isCpu && players[p.id]) {
@@ -548,7 +554,7 @@ function finishFreezeTagRoom(roomId, itsWon) {
         savePlayerToDB(players[p.id]);
       }
     });
-    summaryText = '🏃 도망자 팀 승리! 생존·얼음 상태 +200몽 / 관중석(아웃) +100몽 지급!';
+    summaryText = '🏃 도망자 팀 승리! 생존·얼음 상태 +200몽 / 생중계 관중석(아웃) +100몽 지급!';
   }
   emitToRoom(room, 'minigameEnded', { title: '🧊 얼음땡 최종 결과', summaryText, updatedPlayers: players });
   cleanupRoom(roomId);
@@ -699,6 +705,7 @@ function resolveLiarRoomVote(roomId, candidateIds) {
 }
 
 function buildPlayerSessionFromRow(socketId, row, isGuest) {
+  const isAdm = !!row.is_admin;
   return {
     id: socketId,
     username: row.username,
@@ -707,12 +714,12 @@ function buildPlayerSessionFromRow(socketId, row, isGuest) {
     mong: row.mong !== undefined ? row.mong : 200,
     speedLevel: row.speed_level || 0,
     jumpLevel: row.jump_level || 0,
-    isAdmin: !!row.is_admin,
-    adminBoostActive: !!row.is_admin,
+    isAdmin: isAdm,
+    adminBoostActive: isAdm,
     isInvisible: false,
-    ownedTops: Array.isArray(row.owned_tops) ? row.owned_tops : ['tshirt'],
-    ownedBottoms: Array.isArray(row.owned_bottoms) ? row.owned_bottoms : ['pants'],
-    ownedThemes: Array.isArray(row.owned_themes) ? row.owned_themes : ['original'],
+    ownedTops: isAdm ? [...ALL_TOPS] : (Array.isArray(row.owned_tops) ? row.owned_tops : ['tshirt']),
+    ownedBottoms: isAdm ? [...ALL_BOTTOMS] : (Array.isArray(row.owned_bottoms) ? row.owned_bottoms : ['pants']),
+    ownedThemes: isAdm ? [...ALL_THEMES] : (Array.isArray(row.owned_themes) ? row.owned_themes : ['original']),
     roomId: null,
     x: (Math.random() - 0.5) * 6,
     y: 0,
@@ -851,10 +858,22 @@ io.on('connection', (socket) => {
     }
   });
 
+  // 2단계 인증: 1단계 아이디 확인
+  socket.on('adminVerifyId', ({ id }) => {
+    const p = players[socket.id];
+    if (!p) return;
+    if ((id || '').trim() === ADMIN_ID) {
+      socket.emit('adminIdVerified', { message: 'ID Successfully Entered. Now go inside the castle' });
+    } else {
+      socket.emit('adminAuthFail', 'Admin ID or password is uncorrect.');
+    }
+  });
+
+  // 2단계 인증: 2단계 비밀번호 확인 및 어드민 권한 부여
   socket.on('adminLogin', ({ id, pw }) => {
     const p = players[socket.id];
     if (!p) return;
-    if (id === ADMIN_ID && pw === ADMIN_PW) {
+    if ((id || '').trim() === ADMIN_ID && (pw || '').trim() === ADMIN_PW) {
       p.isAdmin = true; p.adminBoostActive = true;
       p.mong = (p.mong || 0) + 1000;
       p.speedLevel = 20; p.jumpLevel = 20;
@@ -863,7 +882,7 @@ io.on('connection', (socket) => {
       socket.emit('adminAuthSuccess', p);
       io.emit('playerUpdated', p);
     } else {
-      socket.emit('adminAuthFail', '관리자 아이디 또는 비밀번호가 올바르지 않습니다.');
+      socket.emit('adminAuthFail', 'Admin ID or password is uncorrect.');
     }
   });
 
@@ -1128,5 +1147,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log('Server v2.2-20261122 running on port ' + PORT);
+  console.log('Server v2.3-20261122 running on port ' + PORT);
 });
