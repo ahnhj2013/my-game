@@ -903,7 +903,6 @@ io.on('connection', (socket) => {
   socket.emit('currentPlayers', { players, worldCoins: WORLD_COINS });
   socket.broadcast.emit('newPlayer', players[socket.id]);
 
-  // Admin 로그인 인증: +1000몽, 모든 의상/테마 해제, 20배 능력치, 캐릭터 1.5배 크기
   socket.on('adminLogin', ({ id, pw }) => {
     const p = players[socket.id];
     if (!p) return;
@@ -922,7 +921,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Admin 투명 모드 토글
   socket.on('adminToggleInvisible', () => {
     const p = players[socket.id];
     if (!p || !p.isAdmin) return;
@@ -931,7 +929,6 @@ io.on('connection', (socket) => {
     socket.emit('adminAuthSuccess', p);
   });
 
-  // Admin 특정 사용자 월드에서 내보내기(킥)
   socket.on('adminKickUser', (targetId) => {
     const p = players[socket.id];
     if (!p || !p.isAdmin || !players[targetId] || targetId === socket.id) return;
@@ -949,7 +946,6 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Admin 전체 대형 경고 알림 발송
   socket.on('adminBroadcastAlert', (alertText) => {
     const p = players[socket.id];
     if (!p || !p.isAdmin) return;
