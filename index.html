@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>3D 멀티플레이어 오픈월드 v2.3-20261122</title>
+  <title>3D 멀티플레이어 오픈월드 v3.0-20261122</title>
   <link href="https://fonts.googleapis.com/css2?family=Jua&family=Nanum+Myeongjo:wght@700&family=Noto+Sans+KR:wght@400;700;900&family=Black+Han+Sans&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -15,6 +15,7 @@
       --radius-ui: 14px;
     }
     body.theme-original { --bg-ui: rgba(15, 23, 42, 0.86); --text-ui: #f8fafc; --accent: #0284c7; --border-ui: rgba(255, 255, 255, 0.22); --font-main: 'Noto Sans KR', sans-serif; --radius-ui: 14px; }
+    body.theme-legacy_pillars { --bg-ui: rgba(39, 39, 42, 0.88); --text-ui: #fafafa; --accent: #71717a; --border-ui: rgba(255, 255, 255, 0.25); --font-main: 'Noto Sans KR', sans-serif; --radius-ui: 10px; }
     body.theme-cute { --bg-ui: rgba(255, 240, 246, 0.94); --text-ui: #831843; --accent: #ec4899; --border-ui: #f9a8d4; --font-main: 'Jua', sans-serif; --radius-ui: 22px; }
     body.theme-dreamy { --bg-ui: rgba(30, 27, 75, 0.88); --text-ui: #e0e7ff; --accent: #8b5cf6; --border-ui: rgba(196, 181, 253, 0.4); --font-main: 'Nanum Myeongjo', serif; --radius-ui: 16px; }
     body.theme-colorful { --bg-ui: rgba(24, 24, 27, 0.9); --text-ui: #fef08a; --accent: #f97316; --border-ui: #22d3ee; --font-main: 'Black Han Sans', sans-serif; --radius-ui: 12px; }
@@ -86,20 +87,14 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.5); pointer-events: none;
     }
     #zone-dwell-hud.open { display: flex; }
-    #zone-dwell-bar-bg {
-      width: 100%; height: 10px; background: rgba(255,255,255,0.15);
-      border-radius: 999px; overflow: hidden;
-    }
-    #zone-dwell-bar-fill {
-      width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #10b981);
-      transition: width 0.08s linear;
-    }
+    #zone-dwell-bar-bg { width: 100%; height: 10px; background: rgba(255,255,255,0.15); border-radius: 999px; overflow: hidden; }
+    #zone-dwell-bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #10b981); transition: width 0.08s linear; }
 
     #top-right-controls {
       position: fixed; top: 10px; right: 10px; z-index: 20;
       display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
     }
-    .top-right-row { display: flex; gap: 5px; align-items: center; }
+    .top-right-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
     #chat-mini-bar {
       background: var(--bg-ui); color: var(--text-ui);
       border: 1.5px solid var(--border-ui); border-radius: var(--radius-ui);
@@ -141,7 +136,7 @@
     #admin-alert-overlay.open { display: flex; }
 
     .side-panel {
-      position: fixed; top: 62px; left: 10px; width: 325px; max-width: calc(100vw - 20px);
+      position: fixed; top: 62px; left: 10px; width: 345px; max-width: calc(100vw - 20px);
       max-height: calc(100vh - 155px); overflow-y: auto;
       background: var(--bg-ui); color: var(--text-ui);
       border-radius: var(--radius-ui); padding: 14px; backdrop-filter: blur(12px);
@@ -170,9 +165,16 @@
     .color-swatch.active { transform: scale(1.2); border-color: var(--accent); }
     input[type="color"] { width: 26px; height: 22px; border: none; background: none; cursor: pointer; }
 
+    .citizen-card {
+      padding: 7px 9px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.06); font-size: 11px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .citizen-card.current { border: 2px solid #38bdf8; background: rgba(2, 132, 199, 0.25); font-weight: bold; }
+    .citizen-card.future-lock { opacity: 0.5; border-style: dashed; }
+
     .center-modal {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      width: 350px; max-width: 92vw; max-height: 85vh; overflow-y: auto;
+      width: 360px; max-width: 92vw; max-height: 85vh; overflow-y: auto;
       background: rgba(15, 23, 42, 0.96); color: #fff;
       border: 2px solid #38bdf8; border-radius: 18px; padding: 18px; z-index: 50;
       display: none; flex-direction: column; gap: 12px; text-align: center;
@@ -206,7 +208,7 @@
     #mg-big-timer.open { display: block; }
 
     #mg-live-board {
-      position: fixed; top: 62px; right: 10px; width: 185px;
+      position: fixed; top: 62px; right: 10px; width: 195px;
       background: rgba(15, 23, 42, 0.88); color: #fff;
       border: 1.5px solid rgba(255,255,255,0.22); border-radius: 12px;
       padding: 8px 10px; font-size: 11px; z-index: 22;
@@ -235,6 +237,27 @@
       box-shadow: 0 4px 14px rgba(0,0,0,0.4);
     }
     .skill-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    #attack-hud {
+      position: fixed; bottom: 20px; right: 16px; z-index: 30;
+      display: none; flex-direction: column; align-items: flex-end; gap: 8px;
+    }
+    #attack-hud.open { display: flex; }
+    .atk-skill-row { display: flex; gap: 8px; align-items: center; }
+    .atk-btn {
+      width: 62px; height: 62px; border-radius: 50%; border: 2.5px solid #fff;
+      font-size: 11px; font-weight: 900; color: #fff; cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.55); display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center;
+    }
+    .atk-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    #atk-hp-bar {
+      position: fixed; top: 58px; left: 50%; transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.9); color: #fff; padding: 6px 16px;
+      border-radius: 16px; border: 2px solid #ef4444; font-size: 12px; font-weight: bold;
+      z-index: 26; display: none; gap: 12px; align-items: center;
+    }
+    #atk-hp-bar.open { display: flex; }
 
     #liar-hud {
       position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
@@ -266,20 +289,20 @@
     }
 
     #joystick-zone {
-      position: fixed; bottom: 20px; left: 20px; width: 96px; height: 96px;
+      position: fixed; bottom: 20px; left: 20px; width: 104px; height: 104px;
       background: rgba(128,128,128,0.24); border: 2px solid var(--border-ui);
-      border-radius: 50%; z-index: 18;
+      border-radius: 50%; z-index: 18; touch-action: none;
     }
     #joystick-knob {
-      position: absolute; top: 50%; left: 50%; width: 38px; height: 38px;
+      position: absolute; top: 50%; left: 50%; width: 40px; height: 40px;
       background: var(--accent); border-radius: 50%;
       transform: translate(-50%, -50%); pointer-events: none;
     }
     #jump-btn {
-      position: fixed; bottom: 24px; right: 20px; width: 62px; height: 62px;
+      position: fixed; bottom: 24px; right: 20px; width: 64px; height: 64px;
       background: var(--accent); color: #fff; font-weight: bold;
       border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; font-size: 13px;
-      z-index: 18; cursor: pointer;
+      z-index: 18; cursor: pointer; touch-action: none;
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -289,8 +312,8 @@
 
   <div id="auth-screen">
     <div id="auth-card">
-      <div style="font-size:20px;font-weight:900;color:#38bdf8;">🌐 Hajun's Online Open World v2.3</div>
-      <div style="font-size:12px;color:#cbd5e1;">회원가입·로그인 시 몽, 옷, 테마, 닉네임 정보가 DB에 저장됩니다.</div>
+      <div style="font-size:20px;font-weight:900;color:#38bdf8;">🌐 Hajun's Online Open World v3.0</div>
+      <div style="font-size:12px;color:#cbd5e1;">회원가입·로그인 시 몽, 시민권, Attack 캐릭터가 DB에 저장됩니다.</div>
       <div class="auth-tabs">
         <button type="button" class="auth-tab active" id="tab-login">🔑 로그인</button>
         <button type="button" class="auth-tab" id="tab-register">📝 회원가입</button>
@@ -308,8 +331,9 @@
 
   <div id="top-left-bar">
     <div class="row-flex">
-      <div class="badge version-tag">v2.3-20261122</div>
+      <div class="badge version-tag">v3.0-20261122</div>
       <div class="badge" id="user-badge" style="color:#6ee7b7;font-weight:bold;">👤 미접속</div>
+      <div class="badge" id="citizen-badge" style="color:#38bdf8;font-weight:bold;">🪪 일반 시민권</div>
       <div class="badge" id="mong-badge" style="color:#fbbf24;font-weight:bold;">🪙 200몽</div>
       <div class="badge" id="player-count">👥 1명</div>
       <button class="ui-btn" id="quick-admin-btn" style="display:none;background:#dc2626;color:#fff;border-color:transparent;">👑 어드민 제어</button>
@@ -328,10 +352,15 @@
     <div id="admin-alert-sender" style="font-size:11px;opacity:0.85;"></div>
   </div>
 
+  <!-- 내 정보 & 시민권 현황 패널 -->
   <div class="side-panel" id="account-panel">
     <div class="panel-header">
-      <span>⚙️ 내 정보 설정</span>
+      <span>⚙️ 내 정보 & 시민권</span>
       <button class="close-btn" data-close="account-panel">✕</button>
+    </div>
+    <div class="field-group">
+      <div style="font-weight:bold;color:#38bdf8;">🪪 나의 시민권 등급</div>
+      <div id="citizenship-list" style="display:flex;flex-direction:column;gap:5px;"></div>
     </div>
     <div class="field-group">
       <label>아이디 (변경 불가)</label>
@@ -344,6 +373,20 @@
     </div>
   </div>
 
+  <!-- YELLOW 시민권 <-> ADMIN 1:1 채팅 패널 -->
+  <div class="side-panel" id="admin-dm-panel">
+    <div class="panel-header">
+      <span>📩 ADMIN 1:1 직통 채팅</span>
+      <button class="close-btn" data-close="admin-dm-panel">✕</button>
+    </div>
+    <div id="admin-dm-messages" style="height:170px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:4px;background:rgba(0,0,0,0.22);padding:8px;border-radius:10px;"></div>
+    <form id="admin-dm-form" style="display:flex;gap:5px;">
+      <input type="text" id="admin-dm-input" placeholder="어드민에게 메시지 보내기..." style="flex:1;padding:6px 8px;border-radius:8px;border:1px solid var(--border-ui);background:rgba(255,255,255,0.1);color:inherit;font-size:12px;">
+      <button type="submit" class="ui-btn primary">전송</button>
+    </form>
+  </div>
+
+  <!-- Admin 제어실 패널 -->
   <div class="side-panel" id="admin-panel">
     <div class="panel-header">
       <span>👑 Admin 성 왕좌 제어실</span>
@@ -361,7 +404,7 @@
       <button class="ui-btn primary" id="admin-submit-btn" style="background:#dc2626;margin-top:4px;">🔓 최종 어드민 인증</button>
     </div>
     <div id="admin-controls-box" class="field-group" style="display:none;">
-      <div style="color:#4ade80;font-weight:bold;">👑 어드민 권한 활성화 (+1000몽 · 전용 의상/왕관 · 1.5배 크기)</div>
+      <div style="color:#4ade80;font-weight:bold;">👑 최고권한 활성화 (+1000몽 · 전용 의상/왕관 · 1.5배 크기)</div>
       <button class="ui-btn" id="admin-boost-btn" style="background:#059669;color:#fff;border-color:transparent;">⚡ 속도/점프: 현재 20배 (클릭 시 일반 전환)</button>
       <button class="ui-btn" id="admin-invisible-btn" style="background:#4f46e5;color:#fff;border-color:transparent;">👻 투명 모드 켜기 (현재: OFF)</button>
       <label style="margin-top:4px;">🚨 전체 접속자 대형 경고 알림 보내기</label>
@@ -373,8 +416,41 @@
     </div>
   </div>
 
+  <!-- Attack (브롤스타즈 스타일) 로비 & 캐릭터 상점/성장 패널 -->
+  <div class="side-panel" id="attack-panel" style="width:370px;">
+    <div class="panel-header">
+      <span>⚔️ ATTACK 배틀 월드 (독립 월드)</span>
+      <button class="close-btn" data-close="attack-panel">✕</button>
+    </div>
+    <div id="atk-perk-banner" style="font-size:11px;padding:7px 9px;border-radius:10px;background:rgba(2,132,199,0.2);border:1px solid #38bdf8;"></div>
+    <div class="field-group">
+      <label style="font-weight:bold;">💪 캐릭터 성장 (몽으로 업그레이드, 최대 Lv.10)</label>
+      <div class="btn-grid" style="grid-template-columns:1fr 1fr 1fr;">
+        <button class="opt-btn" id="atk-up-hp">❤️ HP Lv.0</button>
+        <button class="opt-btn" id="atk-up-atk">⚔️ 공격 Lv.0</button>
+        <button class="opt-btn" id="atk-up-def">🛡️ 방어 Lv.0</button>
+      </div>
+    </div>
+    <div class="field-group">
+      <label style="font-weight:bold;">🦸 Attack 전용 캐릭터 상점 (희귀할수록 강력!)</label>
+      <div class="btn-grid" id="atk-char-list"></div>
+    </div>
+    <div class="field-group">
+      <label style="font-weight:bold;">🎮 6개 전투 모드 선택 (클릭 시 독립 월드로 이동)</label>
+      <div class="btn-grid">
+        <button class="ui-btn" style="background:#16a34a;color:#fff;border:none;" onclick="startAttackMode('showdown')">🏆 쇼다운 (생존전)</button>
+        <button class="ui-btn" style="background:#9333ea;color:#fff;border:none;" onclick="startAttackMode('gemgrab')">💎 젬그랩 (보석 10개)</button>
+        <button class="ui-btn" style="background:#2563eb;color:#fff;border:none;" onclick="startAttackMode('brawlball')">⚽ 브롤볼 (2골 선취)</button>
+        <button class="ui-btn" style="background:#d97706;color:#fff;border:none;" onclick="startAttackMode('heist')">💰 하이스트 (금고파괴)</button>
+        <button class="ui-btn" style="background:#dc2626;color:#fff;border:none;" onclick="startAttackMode('knockout')">💀 녹아웃 (전멸전)</button>
+        <button class="ui-btn" style="background:#0891b2;color:#fff;border:none;" onclick="startAttackMode('bounty')">⭐ 바운티 (별 쟁탈)</button>
+      </div>
+    </div>
+  </div>
+
   <div id="top-right-controls">
     <div class="top-right-row">
+      <button class="ui-btn" id="open-admin-dm-btn" style="display:none;background:#eab308;color:#000;border-color:transparent;">📩 어드민 1:1</button>
       <button class="ui-btn" id="open-account-btn">⚙️ 내 정보</button>
       <div id="chat-mini-bar">
         <span>💬 채팅</span>
@@ -416,6 +492,23 @@
   <div id="mg-live-board"></div>
   <div id="broadcast-hud"><span>🔴 ON AIR</span><span>생중계 관중석 — 경기 실시간 중계 중!</span></div>
 
+  <div id="atk-hp-bar">
+    <span id="atk-my-hp">❤️ HP: 3200 / 3200</span>
+    <span id="atk-mode-score" style="color:#fde047;">점수: 0 - 0</span>
+    <button class="ui-btn" id="atk-leave-btn" style="padding:3px 8px;background:#dc2626;color:#fff;border:none;font-size:11px;">🚪 나가기</button>
+  </div>
+
+  <div id="attack-hud">
+    <div class="atk-skill-row">
+      <button class="atk-btn" id="atk-btn-hyper" style="background:#7c3aed;" disabled>🔥<br>하이퍼</button>
+      <button class="atk-btn" id="atk-btn-gadget" style="background:#10b981;" disabled>💚<br>가젯</button>
+    </div>
+    <div class="atk-skill-row">
+      <button class="atk-btn" id="atk-btn-super" style="background:#eab308;color:#000;" disabled>⚡<br>궁극기</button>
+      <button class="atk-btn" id="atk-btn-basic" style="background:#ef4444;width:72px;height:72px;font-size:13px;">💥<br>공격</button>
+    </div>
+  </div>
+
   <div id="ft-skill-bar">
     <button class="skill-btn" id="btn-freeze" style="background:#0284c7;">🧊 얼음</button>
     <button class="skill-btn" id="btn-fire" style="background:#ea580c;">🔥 불 (해제)</button>
@@ -441,17 +534,14 @@
     <div class="modal-btns" id="cmodal-footer"></div>
   </div>
 
+  <!-- 아바타 하우스 (몽으로 속도/점프 업그레이드 제거됨) -->
   <div class="side-panel" id="avatar-panel">
     <div class="panel-header">
-      <span>🏠 아바타 하우스 · 능력치 상점</span>
+      <span>🏠 아바타 하우스</span>
       <button class="close-btn" data-close="avatar-panel">✕</button>
     </div>
-    <div class="field-group" style="background:rgba(128,128,128,0.12);padding:8px;border-radius:10px;">
-      <label style="font-weight:bold;">⚡ 능력치 업그레이드 (바닥 코인 +2몽으로 모으셈)</label>
-      <div class="btn-grid">
-        <button class="opt-btn" id="upgrade-speed-btn">🏃 달리기 Lv.0 (50몽)</button>
-        <button class="opt-btn" id="upgrade-jump-btn">🦘 점프력 Lv.0 (50몽)</button>
-      </div>
+    <div style="font-size:11px;color:#94a3b8;background:rgba(128,128,128,0.12);padding:7px;border-radius:8px;">
+      ℹ️ 속도·점프력은 이제 <b>시민권 등급</b>에 따라 자동 상승합니다! (특수 1.1배 / YELLOW 1.2배)
     </div>
     <div class="field-group">
       <label>얼굴 표정 (무료)</label>
@@ -496,8 +586,10 @@
       <span>🏡 테마 상점 하우스</span>
       <button class="close-btn" data-close="theme-panel">✕</button>
     </div>
+    <div id="theme-lock-notice" style="font-size:11px;color:#fbbf24;display:none;">🔒 특수 시민권(누적 500몽 이상) 획득 시 테마 변경이 해금됩니다!</div>
     <div class="btn-grid" id="theme-options"></div>
   </div>
+
   <div id="gesture-bar">
     <button class="gest-btn" data-gest="wave">👋 인사</button>
     <button class="gest-btn" data-gest="peace">✌️ 브이</button>
@@ -507,7 +599,6 @@
 
   <div id="joystick-zone"><div id="joystick-knob"></div></div>
   <button id="jump-btn">JUMP</button>
-
   <script>
     const socket = io();
 
@@ -535,6 +626,7 @@
     ];
     const THEME_ITEMS = [
       { id: 'original', label: '🌐 오리지널 초원', price: 0 },
+      { id: 'legacy_pillars', label: '🏛️ 초기 기둥 월드', price: 30 },
       { id: 'simple', label: '⬜ 모던 스튜디오', price: 40 },
       { id: 'cute', label: '🌸 포근한 딸기마을', price: 60 },
       { id: 'colorful', label: '🌈 레인보우 놀이공원', price: 70 },
@@ -543,15 +635,25 @@
       { id: 'cathouse', label: '🐱 아늑한 고양이 집', price: 120 }
     ];
 
+    const CITIZEN_LABELS = {
+      normal: '🪪 일반 시민권',
+      special: '✨ 특수 시민권',
+      yellow: '🌟 YELLOW 시민권',
+      admin: '👑 ADMIN 최고권한'
+    };
+
+    let ATTACK_CHARS = {};
     let myAccount = {
       username: '', name: '', isGuest: false,
-      mong: 200, speedLevel: 0, jumpLevel: 0,
+      mong: 200, maxMong: 200, minigameWins: 0, citizenship: 'normal',
       isAdmin: false, adminBoostActive: false, isInvisible: false,
-      ownedTops: ['tshirt'], ownedBottoms: ['pants'], ownedThemes: ['original']
+      ownedTops: ['tshirt'], ownedBottoms: ['pants'], ownedThemes: ['original'],
+      attackData: { selectedChar: 'rookie', ownedChars: ['rookie'], hpLv: 0, atkLv: 0, defLv: 0 }
     };
     let myProfile = { name: '', face: 'happy', topStyle: 'tshirt', topColor: '#3b82f6', bottomStyle: 'pants', bottomColor: '#1e293b' };
     const savedPlayerProfiles = {};
 
+    // 로그인 / 회원가입 UI
     let authMode = 'login';
     const authScreen = document.getElementById('auth-screen');
     const authError = document.getElementById('auth-error');
@@ -564,43 +666,28 @@
       authMode = 'login';
       document.getElementById('tab-login').classList.add('active');
       document.getElementById('tab-register').classList.remove('active');
-      authNickInput.style.display = 'none';
-      authNickInput.required = false;
-      authSubmitBtn.innerText = '로그인하고 월드 입장';
-      authError.innerText = '';
+      authNickInput.style.display = 'none'; authNickInput.required = false;
+      authSubmitBtn.innerText = '로그인하고 월드 입장'; authError.innerText = '';
     };
     document.getElementById('tab-register').onclick = () => {
       authMode = 'register';
       document.getElementById('tab-register').classList.add('active');
       document.getElementById('tab-login').classList.remove('active');
-      authNickInput.style.display = 'block';
-      authNickInput.required = true;
-      authSubmitBtn.innerText = '회원가입하고 시작!!';
-      authError.innerText = '';
+      authNickInput.style.display = 'block'; authNickInput.required = true;
+      authSubmitBtn.innerText = '회원가입하고 시작!!'; authError.innerText = '';
     };
     document.getElementById('auth-form').onsubmit = (e) => {
-      e.preventDefault();
-      authError.innerText = '';
+      e.preventDefault(); authError.innerText = '';
       if (authMode === 'register') {
-        socket.emit('authRegister', {
-          username: authUserInput.value.trim(),
-          nickname: authNickInput.value.trim(),
-          password: authPwInput.value.trim()
-        });
+        socket.emit('authRegister', { username: authUserInput.value.trim(), nickname: authNickInput.value.trim(), password: authPwInput.value.trim() });
       } else {
-        socket.emit('authLogin', {
-          username: authUserInput.value.trim(),
-          password: authPwInput.value.trim()
-        });
+        socket.emit('authLogin', { username: authUserInput.value.trim(), password: authPwInput.value.trim() });
       }
     };
-    document.getElementById('auth-guest-btn').onclick = () => {
-      authError.innerText = '';
-      socket.emit('authGuest');
-    };
+    document.getElementById('auth-guest-btn').onclick = () => { authError.innerText = ''; socket.emit('authGuest'); };
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 420);
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 450);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
@@ -609,47 +696,45 @@
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.9);
     scene.add(hemiLight);
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
-    dirLight.position.set(35, 65, 35);
-    dirLight.castShadow = true;
+    dirLight.position.set(35, 65, 35); dirLight.castShadow = true;
     scene.add(dirLight);
 
     const worldGroup = new THREE.Group();
     const coinGroup = new THREE.Group();
     const arenaGroup = new THREE.Group();
-    scene.add(worldGroup, coinGroup, arenaGroup);
-    arenaGroup.visible = false;
+    const attackGroup = new THREE.Group();
+    const ATK_OFFSET = 10000;
+    attackGroup.position.set(ATK_OFFSET, 0, ATK_OFFSET);
+    scene.add(worldGroup, coinGroup, arenaGroup, attackGroup);
+    arenaGroup.visible = false; attackGroup.visible = false;
 
     let animatedProps = [];
     let currentTheme = 'original', gameState = 'world', ftArenaHalf = 19;
-    let castleGateLeft = null, castleGateRight = null, castleGateOpenAmount = 0, castleGateUnlocked = false;
-    let castleIdVerified = false;
+    let castleGateLeft = null, castleGateRight = null, castleGateOpenAmount = 0, castleGateUnlocked = false, castleIdVerified = false;
     const coinMeshes = {};
     let coinCollectCooldown = 0;
 
-    // 대형 성 중심 좌표 (북서쪽 외곽)
-    const CASTLE_CX = -54;
-    const CASTLE_CZ = -54;
+    const CASTLE_CX = -54, CASTLE_CZ = -54, CASTLE_HALF = 14;
 
-    // 오픈월드 건물 & 미니게임 존 위치 정의 (3초 체류 시 자동 발동, 집은 모형 주변 반경 판정)
     const WORLD_ZONES = [
-      { id: 'avatar_house', label: '🏠 아바타 하우스 상점', x: -24, z: -20, radius: 9.5, color: 0x38bdf8, action: 'openAvatar' },
-      { id: 'theme_house', label: '🏡 테마 상점 하우스', x: 24, z: -20, radius: 9.5, color: 0xf472b6, action: 'openTheme' },
-      { id: 'exchange_booth', label: '🏦 아이템·몽 교환소', x: 28, z: 4, radius: 9.2, color: 0x34d399, action: 'openExchange' },
-      { id: 'mg_colorflip', label: '🎨 색깔 뒤집기 존', x: -16, z: 22, radius: 5.2, color: 0x10b981, action: 'openMgSetup_colorflip' },
-      { id: 'mg_freezetag', label: '🧊 얼음땡 존', x: 0, z: 24, radius: 5.2, color: 0x0284c7, action: 'openMgSetup_freezetag' },
-      { id: 'mg_liar', label: '🕵️ 거짓말 탐지기 존', x: 16, z: 22, radius: 5.2, color: 0xf59e0b, action: 'openMgSetup_liar' },
-      { id: 'castle_gate', label: '🏰 ADMIN 성문 개방', x: CASTLE_CX, z: CASTLE_CZ + 16.5, radius: 6.5, color: 0xfacc15, action: 'openCastleGate' },
-      { id: 'castle_step1_id', label: '🪪 1단계: 관리자 ID 입력', x: CASTLE_CX, z: CASTLE_CZ + 6.0, radius: 4.8, color: 0xf97316, action: 'openAdminIdModal', requiresGate: true },
-      { id: 'castle_step2_pw', label: '🔐 2단계: 관리자 PW 입력', x: CASTLE_CX, z: CASTLE_CZ - 5.5, radius: 4.8, color: 0xef4444, action: 'openAdminPwModal', requiresGate: true, requiresId: true }
+      { id: 'avatar_house', label: '🏠 아바타 하우스', x: -24, z: -20, radius: 9.5, action: 'openAvatar' },
+      { id: 'theme_house', label: '🏡 테마 상점 하우스', x: 24, z: -20, radius: 9.5, action: 'openTheme' },
+      { id: 'exchange_booth', label: '🏦 아이템·몽 교환소', x: 28, z: 4, radius: 9.2, action: 'openExchange' },
+      { id: 'attack_arena', label: '⚔️ ATTACK 배틀 월드', x: -28, z: 4, radius: 9.2, action: 'openAttack' },
+      { id: 'mg_colorflip', label: '🎨 색깔 뒤집기 존', x: -16, z: 22, radius: 5.2, action: 'openMgSetup_colorflip' },
+      { id: 'mg_freezetag', label: '🧊 얼음땡 존', x: 0, z: 24, radius: 5.2, action: 'openMgSetup_freezetag' },
+      { id: 'mg_liar', label: '🕵️ 거짓말 탐지기 존', x: 16, z: 22, radius: 5.2, action: 'openMgSetup_liar' },
+      { id: 'castle_gate', label: '🏰 ADMIN 성문 개방', x: CASTLE_CX, z: CASTLE_CZ + 16.8, radius: 6.2, action: 'openCastleGate' },
+      { id: 'castle_step1_id', label: '🪪 1단계: 관리자 ID', x: CASTLE_CX, z: CASTLE_CZ + 6.5, radius: 4.5, action: 'openAdminIdModal', requiresGate: true },
+      { id: 'castle_step2_pw', label: '👑 2단계: 왕좌 PW 인증', x: CASTLE_CX, z: CASTLE_CZ - 5.5, radius: 4.8, action: 'openAdminPwModal', requiresGate: true, requiresId: true }
     ];
 
-    // 성 주변 사이보그 지킴이 (큰 칼과 방패 보유)
     function createCyborgGuard(gx, gz, rotY) {
       const g = new THREE.Group();
-      const darkMetal = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 });
+      const darkMetal = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.75, roughness: 0.25 });
       const neonRed = new THREE.MeshBasicMaterial({ color: 0xef4444 });
       const neonCyan = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
-      const silverBlade = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.15 });
+      const silverBlade = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.1 });
 
       const legL = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.0, 0.48), darkMetal); legL.position.set(-0.32, 0.5, 0);
       const legR = legL.clone(); legR.position.set(0.32, 0.5, 0);
@@ -659,15 +744,13 @@
       const visor = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.22, 0.12), neonRed); visor.position.set(0, 2.85, 0.45);
       const crest = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.7, 4), neonCyan); crest.position.set(0, 3.55, 0);
 
-      // 멋지고 큰 칼 (오른쪽)
       const swordGroup = new THREE.Group(); swordGroup.position.set(0.95, 1.75, 0.4);
       const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.6, 10), neonCyan);
       const guard = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.16, 0.28), darkMetal); guard.position.y = 0.35;
-      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.28, 2.6, 0.08), silverBlade); blade.position.y = 1.7;
-      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.45, 4), silverBlade); tip.position.y = 3.2;
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.28, 2.7, 0.08), silverBlade); blade.position.y = 1.75;
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.45, 4), silverBlade); tip.position.y = 3.3;
       swordGroup.add(hilt, guard, blade, tip); swordGroup.rotation.x = 0.35;
 
-      // 멋지고 큰 방패 (왼쪽)
       const shieldGroup = new THREE.Group(); shieldGroup.position.set(-0.95, 1.65, 0.45);
       const shieldBody = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.2, 1.35), darkMetal);
       const shieldTrim = new THREE.Mesh(new THREE.BoxGeometry(0.28, 2.32, 0.22), neonCyan);
@@ -676,41 +759,43 @@
 
       const label = makeTextSprite('🤖 사이보그 지킴이', 'rgba(15,23,42,0.88)', '#38bdf8');
       label.position.y = 4.3; label.scale.set(4.2, 1.0, 1);
-
       g.add(legL, legR, torso, core, head, visor, crest, swordGroup, shieldGroup, label);
       g.position.set(gx, 0, gz); g.rotation.y = rotY;
       return g;
     }
 
     function addWorldLandmarks() {
-      // 1. 아바타 하우스 모형 (주변 반경 9.5m에서 3초 대기)
       const avHouse = new THREE.Group();
       const avBody = new THREE.Mesh(new THREE.BoxGeometry(8, 5, 7), new THREE.MeshStandardMaterial({ color: 0x0284c7 })); avBody.position.y = 2.5;
       const avRoof = new THREE.Mesh(new THREE.ConeGeometry(6.4, 3.2, 4), new THREE.MeshStandardMaterial({ color: 0x1e3a8a })); avRoof.rotation.y = Math.PI / 4; avRoof.position.y = 6.6;
       const avSign = makeTextSprite('🏠 아바타 하우스 (주변 3초)', 'rgba(15,23,42,0.88)', '#7dd3fc'); avSign.position.set(0, 8.8, 0); avSign.scale.set(6.8, 1.5, 1);
       avHouse.add(avBody, avRoof, avSign); avHouse.position.set(-24, 0, -20); worldGroup.add(avHouse);
 
-      // 2. 테마 상점 하우스 모형 (주변 반경 9.5m에서 3초 대기)
       const thHouse = new THREE.Group();
       const thBody = new THREE.Mesh(new THREE.BoxGeometry(8, 5, 7), new THREE.MeshStandardMaterial({ color: 0xec4899 })); thBody.position.y = 2.5;
       const thRoof = new THREE.Mesh(new THREE.ConeGeometry(6.4, 3.2, 4), new THREE.MeshStandardMaterial({ color: 0x831843 })); thRoof.rotation.y = Math.PI / 4; thRoof.position.y = 6.6;
       const thSign = makeTextSprite('🏡 테마 하우스 (주변 3초)', 'rgba(15,23,42,0.88)', '#fbcfe8'); thSign.position.set(0, 8.8, 0); thSign.scale.set(6.8, 1.5, 1);
       thHouse.add(thBody, thRoof, thSign); thHouse.position.set(24, 0, -20); worldGroup.add(thHouse);
 
-      // 3. 아이템·몽 교환소 모형 (주변 반경 9.2m에서 3초 대기)
       const exHouse = new THREE.Group();
       const exBody = new THREE.Mesh(new THREE.BoxGeometry(7.5, 4.8, 6.5), new THREE.MeshStandardMaterial({ color: 0x10b981 })); exBody.position.y = 2.4;
       const exRoof = new THREE.Mesh(new THREE.ConeGeometry(6.0, 2.8, 4), new THREE.MeshStandardMaterial({ color: 0x064e3b })); exRoof.rotation.y = Math.PI / 4; exRoof.position.y = 6.2;
       const exSign = makeTextSprite('🏦 교환소 (주변 3초)', 'rgba(15,23,42,0.88)', '#6ee7b7'); exSign.position.set(0, 8.3, 0); exSign.scale.set(6.0, 1.4, 1);
       exHouse.add(exBody, exRoof, exSign); exHouse.position.set(28, 0, 4); worldGroup.add(exHouse);
 
-      // 4. 미니게임 3개 구역 (남쪽 광장, 3초 대기 시 방장 설정 모달)
-      const zoneVisuals = [
+      // ATTACK 독립 배틀 월드 입구 성채
+      const atkHouse = new THREE.Group();
+      const atkBody = new THREE.Mesh(new THREE.BoxGeometry(8.2, 5.2, 7.2), new THREE.MeshStandardMaterial({ color: 0xdc2626 })); atkBody.position.y = 2.6;
+      const atkRoof = new THREE.Mesh(new THREE.ConeGeometry(6.6, 3.6, 4), new THREE.MeshStandardMaterial({ color: 0x450a0a })); atkRoof.rotation.y = Math.PI / 4; atkRoof.position.y = 7.0;
+      const atkSign = makeTextSprite('⚔️ ATTACK 배틀 (주변 3초)', 'rgba(127,29,29,0.92)', '#fef08a'); atkSign.position.set(0, 9.2, 0); atkSign.scale.set(7.2, 1.5, 1);
+      atkHouse.add(atkBody, atkRoof, atkSign); atkHouse.position.set(-28, 0, 4); worldGroup.add(atkHouse);
+
+      // 미니게임 3개 구역
+      [
         { x: -16, z: 22, col: 0x10b981, txt: '🎨 색깔 뒤집기 (3초)' },
         { x: 0, z: 24, col: 0x0284c7, txt: '🧊 얼음땡 (3초)' },
         { x: 16, z: 22, col: 0xf59e0b, txt: '🕵️ 거짓말 탐지기 (3초)' }
-      ];
-      zoneVisuals.forEach(zv => {
+      ].forEach(zv => {
         const pad = new THREE.Mesh(new THREE.CylinderGeometry(4.8, 5.0, 0.2, 28), new THREE.MeshStandardMaterial({ color: zv.col }));
         pad.position.set(zv.x, 0.1, zv.z);
         const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 3.0, 10), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
@@ -720,64 +805,85 @@
         worldGroup.add(pad, post, sp);
       });
 
-      // 5. 대형 입체 Admin 성 (북서쪽 외곽 CASTLE_CX, CASTLE_CZ, 어두운 내부/외벽 차단)
+      // 대형 권력적 Admin 성 (Z-fighting 완전 제거 + 진짜 황금 왕좌 + 붉은 조명 + 어두운 흑요석 내부)
       const castle = new THREE.Group();
-      const stoneMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.75 });
-      const darkInteriorMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.95 });
-      const goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.65, roughness: 0.25 });
+      const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.45, metalness: 0.4 });
+      const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+      const goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.2 });
+      const crimsonMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.6 });
+      const redGlowMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
 
-      const size = 28, half = size / 2, wallH = 11;
-      const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(10.5, wallH, 2.2), stoneMat); frontLeft.position.set(CASTLE_CX - 8.75, wallH / 2, CASTLE_CZ + half);
-      const frontRight = new THREE.Mesh(new THREE.BoxGeometry(10.5, wallH, 2.2), stoneMat); frontRight.position.set(CASTLE_CX + 8.75, wallH / 2, CASTLE_CZ + half);
-      const frontArch = new THREE.Mesh(new THREE.BoxGeometry(7.2, 3.2, 2.4), stoneMat); frontArch.position.set(CASTLE_CX, wallH - 1.6, CASTLE_CZ + half);
-      const backWall = new THREE.Mesh(new THREE.BoxGeometry(size + 2, wallH, 2.2), stoneMat); backWall.position.set(CASTLE_CX, wallH / 2, CASTLE_CZ - half);
-      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(2.2, wallH, size), stoneMat); leftWall.position.set(CASTLE_CX - half, wallH / 2, CASTLE_CZ);
-      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(2.2, wallH, size), stoneMat); rightWall.position.set(CASTLE_CX + half, wallH / 2, CASTLE_CZ);
-      // 성 내부를 어둡고 밖에서 안이 보이지 않게 덮는 천장 & 어두운 내벽
-      const roofCover = new THREE.Mesh(new THREE.BoxGeometry(size + 2.4, 1.2, size + 2.4), darkInteriorMat); roofCover.position.set(CASTLE_CX, wallH + 0.6, CASTLE_CZ);
-      const innerShadowRoom = new THREE.Mesh(new THREE.BoxGeometry(size - 2.6, wallH - 0.4, size - 2.6), darkInteriorMat); innerShadowRoom.position.set(CASTLE_CX, wallH / 2, CASTLE_CZ);
-      // Three.js BackSide로 내부에서 어두운 공간이 느껴지도록 처리
-      const shadowInnerMesh = new THREE.Mesh(new THREE.BoxGeometry(size - 2.4, wallH, size - 2.4), new THREE.MeshBasicMaterial({ color: 0x050811, side: THREE.BackSide }));
-      shadowInnerMesh.position.set(CASTLE_CX, wallH / 2, CASTLE_CZ);
+      const size = 28, half = CASTLE_HALF, wallH = 12;
+      // 외벽 4면
+      const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(10.5, wallH, 2.2), obsidianMat); frontLeft.position.set(CASTLE_CX - 8.75, wallH / 2, CASTLE_CZ + half);
+      const frontRight = new THREE.Mesh(new THREE.BoxGeometry(10.5, wallH, 2.2), obsidianMat); frontRight.position.set(CASTLE_CX + 8.75, wallH / 2, CASTLE_CZ + half);
+      const frontArch = new THREE.Mesh(new THREE.BoxGeometry(7.4, 4.2, 2.4), obsidianMat); frontArch.position.set(CASTLE_CX, wallH - 2.1, CASTLE_CZ + half);
+      const backWall = new THREE.Mesh(new THREE.BoxGeometry(size + 2, wallH, 2.2), obsidianMat); backWall.position.set(CASTLE_CX, wallH / 2, CASTLE_CZ - half);
+      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(2.2, wallH, size), obsidianMat); leftWall.position.set(CASTLE_CX - half, wallH / 2, CASTLE_CZ);
+      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(2.2, wallH, size), obsidianMat); rightWall.position.set(CASTLE_CX + half, wallH / 2, CASTLE_CZ);
+      const roofCover = new THREE.Mesh(new THREE.BoxGeometry(size + 2.4, 1.4, size + 2.4), obsidianMat); roofCover.position.set(CASTLE_CX, wallH + 0.7, CASTLE_CZ);
+
+      // 성 내부 바닥 (y=0.12로 살짝 띄워 초록 바닥과 겹쳐 반짝이는 Z-fighting 완전 제거!)
+      const castleFloor = new THREE.Mesh(new THREE.BoxGeometry(size - 2.2, 0.24, size - 2.2), darkStoneMat);
+      castleFloor.position.set(CASTLE_CX, 0.12, CASTLE_CZ);
+      // 붉은 카펫 (y=0.26)
+      const redCarpet = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.06, 22), crimsonMat);
+      redCarpet.position.set(CASTLE_CX, 0.27, CASTLE_CZ + 1);
+      const carpetTrimL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.07, 22), goldMat); carpetTrimL.position.set(CASTLE_CX - 2.35, 0.27, CASTLE_CZ + 1);
+      const carpetTrimR = carpetTrimL.clone(); carpetTrimR.position.set(CASTLE_CX + 2.35, 0.27, CASTLE_CZ + 1);
+
+      // 내부 위압적인 붉은 기둥 6개 + 붉은 포인트 라이트
+      [-7.5, 7.5].forEach(px => {
+        [-4, 2, 8].forEach(pz => {
+          const col = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.85, wallH - 0.5, 12), obsidianMat);
+          col.position.set(CASTLE_CX + px, wallH / 2, CASTLE_CZ + pz);
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.12, 8, 16), redGlowMat);
+          ring.rotation.x = Math.PI / 2; ring.position.set(CASTLE_CX + px, 7.5, CASTLE_CZ + pz);
+          castle.add(col, ring);
+        });
+      });
+
+      const throneLight = new THREE.PointLight(0xef4444, 2.2, 26);
+      throneLight.position.set(CASTLE_CX, 8.5, CASTLE_CZ - 7);
+      castle.add(throneLight);
+
+      // 계단 위 진짜 황금·흑요석 제왕의 왕좌 (Throne)
+      const throneGroup = new THREE.Group();
+      const step1 = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.5, 6.0), obsidianMat); step1.position.y = 0.45;
+      const step2 = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.5, 4.4), obsidianMat); step2.position.set(0, 0.95, -0.5);
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.0, 2.4), crimsonMat); seat.position.set(0, 1.7, -0.8);
+      const backRest = new THREE.Mesh(new THREE.BoxGeometry(3.4, 5.2, 0.6), obsidianMat); backRest.position.set(0, 4.2, -1.9);
+      const backGoldFrame = new THREE.Mesh(new THREE.BoxGeometry(3.7, 5.5, 0.35), goldMat); backGoldFrame.position.set(0, 4.2, -2.05);
+      const armL = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.2, 2.4), goldMat); armL.position.set(-1.6, 2.2, -0.8);
+      const armR = armL.clone(); armR.position.set(1.6, 2.2, -0.8);
+      const crownEmblem = new THREE.Mesh(new THREE.OctahedronGeometry(0.85), redGlowMat); crownEmblem.position.set(0, 7.6, -1.9);
+      throneGroup.add(step1, step2, seat, backRest, backGoldFrame, armL, armR, crownEmblem);
+      throneGroup.position.set(CASTLE_CX, 0, CASTLE_CZ - 8.5);
 
       // 4개 모서리 대형 망루
       [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
         const tx = CASTLE_CX + sx * (half + 0.5), tz = CASTLE_CZ + sz * (half + 0.5);
-        const tower = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.6, 16, 16), stoneMat); tower.position.set(tx, 8, tz);
-        const spire = new THREE.Mesh(new THREE.ConeGeometry(4.2, 5.5, 16), goldMat); spire.position.set(tx, 18.7, tz);
+        const tower = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.6, 17, 16), obsidianMat); tower.position.set(tx, 8.5, tz);
+        const spire = new THREE.Mesh(new THREE.ConeGeometry(4.2, 5.8, 16), goldMat); spire.position.set(tx, 19.9, tz);
         castle.add(tower, spire);
       });
 
-      // 중앙 성채(Keep)
-      const keep = new THREE.Mesh(new THREE.BoxGeometry(11, 17, 11), stoneMat); keep.position.set(CASTLE_CX, 8.5, CASTLE_CZ - 5);
-      const keepRoof = new THREE.Mesh(new THREE.ConeGeometry(8.5, 6, 4), goldMat); keepRoof.rotation.y = Math.PI / 4; keepRoof.position.set(CASTLE_CX, 20, CASTLE_CZ - 5);
-
-      // 성문 (한 번 열리면 닫히지 않고 계속 열림)
-      const gateMat = new THREE.MeshStandardMaterial({ color: 0x78350f, metalness: 0.3, roughness: 0.6 });
+      const gateMat = new THREE.MeshStandardMaterial({ color: 0x450a0a, metalness: 0.5, roughness: 0.4 });
       castleGateLeft = new THREE.Mesh(new THREE.BoxGeometry(3.5, 7.8, 0.9), gateMat);
       castleGateLeft.position.set(CASTLE_CX - 1.75, 3.9, CASTLE_CZ + half);
       castleGateRight = new THREE.Mesh(new THREE.BoxGeometry(3.5, 7.8, 0.9), gateMat);
       castleGateRight.position.set(CASTLE_CX + 1.75, 3.9, CASTLE_CZ + half);
 
-      // 아래쪽으로 내린 ADMIN ONLY 표지판
-      const adminSign = makeTextSprite('ADMIN ONLY', 'rgba(153, 27, 27, 0.95)', '#fef08a');
+      const adminSign = makeTextSprite('ADMIN ONLY', 'rgba(153, 27, 27, 0.96)', '#fef08a');
       adminSign.position.set(CASTLE_CX, 6.2, CASTLE_CZ + half + 1.4);
       adminSign.scale.set(5.4, 1.3, 1);
 
-      castle.add(frontLeft, frontRight, frontArch, backWall, leftWall, rightWall, roofCover, shadowInnerMesh, towerOrKeep(keep, keepRoof), castleGateLeft, castleGateRight, adminSign);
-
-      // 성 주변 사이보그 지킴이 3명 배치
+      castle.add(frontLeft, frontRight, frontArch, backWall, leftWall, rightWall, roofCover, castleFloor, redCarpet, carpetTrimL, carpetTrimR, throneGroup, castleGateLeft, castleGateRight, adminSign);
       castle.add(createCyborgGuard(CASTLE_CX - 9.5, CASTLE_CZ + half + 3.5, 0.25));
       castle.add(createCyborgGuard(CASTLE_CX + 9.5, CASTLE_CZ + half + 3.5, -0.25));
       castle.add(createCyborgGuard(CASTLE_CX + half + 3.5, CASTLE_CZ, -Math.PI / 2));
 
       worldGroup.add(castle);
-    }
-
-    function towerOrKeep(keep, keepRoof) {
-      const g = new THREE.Group();
-      g.add(keep, keepRoof);
-      return g;
     }
 
     function syncWorldCoins(coinList) {
@@ -799,7 +905,6 @@
       if (type === 'cute') {
         ctx.fillStyle = '#ffe4e6'; ctx.fillRect(0, 0, 256, 256);
         ctx.fillStyle = '#fecdd3'; ctx.fillRect(0, 0, 128, 128); ctx.fillRect(128, 128, 128, 128);
-        ctx.fillStyle = '#fb7185'; ctx.beginPath(); ctx.arc(64, 64, 8, 0, Math.PI * 2); ctx.arc(192, 192, 8, 0, Math.PI * 2); ctx.fill();
       } else if (type === 'wood') {
         ctx.fillStyle = '#d97706'; ctx.fillRect(0, 0, 256, 256);
         ctx.strokeStyle = '#92400e'; ctx.lineWidth = 4;
@@ -837,22 +942,32 @@
       document.body.className = 'theme-' + theme;
       while (worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
       animatedProps = [];
-      castleGateLeft = null; castleGateRight = null; castleGateUnlocked = false; castleGateOpenAmount = 0;
-      const groundGeo = new THREE.PlaneGeometry(340, 340);
+      castleGateLeft = null; castleGateRight = null; castleGateOpenAmount = 0;
+      const groundGeo = new THREE.PlaneGeometry(360, 360);
 
       if (theme === 'original') {
-        scene.background = new THREE.Color(0x7dd3fc); scene.fog = new THREE.Fog(0x7dd3fc, 60, 190);
+        scene.background = new THREE.Color(0x7dd3fc); scene.fog = new THREE.Fog(0x7dd3fc, 65, 210);
         hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.9;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('grass') })); g.rotation.x = -Math.PI / 2; worldGroup.add(g); addClouds(0xffffff);
-        const f = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 5, 0.8, 24), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 })); f.position.set(0, 0.4, -10);
-        const w = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.9, 24), new THREE.MeshStandardMaterial({ color: 0x38bdf8 })); w.position.set(0, 0.45, -10);
-        worldGroup.add(f, w);
+      } else if (theme === 'legacy_pillars') {
+        // 초기 버전 감성: 별거 없이 띄엄띄엄 기둥들만 서 있는 심플 월드
+        scene.background = new THREE.Color(0xdbeafe); scene.fog = new THREE.Fog(0xdbeafe, 65, 200);
+        hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.95;
+        const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xe2e8f0 })); g.rotation.x = -Math.PI / 2; worldGroup.add(g);
+        const gr = new THREE.GridHelper(360, 72, 0x94a3b8, 0xcbd5e1); gr.position.y = 0.01; worldGroup.add(gr);
+        const pMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8 });
+        for (let i = 0; i < 16; i++) {
+          const ang = (i / 16) * Math.PI * 2, dist = 18 + (i % 3) * 16;
+          const pil = new THREE.Mesh(new THREE.BoxGeometry(2.2, 6 + (i % 3) * 2.5, 2.2), pMat);
+          pil.position.set(Math.cos(ang) * dist, (6 + (i % 3) * 2.5) / 2, Math.sin(ang) * dist);
+          worldGroup.add(pil);
+        }
       } else if (theme === 'cute') {
-        scene.background = new THREE.Color(0xffe4e6); scene.fog = new THREE.Fog(0xffe4e6, 55, 180);
+        scene.background = new THREE.Color(0xffe4e6); scene.fog = new THREE.Fog(0xffe4e6, 55, 190);
         hemiLight.color.setHex(0xfff1f2); hemiLight.intensity = 1.0;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('cute') })); g.rotation.x = -Math.PI / 2; worldGroup.add(g); addClouds(0xfff1f2);
       } else if (theme === 'dreamy') {
-        scene.background = new THREE.Color(0x1e1b4b); scene.fog = new THREE.Fog(0x1e1b4b, 50, 165);
+        scene.background = new THREE.Color(0x1e1b4b); scene.fog = new THREE.Fog(0x1e1b4b, 50, 175);
         hemiLight.color.setHex(0xc4b5fd); hemiLight.intensity = 0.85;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x312e81 })); g.rotation.x = -Math.PI / 2; worldGroup.add(g);
         for (let i = 0; i < 24; i++) {
@@ -862,25 +977,24 @@
           animatedProps.push({ mesh: cr, type: 'float', baseY: cr.position.y, phase: i });
         }
       } else if (theme === 'colorful') {
-        scene.background = new THREE.Color(0x38bdf8); scene.fog = new THREE.Fog(0x38bdf8, 60, 185);
+        scene.background = new THREE.Color(0x38bdf8); scene.fog = new THREE.Fog(0x38bdf8, 60, 195);
         hemiLight.color.setHex(0xffffff); hemiLight.intensity = 1.0;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xfef08a })); g.rotation.x = -Math.PI / 2; worldGroup.add(g); addClouds(0xffffff);
       } else if (theme === 'simple') {
-        scene.background = new THREE.Color(0xf4f4f5); scene.fog = new THREE.Fog(0xf4f4f5, 60, 185);
+        scene.background = new THREE.Color(0xf4f4f5); scene.fog = new THREE.Fog(0xf4f4f5, 60, 195);
         hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.95;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xe4e4e7 })); g.rotation.x = -Math.PI / 2; worldGroup.add(g);
-        const gr = new THREE.GridHelper(340, 68, 0xa1a1aa, 0xd4d4d8); gr.position.y = 0.01; worldGroup.add(gr);
+        const gr = new THREE.GridHelper(360, 72, 0xa1a1aa, 0xd4d4d8); gr.position.y = 0.01; worldGroup.add(gr);
       } else if (theme === 'jungle') {
-        scene.background = new THREE.Color(0xa7f3d0); scene.fog = new THREE.Fog(0x6ee7b7, 50, 165);
+        scene.background = new THREE.Color(0xa7f3d0); scene.fog = new THREE.Fog(0x6ee7b7, 50, 175);
         hemiLight.color.setHex(0xd1fae5); hemiLight.intensity = 0.9;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('jungle') })); g.rotation.x = -Math.PI / 2; worldGroup.add(g); addClouds(0xecfdf5);
       } else if (theme === 'cathouse') {
-        scene.background = new THREE.Color(0xfef3c7); scene.fog = new THREE.Fog(0xfef3c7, 55, 175);
+        scene.background = new THREE.Color(0xfef3c7); scene.fog = new THREE.Fog(0xfef3c7, 55, 185);
         hemiLight.color.setHex(0xfffbeb); hemiLight.intensity = 0.95;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('wood') })); g.rotation.x = -Math.PI / 2; worldGroup.add(g);
         const rug = new THREE.Mesh(new THREE.CylinderGeometry(11.5, 11.5, 0.08, 32), new THREE.MeshStandardMaterial({ color: 0xfce7f3 })); rug.position.y = 0.04; worldGroup.add(rug);
       }
-
       addWorldLandmarks();
     }
     buildWorldTheme('original');
@@ -918,33 +1032,12 @@
 
       function createLeg(isLeft) {
         const lp = new THREE.Group(); lp.position.set(isLeft ? -0.22 : 0.22, 0.72, 0);
-        if (data.bottomStyle === 'shorts') {
-          const u = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.32, 0.44), botMat); u.position.y = -0.16;
-          const cf = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.06, 0.46), botDark); cf.position.y = -0.31;
-          const l = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.34, 0.3), skinMat); l.position.y = -0.48;
-          lp.add(u, cf, l);
-        } else if (data.bottomStyle === 'skirt') {
-          const th = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.36, 0.3), skinMat); th.position.y = -0.18;
-          const sk = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.32), whiteMat); sk.position.y = -0.5;
-          lp.add(th, sk);
-        } else if (data.bottomStyle === 'jeans') {
-          const l = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.62, 0.42), botMat); l.position.y = -0.31;
-          const pt = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.05), new THREE.MeshStandardMaterial({ color: botC.clone().lerp(new THREE.Color(0xffffff), 0.35) })); pt.position.set(0, -0.32, 0.21);
-          const ru = new THREE.Mesh(new THREE.BoxGeometry(0.41, 0.1, 0.45), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 })); ru.position.y = -0.58;
-          lp.add(l, pt, ru);
-        } else if (data.bottomStyle === 'armorpants') {
-          const l = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.66, 0.42), botDark); l.position.y = -0.33;
-          const kn = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.14), new THREE.MeshBasicMaterial({ color: 0x38bdf8 })); kn.position.set(0, -0.3, 0.22);
-          const sf = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.35, 0.25), goldMat); sf.position.set(isLeft ? -0.22 : 0.22, -0.4, 0);
-          lp.add(l, kn, sf);
-        } else if (data.bottomStyle === 'admin_greaves') {
+        if (data.bottomStyle === 'admin_greaves') {
           const l = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.66, 0.44), new THREE.MeshStandardMaterial({ color: 0x111827 })); l.position.y = -0.33;
-          const gTrim = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.14, 0.48), goldMat); gTrim.position.y = -0.25;
-          lp.add(l, gTrim);
+          const gTrim = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.14, 0.48), goldMat); gTrim.position.y = -0.25; lp.add(l, gTrim);
         } else if (data.bottomStyle === 'admin_leggings') {
           const l = new THREE.Mesh(new THREE.BoxGeometry(0.39, 0.66, 0.43), new THREE.MeshStandardMaterial({ color: 0x4c1d95 })); l.position.y = -0.33;
-          const neon = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.46), new THREE.MeshBasicMaterial({ color: 0xfacc15 })); neon.position.y = -0.46;
-          lp.add(l, neon);
+          const neon = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.46), new THREE.MeshBasicMaterial({ color: 0xfacc15 })); neon.position.y = -0.46; lp.add(l, neon);
         } else {
           const l = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.66, 0.41), botMat); l.position.y = -0.33; lp.add(l);
         }
@@ -954,82 +1047,20 @@
 
       const leftLeg = createLeg(true), rightLeg = createLeg(false); rig.add(leftLeg, rightLeg);
       const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.24, 0.56), botMat); pelvis.position.y = 0.75; rig.add(pelvis);
-
-      if (data.bottomStyle === 'skirt') {
-        const sk = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.82, 0.52, 20), botMat); sk.position.y = 0.62;
-        const lc = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.85, 0.08, 20), whiteMat); lc.position.y = 0.36; rig.add(sk, lc);
-      } else if (data.bottomStyle === 'jeans') {
-        const bl = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.1, 0.6), new THREE.MeshStandardMaterial({ color: 0x451a03 })); bl.position.y = 0.83;
-        const bk = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.06), goldMat); bk.position.set(0, 0.83, 0.3); rig.add(bl, bk);
-      } else if (data.bottomStyle === 'overalls') {
-        const bib = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.52, 0.08), botMat); bib.position.set(0, 1.1, 0.28);
-        const s1 = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.86, 0.6), botMat); s1.position.set(-0.26, 1.24, 0);
-        const s2 = s1.clone(); s2.position.set(0.26, 1.24, 0);
-        const b1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 12), goldMat); b1.rotation.x = Math.PI / 2; b1.position.set(-0.26, 1.32, 0.32);
-        const b2 = b1.clone(); b2.position.set(0.26, 1.32, 0.32); rig.add(bib, s1, s2, b1, b2);
-      }
-
       const torso = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.88, 0.56), topMat); torso.position.y = 1.25; rig.add(torso);
-      if (data.topStyle === 'tshirt') {
-        const cl = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.05, 8, 16), whiteMat); cl.rotation.x = Math.PI / 2; cl.position.set(0, 1.69, 0.05);
-        const pk = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.24, 0.05), topDark); pk.position.set(0.22, 1.38, 0.28); rig.add(cl, pk);
-      } else if (data.topStyle === 'hoodie') {
-        const hd = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.48, 0.52), topDark); hd.position.set(0, 1.62, -0.28);
-        const pc = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.32, 0.09), topDark); pc.position.set(0, 0.98, 0.29);
-        const st1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.36, 0.04), whiteMat); st1.position.set(-0.12, 1.46, 0.3);
-        const st2 = st1.clone(); st2.position.set(0.12, 1.46, 0.3); rig.add(hd, pc, st1, st2);
-      } else if (data.topStyle === 'sweater') {
-        const tt = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.3, 0.22, 16), topDark); tt.position.y = 1.72;
-        const s1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 0.6), whiteMat); s1.position.y = 1.38;
-        const s2 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, 0.6), goldMat); s2.position.y = 1.15; rig.add(tt, s1, s2);
-      } else if (data.topStyle === 'suit') {
-        const sh = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.62, 0.05), whiteMat); sh.position.set(0, 1.36, 0.27);
-        const ti = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.52, 0.07), new THREE.MeshStandardMaterial({ color: 0xdc2626 })); ti.position.set(0, 1.32, 0.29);
-        const b1 = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), goldMat); b1.position.set(0, 1.04, 0.3);
-        const b2 = b1.clone(); b2.position.set(0, 0.9, 0.3); rig.add(sh, ti, b1, b2);
-      } else if (data.topStyle === 'uniform') {
-        const sh = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.55, 0.05), whiteMat); sh.position.set(0, 1.4, 0.27);
-        const rb = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.18, 0.08), goldMat); rb.position.set(0, 1.5, 0.29);
-        const bg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.06), whiteMat); bg.position.set(0.26, 1.42, 0.29);
-        const tr = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.07, 0.6), whiteMat); tr.position.y = 0.86; rig.add(sh, rb, bg, tr);
-      } else if (data.topStyle === 'hanbok') {
-        const cL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.55, 0.07), whiteMat); cL.position.set(-0.12, 1.42, 0.28); cL.rotation.z = -0.35;
-        const cR = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.55, 0.07), whiteMat); cR.position.set(0.12, 1.42, 0.28); cR.rotation.z = 0.35;
-        const gr = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.68, 0.08), new THREE.MeshStandardMaterial({ color: 0xf43f5e })); gr.position.set(0.14, 1.15, 0.3); gr.rotation.z = -0.15;
-        rig.add(cL, cR, gr);
-      } else if (data.topStyle === 'armor') {
-        const cp = new THREE.Mesh(new THREE.BoxGeometry(1.04, 0.55, 0.66), topDark); cp.position.y = 1.38;
-        const co = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 16), new THREE.MeshBasicMaterial({ color: 0x38bdf8 })); co.rotation.x = Math.PI / 2; co.position.set(0, 1.38, 0.34);
-        const sL = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.36, 0.62), topDark); sL.position.set(-0.68, 1.56, 0);
-        const sR = sL.clone(); sR.position.set(0.68, 1.56, 0); rig.add(cp, co, sL, sR);
-      } else if (data.topStyle === 'royal') {
-        const cp = new THREE.Mesh(new THREE.BoxGeometry(1.16, 1.55, 0.09), new THREE.MeshStandardMaterial({ color: 0xb91c1c })); cp.position.set(0, 1.0, -0.34); cp.rotation.x = 0.14;
-        const eL = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), goldMat); eL.position.set(-0.56, 1.66, 0);
-        const eR = eL.clone(); eR.position.set(0.56, 1.66, 0);
-        const ss = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.96, 0.6), goldMat); ss.rotation.z = 0.55; ss.position.y = 1.25;
-        rig.add(cp, eL, eR, ss);
-      } else if (data.topStyle === 'admin_coat') {
+
+      if (data.topStyle === 'admin_coat') {
         const coat = new THREE.Mesh(new THREE.BoxGeometry(1.24, 1.45, 0.72), new THREE.MeshStandardMaterial({ color: 0x0f172a })); coat.position.set(0, 1.05, 0);
-        const gTrim = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.14, 0.76), goldMat); gTrim.position.set(0, 1.65, 0);
-        rig.add(coat, gTrim);
+        const gTrim = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.14, 0.76), goldMat); gTrim.position.set(0, 1.65, 0); rig.add(coat, gTrim);
       } else if (data.topStyle === 'admin_robe') {
         const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.95, 1.42, 18), new THREE.MeshStandardMaterial({ color: 0x312e81 })); robe.position.set(0, 1.05, 0);
-        const aura = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.06, 10, 24), goldMat); aura.rotation.x = Math.PI / 2; aura.position.set(0, 1.72, 0);
-        rig.add(robe, aura);
+        const aura = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.06, 10, 24), goldMat); aura.rotation.x = Math.PI / 2; aura.position.set(0, 1.72, 0); rig.add(robe, aura);
       }
 
       function createArm(isLeft) {
         const ap = new THREE.Group(); ap.position.set(isLeft ? -0.64 : 0.64, 1.62, 0);
-        if (data.topStyle === 'tshirt') {
-          const sl = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.38), topMat); sl.position.y = -0.17;
-          const ar = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.52, 0.28), skinMat); ar.position.y = -0.56; ap.add(sl, ar);
-        } else {
-          const ar = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.82, 0.36), topMat); ar.position.y = -0.41;
-          if (['hanbok', 'uniform', 'sweater'].includes(data.topStyle)) {
-            const cf = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.14, 0.38), whiteMat); cf.position.y = -0.75; ap.add(cf);
-          }
-          const ha = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 0.24), skinMat); ha.position.y = -0.86; ap.add(ar, ha);
-        }
+        const ar = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.82, 0.36), topMat); ar.position.y = -0.41;
+        const ha = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.2, 0.24), skinMat); ha.position.y = -0.86; ap.add(ar, ha);
         if (!isLeft) {
           const vg = new THREE.Group(); vg.position.set(0, -0.95, 0.05);
           const f1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.06), skinMat); f1.position.set(-0.05, -0.08, 0); f1.rotation.z = -0.25;
@@ -1044,25 +1075,15 @@
       const head = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.82), [skinMat, skinMat, skinMat, skinMat, new THREE.MeshStandardMaterial({ map: faceTex }), skinMat]);
       head.position.y = 2.12; rig.add(head);
 
-      // 어드민 전용 황금 왕관
       if (data.isAdmin) {
-        const crownBase = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.3, 0.24, 12), goldMat);
-        crownBase.position.y = 2.62;
-        const crownGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-        crownGem.position.set(0, 2.84, 0.24);
+        const crownBase = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.3, 0.24, 12), goldMat); crownBase.position.y = 2.62;
+        const crownGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), new THREE.MeshBasicMaterial({ color: 0xef4444 })); crownGem.position.set(0, 2.84, 0.24);
         rig.add(crownBase, crownGem);
-      }
-
-      if (data.face === 'cat') {
-        const eg = new THREE.ConeGeometry(0.16, 0.28, 4);
-        const lE = new THREE.Mesh(eg, skinMat); lE.position.set(-0.24, 2.62, 0);
-        const rE = new THREE.Mesh(eg, skinMat); rE.position.set(0.24, 2.62, 0); rig.add(lE, rE);
       }
 
       group.add(rig);
       group.userData.rig = rig; group.userData.leftLeg = leftLeg; group.userData.rightLeg = rightLeg; group.userData.leftArm = leftArm; group.userData.rightArm = rightArm;
-      const sc = data.isAdmin ? 1.5 : 1.0;
-      group.scale.set(sc, sc, sc);
+      const sc = data.isAdmin ? 1.5 : 1.0; group.scale.set(sc, sc, sc);
     }
 
     function createAvatar(playerData) {
@@ -1113,6 +1134,137 @@
       }
     }
 
+    // ============================================================
+    // Attack (브롤스타즈 스타일 독립 월드 10000,10000) 렌더러
+    // ============================================================
+    let atkState = null, atkFighterMeshes = {}, atkProjGroup = null, atkGemGroup = null, atkBallMesh = null, atkSafeMeshes = {}, atkGasMesh = null;
+
+    function enterAttackArena(data) {
+      gameState = 'attack';
+      atkState = data;
+      worldGroup.visible = false; coinGroup.visible = false; arenaGroup.visible = false; attackGroup.visible = true;
+      document.getElementById('gesture-bar').style.display = 'none';
+      document.getElementById('jump-btn').style.display = 'none';
+      document.getElementById('zone-dwell-hud').classList.remove('open');
+      document.getElementById('attack-panel').classList.remove('open');
+      document.getElementById('mg-big-timer').classList.add('open');
+      document.getElementById('atk-hp-bar').classList.add('open');
+      document.getElementById('attack-hud').classList.add('open');
+
+      while (attackGroup.children.length > 0) attackGroup.remove(attackGroup.children[0]);
+      atkFighterMeshes = {}; atkSafeMeshes = {};
+      scene.background = new THREE.Color(0x0f172a); scene.fog = new THREE.Fog(0x0f172a, 60, 160);
+
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 54), new THREE.MeshStandardMaterial({ color: 0xd97706 }));
+      floor.rotation.x = -Math.PI / 2; attackGroup.add(floor);
+
+      const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155 });
+      data.walls.forEach(w => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w.w, 2.4, w.d), wallMat);
+        m.position.set(w.x, 1.2, w.z); attackGroup.add(m);
+      });
+
+      const bushMat = new THREE.MeshStandardMaterial({ color: 0x15803d, transparent: true, opacity: 0.72 });
+      data.bushes.forEach(b => {
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(b.r, b.r, 1.6, 18), bushMat);
+        m.position.set(b.x, 0.8, b.z); attackGroup.add(m);
+      });
+
+      if (data.mode === 'brawlball') {
+        atkBallMesh = new THREE.Mesh(new THREE.SphereGeometry(0.85, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        atkBallMesh.position.set(0, 0.85, 0); attackGroup.add(atkBallMesh);
+      }
+      if (data.mode === 'heist') {
+        [0, 1].forEach(t => {
+          const sf = data.safes[t];
+          const sm = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.2, 3.2), new THREE.MeshStandardMaterial({ color: t === 0 ? 0x3b82f6 : 0xef4444 }));
+          sm.position.set(sf.x, 1.6, sf.z); attackGroup.add(sm); atkSafeMeshes[t] = sm;
+        });
+      }
+      if (data.mode === 'showdown') {
+        atkGasMesh = new THREE.Mesh(new THREE.RingGeometry(data.gasRadius, 48, 36), new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
+        atkGasMesh.rotation.x = -Math.PI / 2; atkGasMesh.position.y = 0.08; attackGroup.add(atkGasMesh);
+      }
+
+      atkProjGroup = new THREE.Group(); atkGemGroup = new THREE.Group();
+      attackGroup.add(atkProjGroup, atkGemGroup);
+
+      Object.values(data.fighters).forEach(f => {
+        const fm = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.75, 1.8, 16), new THREE.MeshStandardMaterial({ color: f.color }));
+        body.position.y = 0.9;
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.85, 1.1, 20), new THREE.MeshBasicMaterial({ color: f.id === socket.id ? 0x22c55e : (f.team === 0 ? 0x38bdf8 : 0xef4444), side: THREE.DoubleSide }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 0.05;
+        const sp = makeTextSprite(f.name, 'rgba(15,23,42,0.85)', '#fff'); sp.position.y = 2.6; sp.scale.set(2.8, 0.7, 1);
+        fm.add(body, ring, sp);
+        fm.position.set(f.x, 0, f.z);
+        attackGroup.add(fm);
+        atkFighterMeshes[f.id] = fm;
+      });
+    }
+
+    function updateAttackScene(st) {
+      atkState = st;
+      document.getElementById('mg-big-timer').innerText = formatTime(st.timeLeft);
+      const me = st.fighters[socket.id];
+      if (me) {
+        document.getElementById('atk-my-hp').innerText = '❤️ HP: ' + Math.max(0, Math.round(me.hp)) + ' / ' + me.maxHp;
+        document.getElementById('atk-btn-super').disabled = me.superCharge < 100;
+        document.getElementById('atk-btn-super').innerHTML = '⚡<br>궁극기 ' + Math.round(me.superCharge) + '%';
+        const canGadget = ['special', 'yellow', 'admin'].includes(myAccount.citizenship);
+        document.getElementById('atk-btn-gadget').disabled = !canGadget || me.gadgetCd > 0;
+        document.getElementById('atk-btn-gadget').innerHTML = canGadget ? ('💚<br>' + (me.gadgetCd > 0 ? Math.ceil(me.gadgetCd) + 's' : '가젯')) : '🔒<br>특수시민';
+        const canHyper = ['yellow', 'admin'].includes(myAccount.citizenship);
+        document.getElementById('atk-btn-hyper').disabled = !canHyper || me.hyperCharge < 100;
+        document.getElementById('atk-btn-hyper').innerHTML = canHyper ? ('🔥<br>' + Math.round(me.hyperCharge) + '%') : '🔒<br>YELLOW';
+      }
+      document.getElementById('atk-mode-score').innerText = '블루 ' + (st.scores[0] || 0) + ' : ' + (st.scores[1] || 0) + ' 레드';
+
+      Object.values(st.fighters).forEach(f => {
+        const fm = atkFighterMeshes[f.id]; if (!fm) return;
+        const hiddenInBush = f.inBush && f.id !== socket.id && me && f.team !== me.team && Math.hypot(f.x - me.x, f.z - me.z) > 6;
+        fm.visible = f.alive && !hiddenInBush;
+        fm.position.set(f.x, 0, f.z); fm.rotation.y = f.rotY;
+      });
+
+      if (atkBallMesh && st.ball) atkBallMesh.position.set(st.ball.x, 0.85, st.ball.z);
+      if (atkGasMesh && st.gasRadius) {
+        atkGasMesh.geometry.dispose();
+        atkGasMesh.geometry = new THREE.RingGeometry(st.gasRadius, 48, 36);
+      }
+
+      while (atkProjGroup.children.length > 0) atkProjGroup.remove(atkProjGroup.children[0]);
+      st.projectiles.forEach(pr => {
+        const pm = new THREE.Mesh(new THREE.SphereGeometry(pr.isSuper ? 0.55 : 0.35, 10, 10), new THREE.MeshBasicMaterial({ color: pr.color }));
+        pm.position.set(pr.x, 1.0, pr.z); atkProjGroup.add(pm);
+      });
+
+      while (atkGemGroup.children.length > 0) atkGemGroup.remove(atkGemGroup.children[0]);
+      st.gems.forEach(gm => {
+        const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.45), new THREE.MeshBasicMaterial({ color: 0xc084fc }));
+        m.position.set(gm.x, 0.7, gm.z); atkGemGroup.add(m);
+      });
+    }
+
+    function exitAttackToWorld() {
+      gameState = 'world'; atkState = null;
+      attackGroup.visible = false; worldGroup.visible = true; coinGroup.visible = true;
+      document.getElementById('gesture-bar').style.display = 'flex';
+      document.getElementById('jump-btn').style.display = 'block';
+      document.getElementById('mg-big-timer').classList.remove('open');
+      document.getElementById('atk-hp-bar').classList.remove('open');
+      document.getElementById('attack-hud').classList.remove('open');
+      buildWorldTheme(currentTheme);
+    }
+
+    window.startAttackMode = (mode) => { socket.emit('startAttackGame', { mode }); };
+    document.getElementById('atk-leave-btn').onclick = () => { socket.emit('leaveAttackMatch'); exitAttackToWorld(); };
+    document.getElementById('atk-btn-basic').onclick = () => { if (atkState && atkState.fighters[socket.id]) socket.emit('attackUseAction', { type: 'basic', angle: atkState.fighters[socket.id].rotY }); };
+    document.getElementById('atk-btn-super').onclick = () => { if (atkState && atkState.fighters[socket.id]) socket.emit('attackUseAction', { type: 'super', angle: atkState.fighters[socket.id].rotY }); };
+    document.getElementById('atk-btn-gadget').onclick = () => { socket.emit('attackUseAction', { type: 'gadget', angle: 0 }); };
+    document.getElementById('atk-btn-hyper').onclick = () => { socket.emit('attackUseAction', { type: 'hyper', angle: 0 }); };
+
+    // 미니게임 아레나 (색깔뒤집기, 얼음땡, 포근한 거짓말 탐지기)
     const GRID_SIZE = 16, TILE_SIZE = 2.0;
     let arenaTileMeshes = [];
     const cpuAvatars = {};
@@ -1123,12 +1275,6 @@
       document.getElementById('mg-big-timer').classList.add('open'); document.getElementById('mg-live-board').classList.add('open');
       while (arenaGroup.children.length > 0) arenaGroup.remove(arenaGroup.children[0]); arenaTileMeshes = [];
       scene.background = new THREE.Color(0x0f172a); scene.fog = new THREE.Fog(0x0f172a, 50, 140);
-      const bm = new THREE.MeshStandardMaterial({ color: 0x334155 });
-      const wN = new THREE.Mesh(new THREE.BoxGeometry(34,1.2,1), bm); wN.position.set(0,0.6,-16.5);
-      const wS = new THREE.Mesh(new THREE.BoxGeometry(34,1.2,1), bm); wS.position.set(0,0.6,16.5);
-      const wW = new THREE.Mesh(new THREE.BoxGeometry(1,1.2,34), bm); wW.position.set(-16.5,0.6,0);
-      const wE = new THREE.Mesh(new THREE.BoxGeometry(1,1.2,34), bm); wE.position.set(16.5,0.6,0);
-      arenaGroup.add(wN, wS, wW, wE);
       const tg = new THREE.BoxGeometry(TILE_SIZE - 0.12, 0.25, TILE_SIZE - 0.12);
       for (let r = 0; r < GRID_SIZE; r++) for (let c = 0; c < GRID_SIZE; c++) {
         const t = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
@@ -1146,28 +1292,6 @@
       while (arenaGroup.children.length > 0) arenaGroup.remove(arenaGroup.children[0]);
       scene.background = new THREE.Color(0x38bdf8); scene.fog = new THREE.Fog(0x38bdf8, 60, 185);
       const fl = new THREE.Mesh(new THREE.PlaneGeometry(fs, fs), new THREE.MeshStandardMaterial({ color: 0x16a34a })); fl.rotation.x = -Math.PI / 2; arenaGroup.add(fl);
-      const cr = new THREE.Mesh(new THREE.RingGeometry(4.2, 4.6, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })); cr.rotation.x = -Math.PI / 2; cr.position.y = 0.02; arenaGroup.add(cr);
-      const wm = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
-      const wN = new THREE.Mesh(new THREE.BoxGeometry(fs+1,1.4,0.8), wm); wN.position.set(0,0.7,-(ftArenaHalf+0.4));
-      const wS = new THREE.Mesh(new THREE.BoxGeometry(fs+1,1.4,0.8), wm); wS.position.set(0,0.7,ftArenaHalf+0.4);
-      const wW = new THREE.Mesh(new THREE.BoxGeometry(0.8,1.4,fs+1), wm); wW.position.set(-(ftArenaHalf+0.4),0.7,0);
-      const wE = new THREE.Mesh(new THREE.BoxGeometry(0.8,1.4,fs+1), wm); wE.position.set(ftArenaHalf+0.4,0.7,0);
-      arenaGroup.add(wN, wS, wW, wE);
-
-      const sg = new THREE.Group(), sc = [0x1e293b, 0x334155, 0x475569];
-      for (let tier = 0; tier < 4; tier++) {
-        const st = new THREE.Mesh(new THREE.BoxGeometry(fs+8, 1.5, 2.2), new THREE.MeshStandardMaterial({ color: sc[tier % 3] }));
-        st.position.set(0, 0.75 + tier * 1.5, -(ftArenaHalf + 2.5 + tier * 2.0)); sg.add(st);
-      }
-      const jb = new THREE.Mesh(new THREE.BoxGeometry(12, 3.6, 0.6), new THREE.MeshStandardMaterial({ color: 0x0f172a })); jb.position.set(0, 10.5, -(ftArenaHalf + 5.5));
-      const oa = makeTextSprite('📺 LIVE 생중계 관중석', 'rgba(220,38,38,0.95)', '#ffffff'); oa.position.set(0, 10.5, -(ftArenaHalf + 5.0)); oa.scale.set(9, 2.2, 1);
-      arenaGroup.add(sg, jb, oa);
-
-      for (let i = 0; i < 6; i++) {
-        const ang = (i / 6) * Math.PI * 2;
-        const pl = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.5, 2.6, 12), new THREE.MeshStandardMaterial({ color: 0xe0f2fe }));
-        pl.position.set(Math.cos(ang) * (ftArenaHalf * 0.48), 1.3, Math.sin(ang) * (ftArenaHalf * 0.48)); arenaGroup.add(pl);
-      }
       spawnArenaActors(data.participants, (p) => p.role === 'it' ? { topStyle: 'armor', topColor: '#ef4444', bottomStyle: 'pants', bottomColor: '#dc2626' } : { topStyle: 'hoodie', topColor: '#ffffff', bottomStyle: 'pants', bottomColor: '#f8fafc' }, true);
       updateFreezeTagHud(data.participants);
     }
@@ -1178,28 +1302,9 @@
       document.getElementById('mg-big-timer').classList.add('open'); document.getElementById('liar-hud').classList.add('open');
       while (arenaGroup.children.length > 0) arenaGroup.remove(arenaGroup.children[0]);
       scene.background = new THREE.Color(0xfdf2f8); scene.fog = new THREE.Fog(0xfdf2f8, 45, 130);
-      hemiLight.color.setHex(0xfff1f2); hemiLight.intensity = 1.05;
-
       const rug = new THREE.Mesh(new THREE.CylinderGeometry(15, 15.4, 0.25, 36), new THREE.MeshStandardMaterial({ color: 0xfce7f3 })); rug.position.y = -0.12;
-      const innerMat = new THREE.Mesh(new THREE.CylinderGeometry(7.2, 7.2, 0.05, 32), new THREE.MeshStandardMaterial({ color: 0xfef3c7 })); innerMat.position.y = 0.02;
-      const woodMat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
-      const table = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.2, 1.0, 28), woodMat); table.position.y = 0.5;
-      const tableTop = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.8, 0.14, 28), new THREE.MeshStandardMaterial({ color: 0xfde68a })); tableTop.position.y = 1.04;
-      const teacup = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.24, 0.36, 16), new THREE.MeshStandardMaterial({ color: 0xf472b6 })); teacup.position.set(0.8, 1.28, 0.5);
-      const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.45, 12), new THREE.MeshStandardMaterial({ color: 0xfffbeb })); candle.position.set(-0.6, 1.32, -0.4);
-      const flame = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 10), new THREE.MeshBasicMaterial({ color: 0xfbbf24 })); flame.position.set(-0.6, 1.62, -0.4);
-      arenaGroup.add(rug, innerMat, table, tableTop, teacup, candle, flame);
-
-      const flowerCols = [0xf472b6, 0xfbbf24, 0xa855f7, 0x34d399];
-      for (let i = 0; i < 16; i++) {
-        const ang = (i / 16) * Math.PI * 2;
-        const fl = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 10), new THREE.MeshStandardMaterial({ color: flowerCols[i % flowerCols.length] }));
-        fl.position.set(Math.cos(ang) * 11.5, 0.3, Math.sin(ang) * 11.5);
-        const cushion = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.2, 0.35, 18), new THREE.MeshStandardMaterial({ color: 0xfbcfe8 }));
-        cushion.position.set(Math.cos(ang) * 5.5, 0.17, Math.sin(ang) * 5.5);
-        arenaGroup.add(fl, cushion);
-      }
-
+      const table = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.2, 1.0, 28), new THREE.MeshStandardMaterial({ color: 0xd97706 })); table.position.y = 0.5;
+      arenaGroup.add(rug, table);
       spawnArenaActors(data.participants, null, false);
     }
 
@@ -1210,24 +1315,15 @@
       if (me && myAvatar) {
         myAvatar.position.set(me.x, me.y || 0, me.z); myAvatar.rotation.y = me.rotY || 0;
         if (outfitOverrideFn) { const ov = outfitOverrideFn(me); if (ov) buildAvatarAppearance(myAvatar, { ...myProfile, isAdmin: myAccount.isAdmin, ...ov }); }
-        if (isFreezeTag) {
-          document.getElementById('ft-skill-bar').style.display = (me.role === 'runner') ? 'flex' : 'none';
-          addChatLog('🧊 역할 배정', me.role === 'it' ? '당신은 [빨간 술래]입니다!' : '당신은 [하얀 도망자]입니다!');
-        }
+        if (isFreezeTag) document.getElementById('ft-skill-bar').style.display = (me.role === 'runner') ? 'flex' : 'none';
       }
       Object.values(participants).forEach(p => {
         const ov = outfitOverrideFn ? outfitOverrideFn(p) : null;
         if (p.isCpu) {
-          const isIt = isFreezeTag && p.role === 'it';
-          const bot = createAvatar({ name: isIt ? '👹[술래]' + p.name : p.name, face: isIt ? 'cool' : 'robot', topStyle: ov ? ov.topStyle : 'hoodie', topColor: ov ? ov.topColor : (p.color || '#3b82f6'), bottomStyle: ov ? ov.bottomStyle : 'pants', bottomColor: ov ? ov.bottomColor : (p.color || '#1e293b'), x: p.x, y: p.y || 0, z: p.z, rotY: p.rotY || 0 });
-          bot.position.set(p.x, p.y || 0, p.z); bot.rotation.y = p.rotY || 0; cpuAvatars[p.id] = bot;
+          const bot = createAvatar({ name: p.name, face: 'robot', topStyle: ov ? ov.topStyle : 'hoodie', topColor: ov ? ov.topColor : (p.color || '#3b82f6'), bottomStyle: 'pants', bottomColor: '#1e293b', x: p.x, y: p.y || 0, z: p.z, rotY: p.rotY || 0 });
+          bot.position.set(p.x, p.y || 0, p.z); cpuAvatars[p.id] = bot;
         } else if (p.id !== socket.id && otherPlayers[p.id]) {
-          otherPlayers[p.id].position.set(p.x, p.y || 0, p.z); otherPlayers[p.id].rotation.y = p.rotY || 0;
-          if (ov && savedPlayerProfiles[p.id]) buildAvatarAppearance(otherPlayers[p.id], { ...savedPlayerProfiles[p.id], ...ov });
-          if (isFreezeTag && p.role === 'it') {
-            otherPlayers[p.id].remove(otherPlayers[p.id].userData.nameSprite);
-            const ns = makeTextSprite('👹[술래] ' + p.name, "rgba(220,38,38,0.9)", "#ffffff"); ns.position.y = 3.15; otherPlayers[p.id].add(ns); otherPlayers[p.id].userData.nameSprite = ns;
-          }
+          otherPlayers[p.id].position.set(p.x, p.y || 0, p.z);
         }
       });
     }
@@ -1244,16 +1340,6 @@
         buildAvatarAppearance(myAvatar, { ...myProfile, isAdmin: myAccount.isAdmin });
         myAvatar.position.set((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6);
       }
-      Object.keys(otherPlayers).forEach(id => {
-        const av = otherPlayers[id]; if (!av) return;
-        if (av.userData.iceBlock) { av.remove(av.userData.iceBlock); av.userData.iceBlock = null; }
-        if (savedPlayerProfiles[id]) {
-          buildAvatarAppearance(av, savedPlayerProfiles[id]);
-          av.remove(av.userData.nameSprite);
-          const ns = makeTextSprite(savedPlayerProfiles[id].name, savedPlayerProfiles[id].isAdmin ? "rgba(220,38,38,0.88)" : "rgba(15,23,42,0.75)", "#ffffff");
-          ns.position.y = 3.15; av.add(ns); av.userData.nameSprite = ns;
-        }
-      });
       buildWorldTheme(currentTheme);
     }
 
@@ -1269,17 +1355,13 @@
             ice.position.y = 1.25; av.add(ice); av.userData.iceBlock = ice;
           }
         } else if (av.userData.iceBlock) { av.remove(av.userData.iceBlock); av.userData.iceBlock = null; }
-        if (p.status === 'out') { av.position.set(p.x, p.y || 4.6, p.z); av.rotation.y = 0; }
+        if (p.status === 'out') { av.position.set(p.x, p.y || 4.6, p.z); }
       });
       const me = participants[socket.id];
       if (me && me.role === 'runner') {
-        const bf = document.getElementById('btn-freeze'), bi = document.getElementById('btn-fire'), bc = document.getElementById('btn-clang');
-        if (me.status === 'out') { bf.disabled = true; bi.disabled = true; bc.disabled = true; document.getElementById('broadcast-hud').classList.add('open'); }
-        else if (me.status === 'frozen') {
-          bf.disabled = true; bi.disabled = true;
-          const near = Object.values(participants).filter(r => r.role === 'runner' && r.status === 'frozen' && Math.hypot(r.x - me.x, r.z - me.z) <= 3.2);
-          bc.disabled = (near.length !== 2);
-        } else { bf.disabled = false; bi.disabled = false; bc.disabled = true; }
+        document.getElementById('btn-freeze').disabled = me.status !== 'normal';
+        document.getElementById('btn-fire').disabled = me.status !== 'normal';
+        if (me.status === 'out') document.getElementById('broadcast-hud').classList.add('open');
       }
     }
 
@@ -1289,7 +1371,117 @@
         '<div style="font-weight:bold;color:#38bdf8;margin-bottom:2px;">🧊 얼음땡 현황</div>' +
         '<div class="rank-row"><span>🏃 도망 중:</span><b>' + runners.filter(r => r.status === 'normal').length + '명</b></div>' +
         '<div class="rank-row"><span>🧊 얼음 상태:</span><b>' + runners.filter(r => r.status === 'frozen').length + '명</b></div>' +
-        '<div class="rank-row"><span>📺 생중계 관중석:</span><b>' + runners.filter(r => r.status === 'out').length + '명</b></div>';
+        '<div class="rank-row"><span>📺 관중석:</span><b>' + runners.filter(r => r.status === 'out').length + '명</b></div>';
+    }
+
+    function renderCitizenshipUI() {
+      const c = myAccount.citizenship || 'normal';
+      document.getElementById('citizen-badge').innerText = CITIZEN_LABELS[c] || '🪪 일반 시민권';
+      document.getElementById('open-admin-dm-btn').style.display = (c === 'yellow' || myAccount.isAdmin) ? 'inline-block' : 'none';
+      const box = document.getElementById('citizenship-list');
+      if (!box) return;
+      const tiers = [
+        { id: 'normal', name: '🪪 일반 시민권', desc: '기본 (테마 잠금)' },
+        { id: 'special', name: '✨ 특수 시민권', desc: '누적 500몽 (1.1배 · 테마 · 가젯/스파)' },
+        { id: 'yellow', name: '🌟 YELLOW 시민권', desc: '미니게임 20승 (1.2배 · DM · 90초+10몽 · 하차/버피)' },
+        { id: 'blue', name: '🔒 BLUE 시민권', desc: '추후 공개 예정', locked: true },
+        { id: 'green', name: '🔒 GREEN 시민권', desc: '추후 공개 예정', locked: true },
+        { id: 'red', name: '🔒 RED 시민권', desc: '추후 공개 예정', locked: true },
+        { id: 'admin', name: '👑 ADMIN 최고권한', desc: '전용 의상/왕관 · 20배 · 전체 제어' }
+      ];
+      box.innerHTML = tiers.map(t =>
+        '<div class="citizen-card ' + (c === t.id ? 'current ' : '') + (t.locked ? 'future-lock' : '') + '">' +
+        '<span>' + t.name + '</span><span style="font-size:10px;opacity:0.85;">' + t.desc + '</span></div>'
+      ).join('') + '<div style="font-size:10px;color:#94a3b8;margin-top:2px;">현재 누적 최고 몽: ' + (myAccount.maxMong || 0) + '몽 / 미니게임 승리: ' + (myAccount.minigameWins || 0) + '회</div>';
+    }
+
+    function renderAttackShopUI() {
+      const ad = myAccount.attackData || { selectedChar: 'rookie', ownedChars: ['rookie'], hpLv: 0, atkLv: 0, defLv: 0 };
+      const c = myAccount.citizenship || 'normal';
+      let perkTxt = '🪪 일반 시민권: 기본 전투';
+      if (c === 'special') perkTxt = '✨ 특수 시민권 특전: 💚 가젯 + ⭐ 스타파워 활성화!';
+      else if (c === 'yellow' || c === 'admin') perkTxt = '🌟 YELLOW/ADMIN 특전: 💚 가젯 + ⭐ 스타파워 + 🔥 하이퍼차지 + 🛡️ 버피 모두 활성화!';
+      document.getElementById('atk-perk-banner').innerText = perkTxt;
+
+      document.getElementById('atk-up-hp').innerText = '❤️ HP Lv.' + (ad.hpLv || 0) + ' (' + ((ad.hpLv || 0) + 1) * 120 + '몽)';
+      document.getElementById('atk-up-atk').innerText = '⚔️ 공격 Lv.' + (ad.atkLv || 0) + ' (' + ((ad.atkLv || 0) + 1) * 120 + '몽)';
+      document.getElementById('atk-up-def').innerText = '🛡️ 방어 Lv.' + (ad.defLv || 0) + ' (' + ((ad.defLv || 0) + 1) * 120 + '몽)';
+
+      const list = document.getElementById('atk-char-list'); list.innerHTML = '';
+      Object.values(ATTACK_CHARS).forEach(ch => {
+        const owned = (ad.ownedChars || ['rookie']).includes(ch.id);
+        const btn = document.createElement('button');
+        btn.className = 'opt-btn ' + (ad.selectedChar === ch.id ? 'active ' : '') + (!owned ? 'locked' : '');
+        btn.innerHTML = '<b>' + ch.name + '</b> [' + ch.rarity + ']<br>' + (owned ? '✅ 선택 가능' : '🔒 ' + ch.price + '몽');
+        btn.onclick = () => socket.emit('attackShopAction', { action: 'buyChar', charId: ch.id });
+        list.appendChild(btn);
+      });
+    }
+
+    document.getElementById('atk-up-hp').onclick = () => socket.emit('attackShopAction', { action: 'upgradeStat', stat: 'hp' });
+    document.getElementById('atk-up-atk').onclick = () => socket.emit('attackShopAction', { action: 'upgradeStat', stat: 'atk' });
+    document.getElementById('atk-up-def').onclick = () => socket.emit('attackShopAction', { action: 'upgradeStat', stat: 'def' });
+
+    function renderShopUI() {
+      document.getElementById('user-badge').innerText = myAccount.isGuest ? ('👀 ' + myAccount.name) : ('👤 ' + myAccount.name);
+      document.getElementById('mong-badge').innerText = '🪙 ' + myAccount.mong + '몽';
+      if (myAccount.isAdmin) document.getElementById('quick-admin-btn').style.display = 'inline-block';
+      renderCitizenshipUI();
+      renderAttackShopUI();
+
+      const topBox = document.getElementById('top-options'); topBox.innerHTML = '';
+      TOP_ITEMS.forEach(item => {
+        if (item.adminOnly && !myAccount.isAdmin) {
+          const btn = document.createElement('button'); btn.className = 'opt-btn admin-only-lock';
+          btn.innerText = '👑 ' + item.label + ' (어드민만 사용가능)';
+          btn.onclick = () => showLiveToast('👑 어드민 전용', '어드민만 사용가능한 의상입니다!');
+          topBox.appendChild(btn); return;
+        }
+        const owned = myAccount.ownedTops.includes(item.id), btn = document.createElement('button');
+        btn.className = 'opt-btn ' + (myProfile.topStyle === item.id ? 'active ' : '') + (!owned ? 'locked' : '');
+        btn.innerText = owned ? item.label : '🔒 ' + item.label + ' (' + item.price + '몽)';
+        btn.onclick = () => {
+          if (owned) { myProfile.topStyle = item.id; socket.emit('updateProfile', myProfile); renderShopUI(); }
+          else if (myAccount.mong >= item.price) socket.emit('buyItem', { category: 'top', itemId: item.id });
+          else showLiveToast('상점', '몽이 부족해유ㅠㅠ (' + item.price + '몽 필요)');
+        };
+        topBox.appendChild(btn);
+      });
+
+      const botBox = document.getElementById('bottom-options'); botBox.innerHTML = '';
+      BOTTOM_ITEMS.forEach(item => {
+        if (item.adminOnly && !myAccount.isAdmin) {
+          const btn = document.createElement('button'); btn.className = 'opt-btn admin-only-lock';
+          btn.innerText = '👑 ' + item.label + ' (어드민만 사용가능)';
+          btn.onclick = () => showLiveToast('👑 어드민 전용', '어드민만 사용가능한 하의입니다!');
+          botBox.appendChild(btn); return;
+        }
+        const owned = myAccount.ownedBottoms.includes(item.id), btn = document.createElement('button');
+        btn.className = 'opt-btn ' + (myProfile.bottomStyle === item.id ? 'active ' : '') + (!owned ? 'locked' : '');
+        btn.innerText = owned ? item.label : '🔒 ' + item.label + ' (' + item.price + '몽)';
+        btn.onclick = () => {
+          if (owned) { myProfile.bottomStyle = item.id; socket.emit('updateProfile', myProfile); renderShopUI(); }
+          else if (myAccount.mong >= item.price) socket.emit('buyItem', { category: 'bottom', itemId: item.id });
+          else showLiveToast('상점', '몽이 부족해유ㅠㅠ (' + item.price + '몽 필요)');
+        };
+        botBox.appendChild(btn);
+      });
+
+      const themeLocked = (myAccount.citizenship === 'normal');
+      document.getElementById('theme-lock-notice').style.display = themeLocked ? 'block' : 'none';
+      const themeBox = document.getElementById('theme-options'); themeBox.innerHTML = '';
+      THEME_ITEMS.forEach(item => {
+        const owned = myAccount.ownedThemes.includes(item.id), btn = document.createElement('button');
+        btn.className = 'opt-btn ' + (currentTheme === item.id ? 'active ' : '') + ((themeLocked || !owned) ? 'locked' : '');
+        btn.innerText = themeLocked ? ('🔒 ' + item.label) : (owned ? item.label : '🔒 ' + item.label + ' (' + item.price + '몽)');
+        btn.onclick = () => {
+          if (themeLocked) { showLiveToast('테마 잠금', '특수 시민권(누적 500몽 이상) 획득 후 변경할 수 있어요!'); return; }
+          if (owned) { buildWorldTheme(item.id); renderShopUI(); }
+          else if (myAccount.mong >= item.price) { socket.emit('buyItem', { category: 'theme', itemId: item.id }); buildWorldTheme(item.id); }
+          else showLiveToast('테마 상점', '몽이 부족해유ㅠㅠ (' + item.price + '몽 필요)');
+        };
+        themeBox.appendChild(btn);
+      });
     }
 
     function openExchangeModal() {
@@ -1313,104 +1505,21 @@
       cModal.classList.add('open');
     }
 
-    // 미니게임 존 3초 후 방장 설정 모달
     const cModal = document.getElementById('center-modal');
     function openMinigameHostSetupModal(type) {
       const defCpu = type === 'freezetag' ? 5 : 3;
-      const titleMap = {
-        colorflip: '🎨 색깔 뒤집기 방장 설정',
-        freezetag: '🧊 얼음땡 방장 설정',
-        liar: '🕵️ 거짓말 탐지기 방장 설정'
-      };
-      let extraHtml = '';
-      if (type === 'colorflip') {
-        extraHtml =
-          '<div style="display:flex;flex-direction:column;gap:4px;text-align:left;margin-top:6px;">' +
-          '<label>경기 방식:</label><select id="mg-setup-mode" style="padding:6px;border-radius:8px;background:#1e293b;color:#fff;">' +
-          '<option value="solo">개인전</option><option value="team">팀전 (2팀 이상)</option></select></div>';
-      }
+      const titleMap = { colorflip: '🎨 색깔 뒤집기 방장 설정', freezetag: '🧊 얼음땡 방장 설정', liar: '🕵️ 거짓말 탐지기 방장 설정' };
+      let extraHtml = type === 'colorflip' ? '<div style="display:flex;flex-direction:column;gap:4px;text-align:left;margin-top:6px;"><label>경기 방식:</label><select id="mg-setup-mode" style="padding:6px;border-radius:8px;background:#1e293b;color:#fff;"><option value="solo">개인전</option><option value="team">팀전 (2팀 이상)</option></select></div>' : '';
       document.getElementById('cmodal-title').innerText = titleMap[type] || '미니게임 설정';
-      document.getElementById('cmodal-body').innerHTML =
-        '<div style="display:flex;flex-direction:column;gap:6px;text-align:left;">' +
-        '<label>CPU 수 (0~10):</label>' +
-        '<input type="number" id="mg-setup-cpu" min="0" max="10" value="' + defCpu + '" style="padding:6px;border-radius:8px;background:#1e293b;color:#fff;">' +
-        extraHtml + '</div>';
-      document.getElementById('cmodal-footer').innerHTML =
-        '<button class="modal-btn" id="mg-setup-confirm-btn" style="background:#10b981;">🚀 모집 시작</button>' +
-        '<button class="modal-btn" style="background:#475569;" onclick="document.getElementById(\'center-modal\').classList.remove(\'open\')">취소</button>';
+      document.getElementById('cmodal-body').innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;text-align:left;"><label>CPU 수 (0~10):</label><input type="number" id="mg-setup-cpu" min="0" max="10" value="' + defCpu + '" style="padding:6px;border-radius:8px;background:#1e293b;color:#fff;">' + extraHtml + '</div>';
+      document.getElementById('cmodal-footer').innerHTML = '<button class="modal-btn" id="mg-setup-confirm-btn" style="background:#10b981;">🚀 모집 시작</button><button class="modal-btn" style="background:#475569;" onclick="document.getElementById(\'center-modal\').classList.remove(\'open\')">취소</button>';
       document.getElementById('mg-setup-confirm-btn').onclick = () => {
         const cpuCount = Math.max(0, Math.min(10, parseInt(document.getElementById('mg-setup-cpu').value) || 0));
         const modeEl = document.getElementById('mg-setup-mode');
-        const mode = modeEl ? modeEl.value : 'solo';
         cModal.classList.remove('open');
-        socket.emit('requestStartLobby', { type, cpuCount, mode });
+        socket.emit('requestStartLobby', { type, cpuCount, mode: modeEl ? modeEl.value : 'solo' });
       };
       cModal.classList.add('open');
-    }
-
-    function renderShopUI() {
-      document.getElementById('user-badge').innerText = myAccount.isGuest ? ('👀 ' + myAccount.name) : ('👤 ' + myAccount.name);
-      document.getElementById('mong-badge').innerText = '🪙 ' + myAccount.mong + '몽';
-      if (myAccount.isAdmin) document.getElementById('quick-admin-btn').style.display = 'inline-block';
-
-      const spCost = (myAccount.speedLevel + 1) * 50, jpCost = (myAccount.jumpLevel + 1) * 50;
-      document.getElementById('upgrade-speed-btn').innerText = myAccount.isAdmin ? ('🏃 달리기 Lv.' + myAccount.speedLevel + ' (ADMIN)') : (myAccount.speedLevel >= 5 ? '🏃 달리기 MAX' : '🏃 달리기 Lv.' + myAccount.speedLevel + ' (' + spCost + '몽)');
-      document.getElementById('upgrade-jump-btn').innerText = myAccount.isAdmin ? ('🦘 점프력 Lv.' + myAccount.jumpLevel + ' (ADMIN)') : (myAccount.jumpLevel >= 5 ? '🦘 점프력 MAX' : '🦘 점프력 Lv.' + myAccount.jumpLevel + ' (' + jpCost + '몽)');
-
-      const topBox = document.getElementById('top-options'); topBox.innerHTML = '';
-      TOP_ITEMS.forEach(item => {
-        if (item.adminOnly && !myAccount.isAdmin) {
-          const btn = document.createElement('button');
-          btn.className = 'opt-btn admin-only-lock';
-          btn.innerText = '👑 ' + item.label + ' (어드민만 사용가능)';
-          btn.onclick = () => showLiveToast('👑 어드민 전용', '어드민만 사용가능한 의상입니다!');
-          topBox.appendChild(btn);
-          return;
-        }
-        const owned = myAccount.ownedTops.includes(item.id), btn = document.createElement('button');
-        btn.className = 'opt-btn ' + (myProfile.topStyle === item.id ? 'active ' : '') + (!owned ? 'locked' : '');
-        btn.innerText = owned ? item.label : '🔒 ' + item.label + ' (' + item.price + '몽)';
-        btn.onclick = () => {
-          if (owned) { myProfile.topStyle = item.id; socket.emit('updateProfile', myProfile); renderShopUI(); }
-          else if (myAccount.mong >= item.price) socket.emit('buyItem', { category: 'top', itemId: item.id });
-          else showLiveToast('상점', '몽이 부족해유ㅠㅠ (' + item.price + '몽 필요)');
-        };
-        topBox.appendChild(btn);
-      });
-
-      const botBox = document.getElementById('bottom-options'); botBox.innerHTML = '';
-      BOTTOM_ITEMS.forEach(item => {
-        if (item.adminOnly && !myAccount.isAdmin) {
-          const btn = document.createElement('button');
-          btn.className = 'opt-btn admin-only-lock';
-          btn.innerText = '👑 ' + item.label + ' (어드민만 사용가능)';
-          btn.onclick = () => showLiveToast('👑 어드민 전용', '어드민만 사용가능한 하의입니다!');
-          botBox.appendChild(btn);
-          return;
-        }
-        const owned = myAccount.ownedBottoms.includes(item.id), btn = document.createElement('button');
-        btn.className = 'opt-btn ' + (myProfile.bottomStyle === item.id ? 'active ' : '') + (!owned ? 'locked' : '');
-        btn.innerText = owned ? item.label : '🔒 ' + item.label + ' (' + item.price + '몽)';
-        btn.onclick = () => {
-          if (owned) { myProfile.bottomStyle = item.id; socket.emit('updateProfile', myProfile); renderShopUI(); }
-          else if (myAccount.mong >= item.price) socket.emit('buyItem', { category: 'bottom', itemId: item.id });
-          else showLiveToast('상점', '몽이 부족해유ㅠㅠ (' + item.price + '몽 필요)');
-        };
-        botBox.appendChild(btn);
-      });
-
-      const themeBox = document.getElementById('theme-options'); themeBox.innerHTML = '';
-      THEME_ITEMS.forEach(item => {
-        const owned = myAccount.ownedThemes.includes(item.id), btn = document.createElement('button');
-        btn.className = 'opt-btn ' + (currentTheme === item.id ? 'active ' : '') + (!owned ? 'locked' : '');
-        btn.innerText = owned ? item.label : '🔒 ' + item.label + ' (' + item.price + '몽)';
-        btn.onclick = () => {
-          if (owned) { buildWorldTheme(item.id); renderShopUI(); }
-          else if (myAccount.mong >= item.price) { socket.emit('buyItem', { category: 'theme', itemId: item.id }); buildWorldTheme(item.id); }
-          else showLiveToast('테마 상점', '몽이 부족해유ㅠㅠ (' + item.price + '몽 필요)');
-        };
-        themeBox.appendChild(btn);
-      });
     }
 
     function refreshAdminKickList() {
@@ -1418,9 +1527,6 @@
       const others = Object.values(savedPlayerProfiles).filter(p => p.id !== socket.id);
       sel.innerHTML = others.length === 0 ? '<option value="">(접속 중인 다른 유저 없음)</option>' : others.map(p => '<option value="' + p.id + '">' + p.name + '</option>').join('');
     }
-
-    document.getElementById('upgrade-speed-btn').onclick = () => socket.emit('buyItem', { category: 'speed' });
-    document.getElementById('upgrade-jump-btn').onclick = () => socket.emit('buyItem', { category: 'jump' });
 
     const chatMiniBar = document.getElementById('chat-mini-bar'), chatBox = document.getElementById('chat-box'), chatMessages = document.getElementById('chat-messages'), chatInput = document.getElementById('chat-input'), toastContainer = document.getElementById('chat-toast-container');
     chatMiniBar.onclick = () => { chatBox.classList.toggle('expanded'); if (chatBox.classList.contains('expanded')) { document.getElementById('chat-unread-dot').style.display = 'none'; chatInput.focus(); } };
@@ -1439,7 +1545,7 @@
     }
     document.getElementById('chat-form').onsubmit = (e) => { e.preventDefault(); if (chatInput.value.trim()) { socket.emit('chatMessage', chatInput.value); chatInput.value = ''; } chatInput.blur(); };
 
-    const panels = ['account-panel', 'avatar-panel', 'theme-panel', 'admin-panel'];
+    const panels = ['account-panel', 'admin-dm-panel', 'avatar-panel', 'theme-panel', 'admin-panel', 'attack-panel'];
     function togglePanel(id) { panels.forEach(p => p === id ? document.getElementById(p).classList.toggle('open') : document.getElementById(p).classList.remove('open')); }
 
     function openAdminPanelForStage(stage) {
@@ -1462,32 +1568,28 @@
     }
 
     document.getElementById('quick-admin-btn').onclick = () => openAdminPanelForStage('controls');
+    document.getElementById('open-admin-dm-btn').onclick = () => togglePanel('admin-dm-panel');
+    document.getElementById('admin-dm-form').onsubmit = (e) => {
+      e.preventDefault();
+      const inp = document.getElementById('admin-dm-input');
+      if (inp.value.trim()) { socket.emit('sendAdminDM', inp.value); inp.value = ''; }
+    };
 
     document.getElementById('open-account-btn').onclick = () => {
       document.getElementById('my-id-readonly').value = myAccount.username || '';
       document.getElementById('my-nickname-input').value = myAccount.name || '';
       document.getElementById('my-password-input').value = '';
+      renderCitizenshipUI();
       togglePanel('account-panel');
     };
     document.getElementById('save-account-btn').onclick = () => {
-      socket.emit('updateAccountSettings', {
-        newNickname: document.getElementById('my-nickname-input').value.trim(),
-        newPassword: document.getElementById('my-password-input').value.trim()
-      });
+      socket.emit('updateAccountSettings', { newNickname: document.getElementById('my-nickname-input').value.trim(), newPassword: document.getElementById('my-password-input').value.trim() });
       document.getElementById('account-panel').classList.remove('open');
     };
 
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = () => document.getElementById(b.dataset.close).classList.remove('open'));
-
-    document.getElementById('admin-id-verify-btn').onclick = () => {
-      socket.emit('adminVerifyId', { id: document.getElementById('admin-id-input').value.trim() });
-    };
-    document.getElementById('admin-submit-btn').onclick = () => {
-      socket.emit('adminLogin', {
-        id: document.getElementById('admin-id-input').value.trim(),
-        pw: document.getElementById('admin-pw-input').value.trim()
-      });
-    };
+    document.getElementById('admin-id-verify-btn').onclick = () => socket.emit('adminVerifyId', { id: document.getElementById('admin-id-input').value.trim() });
+    document.getElementById('admin-submit-btn').onclick = () => socket.emit('adminLogin', { id: document.getElementById('admin-id-input').value.trim(), pw: document.getElementById('admin-pw-input').value.trim() });
     document.getElementById('admin-boost-btn').onclick = () => socket.emit('adminToggleBoost');
     document.getElementById('admin-invisible-btn').onclick = () => socket.emit('adminToggleInvisible');
     document.getElementById('admin-send-alert-btn').onclick = () => { const inp = document.getElementById('admin-alert-input'); if (inp.value.trim()) { socket.emit('adminBroadcastAlert', inp.value); inp.value = ''; } };
@@ -1511,15 +1613,9 @@
     const lobbyBanner = document.getElementById('lobby-banner');
     function updateLobbyParticipantsUI(participants) {
       const list = Object.values(participants || {});
-      document.getElementById('lobby-participants-list').innerHTML =
-        '<b>참가자 (' + list.length + '명):</b> ' + (list.map(p => p.name).join(', ') || '없음');
+      document.getElementById('lobby-participants-list').innerHTML = '<b>참가자 (' + list.length + '명):</b> ' + (list.map(p => p.name).join(', ') || '없음');
     }
-
-    document.getElementById('lobby-yes-btn').onclick = () => {
-      socket.emit('joinMinigameLobby', { roomId: activeLobbyRoomId });
-      document.getElementById('lobby-join-btns').style.display = 'none';
-      document.getElementById('lobby-desc').innerText = '✅ 참가 신청 완료!';
-    };
+    document.getElementById('lobby-yes-btn').onclick = () => { socket.emit('joinMinigameLobby', { roomId: activeLobbyRoomId }); document.getElementById('lobby-join-btns').style.display = 'none'; document.getElementById('lobby-desc').innerText = '✅ 참가 신청 완료!'; };
     document.getElementById('lobby-no-btn').onclick = () => lobbyBanner.classList.remove('open');
     document.getElementById('lobby-force-start-btn').onclick = () => socket.emit('hostForceStartLobby');
     document.getElementById('lobby-cancel-btn').onclick = () => socket.emit('hostCancelLobby');
@@ -1538,90 +1634,58 @@
     function updatePlayerCount() { document.getElementById('player-count').innerText = '👥 ' + (Object.keys(otherPlayers).length + 1) + '명'; refreshAdminKickList(); }
 
     socket.on('authError', (msg) => { authError.innerText = msg; });
+    socket.on('citizenshipUpgraded', ({ tier, message }) => { myAccount.citizenship = tier; renderShopUI(); showLiveToast('🎉 시민권 승급!', message); });
+    socket.on('yellowAutoMong', ({ mong, earned }) => { myAccount.mong = mong; renderShopUI(); showLiveToast('🌟 YELLOW 특전', '자동 지급 +' + earned + '몽!'); });
+    socket.on('receiveAdminDM', ({ fromName, isAdmin, text }) => {
+      const box = document.getElementById('admin-dm-messages');
+      const d = document.createElement('div');
+      d.innerHTML = '<b style="color:' + (isAdmin ? '#f87171' : '#facc15') + ';">' + fromName + ':</b> ' + text;
+      box.appendChild(d); box.scrollTop = box.scrollHeight;
+      showLiveToast('📩 1:1 DM (' + fromName + ')', text);
+    });
 
     socket.on('accountSettingsUpdated', ({ name, passwordChanged }) => {
-      myAccount.name = name;
-      myProfile.name = name;
-      renderShopUI();
+      myAccount.name = name; myProfile.name = name; renderShopUI();
       showLiveToast('내 정보 저장', passwordChanged ? '닉네임과 비밀번호가 변경되었어요!' : '닉네임이 [' + name + ']으로 변경되었어요!');
     });
 
-    socket.on('authSuccess', ({ me, players, worldCoins }) => {
+    socket.on('authSuccess', ({ me, players, worldCoins, attackChars }) => {
+      if (attackChars) ATTACK_CHARS = attackChars;
       if (worldCoins) syncWorldCoins(worldCoins);
       Object.keys(otherPlayers).forEach(k => { scene.remove(otherPlayers[k]); delete otherPlayers[k]; });
       if (myAvatar) { scene.remove(myAvatar); myAvatar = null; }
 
-      myAccount = {
-        username: me.username, name: me.name, isGuest: !!me.isGuest,
-        mong: me.mong, speedLevel: me.speedLevel, jumpLevel: me.jumpLevel,
-        isAdmin: !!me.isAdmin, adminBoostActive: !!me.adminBoostActive, isInvisible: !!me.isInvisible,
-        ownedTops: me.ownedTops, ownedBottoms: me.ownedBottoms, ownedThemes: me.ownedThemes
-      };
-      myProfile = {
-        name: me.name, face: me.face,
-        topStyle: me.topStyle, topColor: me.topColor,
-        bottomStyle: me.bottomStyle, bottomColor: me.bottomColor
-      };
+      myAccount = { ...myAccount, ...me };
+      myProfile = { name: me.name, face: me.face, topStyle: me.topStyle, topColor: me.topColor, bottomStyle: me.bottomStyle, bottomColor: me.bottomColor };
 
       Object.keys(players).forEach((id) => {
-        const p = players[id];
-        savedPlayerProfiles[id] = p;
-        if (id === socket.id) {
-          myAvatar = createAvatar(p);
-          myAvatar.position.set(p.x, p.y, p.z);
-        } else {
-          otherPlayers[id] = createAvatar(p);
-          otherPlayers[id].position.set(p.x, p.y, p.z);
-        }
+        const p = players[id]; savedPlayerProfiles[id] = p;
+        if (id === socket.id) { myAvatar = createAvatar(p); myAvatar.position.set(p.x, p.y, p.z); }
+        else { otherPlayers[id] = createAvatar(p); otherPlayers[id].position.set(p.x, p.y, p.z); }
       });
 
-      if (me.isAdmin) {
-        document.getElementById('quick-admin-btn').style.display = 'inline-block';
-        openAdminPanelForStage('controls');
-      }
-
+      if (me.isAdmin) { document.getElementById('quick-admin-btn').style.display = 'inline-block'; openAdminPanelForStage('controls'); }
       authScreen.classList.add('hidden');
-      renderShopUI();
-      updatePlayerCount();
-      if (me.isGuest) showLiveToast('게스트 모드', '저장 없이 체험 중입니다. 회원가입을 하면 진행상황이 저장됩니다!');
-      else showLiveToast('환영합니다!', me.name + '님의 데이터가 불러와졌어요!! :)');
+      renderShopUI(); updatePlayerCount();
+      showLiveToast('환영합니다!', me.name + '님의 데이터가 불러와졌어요!! :)');
     });
 
-    socket.on('adminIdVerified', ({ message }) => {
-      castleIdVerified = true;
-      showLiveToast('🪪 1단계 통과', message);
-      openAdminPanelForStage('pw');
-    });
-
+    socket.on('adminIdVerified', ({ message }) => { castleIdVerified = true; showLiveToast('🪪 1단계 통과', message); openAdminPanelForStage('pw'); });
     socket.on('adminAuthSuccess', (p) => {
-      myAccount = {
-        ...myAccount,
-        mong: p.mong, speedLevel: p.speedLevel, jumpLevel: p.jumpLevel,
-        isAdmin: !!p.isAdmin, adminBoostActive: !!p.adminBoostActive, isInvisible: !!p.isInvisible,
-        ownedTops: p.ownedTops, ownedBottoms: p.ownedBottoms, ownedThemes: p.ownedThemes
-      };
+      myAccount = { ...myAccount, ...p };
       document.getElementById('quick-admin-btn').style.display = 'inline-block';
       document.getElementById('admin-step1-box').style.display = 'none';
       document.getElementById('admin-step2-box').style.display = 'none';
       document.getElementById('admin-controls-box').style.display = 'flex';
-      document.getElementById('admin-boost-btn').innerText = p.adminBoostActive
-        ? '⚡ 속도/점프: 현재 20배 (클릭 시 일반 전환)'
-        : '🚶 속도/점프: 현재 일반 (클릭 시 20배 전환)';
+      document.getElementById('admin-boost-btn').innerText = p.adminBoostActive ? '⚡ 속도/점프: 현재 20배 (클릭 시 일반 전환)' : '🚶 속도/점프: 현재 일반 (클릭 시 20배 전환)';
       document.getElementById('admin-invisible-btn').innerText = p.isInvisible ? '👻 투명 모드 끄기 (현재: ON)' : '👻 투명 모드 켜기 (현재: OFF)';
       if (myAvatar) buildAvatarAppearance(myAvatar, { ...myProfile, isAdmin: true });
       renderShopUI(); refreshAdminKickList();
     });
 
     socket.on('adminAuthFail', (msg) => showLiveToast('🛡️ Admin 오류', msg));
-    socket.on('adminPlayerStealth', ({ id, isInvisible }) => {
-      if (savedPlayerProfiles[id]) savedPlayerProfiles[id].isInvisible = isInvisible;
-      if (id === socket.id) { if (myAvatar) myAvatar.visible = true; }
-      else if (otherPlayers[id]) otherPlayers[id].visible = !isInvisible;
-    });
-    socket.on('adminKicked', ({ byName }) => {
-      alert('관리자(' + byName + ')에 의해 월드에서 강제퇴장되었어요. 아쉬운거지 뭐;ㅋ');
-      document.body.innerHTML = '<div style="color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;font-weight:bold;">🚫 관리자에 의해 월드에서 퇴장되었습니다.</div>';
-    });
+    socket.on('adminPlayerStealth', ({ id, isInvisible }) => { if (savedPlayerProfiles[id]) savedPlayerProfiles[id].isInvisible = isInvisible; if (id !== socket.id && otherPlayers[id]) otherPlayers[id].visible = !isInvisible; });
+    socket.on('adminKicked', ({ byName }) => { alert('관리자(' + byName + ')에 의해 강제퇴장되었어요. 아쉬운거지 뭐;ㅋ'); location.reload(); });
 
     let adminAlertTimeout = null;
     socket.on('adminGlobalAlert', ({ senderName, message }) => {
@@ -1630,12 +1694,12 @@
       document.getElementById('admin-alert-sender').innerText = '발신 관리자: ' + senderName;
       box.classList.add('open');
       if (adminAlertTimeout) clearTimeout(adminAlertTimeout);
-      adminAlertTimeout = setTimeout(() => { box.classList.remove('open'); }, 6000);
+      adminAlertTimeout = setTimeout(() => box.classList.remove('open'), 6000);
     });
 
-    socket.on('coinCollected', ({ mong, earned }) => { myAccount.mong = mong; renderShopUI(); showLiveToast('🪙 코인 획득!', '+' + earned + '몽!'); });
+    socket.on('coinCollected', ({ mong, earned, citizenship, maxMong }) => { myAccount.mong = mong; if (citizenship) myAccount.citizenship = citizenship; if (maxMong) myAccount.maxMong = maxMong; renderShopUI(); showLiveToast('🪙 코인 획득!', '+' + earned + '몽!'); });
     socket.on('worldCoinMoved', (coin) => { const m = coinMeshes[coin.id]; if (m) { m.position.set(coin.x, 0.75, coin.z); m.userData.x = coin.x; m.userData.z = coin.z; } });
-    socket.on('shopUpdated', (p) => { myAccount = { ...myAccount, mong: p.mong, speedLevel: p.speedLevel, jumpLevel: p.jumpLevel, ownedTops: p.ownedTops, ownedBottoms: p.ownedBottoms, ownedThemes: p.ownedThemes }; renderShopUI(); showLiveToast('알림', '업데이트 완료!'); });
+    socket.on('shopUpdated', (p) => { myAccount = { ...myAccount, ...p }; renderShopUI(); showLiveToast('알림', '업데이트 완료!'); });
     socket.on('newPlayer', (p) => { savedPlayerProfiles[p.id] = p; if (p.id !== socket.id && !otherPlayers[p.id]) { otherPlayers[p.id] = createAvatar(p); otherPlayers[p.id].position.set(p.x, p.y, p.z); updatePlayerCount(); } });
     socket.on('playerMoved', (p) => { const t = otherPlayers[p.id]; if (t) { t.userData.targetPos.set(p.x, p.y, p.z); t.userData.targetRotY = p.rotY; t.userData.isMoving = p.isMoving; } });
     socket.on('playerUpdated', (p) => {
@@ -1649,6 +1713,17 @@
     socket.on('playerGesture', (d) => { const t = d.id === socket.id ? myAvatar : otherPlayers[d.id]; if (t) { t.userData.gesture = d.gesture; t.userData.gestureTimer = 2.5; } });
     socket.on('chatMessage', (d) => { addChatLog(d.name, d.text); const t = d.id === socket.id ? myAvatar : otherPlayers[d.id]; if (t) showSpeechBubble(t, d.text); });
 
+    socket.on('attackMatchStarted', (data) => enterAttackArena(data));
+    socket.on('attackStateUpdate', (st) => { if (gameState === 'attack') updateAttackScene(st); });
+    socket.on('attackMatchEnded', ({ won, reward, reasonText, mong, citizenship }) => {
+      myAccount.mong = mong; if (citizenship) myAccount.citizenship = citizenship; renderShopUI();
+      exitAttackToWorld();
+      document.getElementById('cmodal-title').innerText = won ? '🏆 ATTACK 승리!' : '💀 ATTACK 종료';
+      document.getElementById('cmodal-body').innerHTML = reasonText + '<br>보상: <b>+' + reward + '몽</b> 지급!';
+      document.getElementById('cmodal-footer').innerHTML = '<button class="modal-btn" style="background:#0284c7;" onclick="document.getElementById(\'center-modal\').classList.remove(\'open\')">확인</button>';
+      cModal.classList.add('open');
+    });
+
     socket.on('minigameLobbyStarted', (data) => {
       activeLobbyRoomId = data.roomId;
       document.getElementById('lobby-title').innerText = '🎮 ' + data.title + ' 모집 중!';
@@ -1656,198 +1731,198 @@
       updateLobbyParticipantsUI(data.participants);
       if (data.hostId === socket.id) {
         document.getElementById('lobby-join-btns').style.display = 'none'; document.getElementById('lobby-host-btns').style.display = 'flex';
-        document.getElementById('lobby-desc').innerText = '참가자 모집 중';
+        document.getElementById('lobby-desc').innerText = '방장: 참가자 모집 중 (30초)';
       } else {
         document.getElementById('lobby-join-btns').style.display = 'flex'; document.getElementById('lobby-host-btns').style.display = 'none';
         document.getElementById('lobby-desc').innerHTML = '<b>' + data.hostName + '</b>님이 미니게임을 시작했습니다!';
       }
       lobbyBanner.classList.add('open');
     });
-
     socket.on('minigameLobbyTick', ({ roomId, timeLeft, participants }) => {
       if (activeLobbyRoomId && roomId && activeLobbyRoomId !== roomId) return;
       document.getElementById('lobby-timer').innerText = timeLeft + '초 남음';
       updateLobbyParticipantsUI(participants);
-      if (participants && participants[socket.id]) {
-        document.getElementById('lobby-desc').innerText = '✅ 참가 대기 중 (총 ' + Object.keys(participants).length + '명)';
-      }
     });
-
-    socket.on('minigameLobbyClosed', ({ roomId }) => {
-      if (!activeLobbyRoomId || activeLobbyRoomId === roomId) {
-        activeLobbyRoomId = null;
-        lobbyBanner.classList.remove('open');
-      }
-    });
-
-    socket.on('minigameCancelled', ({ reason }) => { activeLobbyRoomId = null; lobbyBanner.classList.remove('open'); showLiveToast('알림', reason); addChatLog('시스템', reason); });
-
+    socket.on('minigameLobbyClosed', ({ roomId }) => { if (!activeLobbyRoomId || activeLobbyRoomId === roomId) { activeLobbyRoomId = null; lobbyBanner.classList.remove('open'); } });
+    socket.on('minigameCancelled', ({ reason }) => { activeLobbyRoomId = null; lobbyBanner.classList.remove('open'); showLiveToast('알림', reason); });
     socket.on('colorflipTeamSetup', ({ hostId, participants, assignments }) => {
       lobbyBanner.classList.remove('open');
       if (socket.id !== hostId) { document.getElementById('cmodal-title').innerText = '⏳ 팀 편성 대기 중'; document.getElementById('cmodal-body').innerText = '방장이 팀을 배정 중입니다.'; document.getElementById('cmodal-footer').innerHTML = ''; cModal.classList.add('open'); return; }
-      document.getElementById('cmodal-title').innerText = '👥 방장 권한: 팀 편성 (최소 2팀 이상)';
+      document.getElementById('cmodal-title').innerText = '👥 방장 권한: 팀 편성 (2팀 이상)';
       const list = Object.values(participants); let teamCount = 2;
       function renderTeamForm() {
-        let html = '<div style="margin-bottom:8px;"><label>팀 개수: </label><select id="team-cnt-sel" style="padding:4px 8px;border-radius:6px;background:#1e293b;color:#fff;">' +
-          '<option value="2"' + (teamCount===2?' selected':'') + '>2팀</option><option value="3"' + (teamCount===3?' selected':'') + '>3팀</option><option value="4"' + (teamCount===4?' selected':'') + '>4팀</option></select></div>' +
-          '<div style="display:flex;flex-direction:column;gap:5px;text-align:left;max-height:220px;overflow-y:auto;">';
-        list.forEach((p, idx) => {
-          const curT = (assignments[p.id] !== undefined ? assignments[p.id] : (idx % teamCount)) % teamCount; assignments[p.id] = curT;
-          html += '<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);padding:5px 8px;border-radius:8px;"><span>' + p.name + '</span>' +
-            '<select class="member-team-sel" data-id="' + p.id + '" style="padding:3px 6px;border-radius:6px;background:#0f172a;color:#fff;">' +
-            Array.from({ length: teamCount }, (_, t) => '<option value="' + t + '"' + (curT===t?' selected':'') + '>' + (t+1) + '팀</option>').join('') + '</select></div>';
-        });
+        let html = '<div style="margin-bottom:8px;"><label>팀 개수: </label><select id="team-cnt-sel" style="padding:4px 8px;border-radius:6px;background:#1e293b;color:#fff;"><option value="2"' + (teamCount===2?' selected':'') + '>2팀</option><option value="3"' + (teamCount===3?' selected':'') + '>3팀</option><option value="4"' + (teamCount===4?' selected':'') + '>4팀</option></select></div><div style="display:flex;flex-direction:column;gap:5px;text-align:left;max-height:220px;overflow-y:auto;">';
+        list.forEach((p, idx) => { const curT = (assignments[p.id] !== undefined ? assignments[p.id] : (idx % teamCount)) % teamCount; assignments[p.id] = curT; html += '<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);padding:5px 8px;border-radius:8px;"><span>' + p.name + '</span><select class="member-team-sel" data-id="' + p.id + '" style="padding:3px 6px;border-radius:6px;background:#0f172a;color:#fff;">' + Array.from({ length: teamCount }, (_, t) => '<option value="' + t + '"' + (curT===t?' selected':'') + '>' + (t+1) + '팀</option>').join('') + '</select></div>'; });
         document.getElementById('cmodal-body').innerHTML = html + '</div>';
         document.getElementById('team-cnt-sel').onchange = (e) => { teamCount = Math.max(2, parseInt(e.target.value) || 2); renderTeamForm(); };
         document.querySelectorAll('.member-team-sel').forEach(sel => { sel.onchange = (e) => { assignments[sel.dataset.id] = parseInt(e.target.value); }; });
       }
       renderTeamForm();
       document.getElementById('cmodal-footer').innerHTML = '<button class="modal-btn" id="confirm-teams-btn" style="background:#10b981;">팀 확정 및 시작!</button>';
-      document.getElementById('confirm-teams-btn').onclick = () => {
-        if (new Set(Object.values(assignments)).size < 2) { showLiveToast('팀 편성 오류', '최소 2개 이상의 팀으로 나누어야 합니다!'); return; }
-        cModal.classList.remove('open'); socket.emit('confirmColorflipTeams', { teamCount, assignments });
-      };
+      document.getElementById('confirm-teams-btn').onclick = () => { if (new Set(Object.values(assignments)).size < 2) { showLiveToast('오류', '최소 2팀 이상으로 나누세요!'); return; } cModal.classList.remove('open'); socket.emit('confirmColorflipTeams', { teamCount, assignments }); };
       cModal.classList.add('open');
     });
-
     socket.on('colorflipMatchStarted', (data) => { lobbyBanner.classList.remove('open'); cModal.classList.remove('open'); if (!data.participants[socket.id]) return; document.getElementById('mg-big-timer').innerText = formatTime(data.timeLeft); enterColorFlipArena(data); });
     socket.on('tileFlipped', ({ index, color }) => { if (gameState === 'colorflip' && arenaTileMeshes[index]) arenaTileMeshes[index].material.color.set(color); });
-    socket.on('colorflipTick', ({ timeLeft, scoreboard }) => {
-      if (gameState !== 'colorflip') return;
-      document.getElementById('mg-big-timer').innerText = formatTime(timeLeft);
-      document.getElementById('mg-live-board').innerHTML = '<div style="font-weight:bold;color:#fbbf24;margin-bottom:2px;">👑 실시간 순위</div>' +
-        scoreboard.slice(0, 6).map((item, i) => '<div class="rank-row"><span style="display:flex;align-items:center;gap:4px;"><i style="width:9px;height:9px;border-radius:50%;background:' + item.color + ';display:inline-block;"></i>' + (i===0?'👑':(i+1)+'.') + ' ' + item.name + '</span><b>' + item.count + '칸</b></div>').join('');
-    });
-
-    socket.on('rpsRoundStarted', ({ targetItCount, groups, participants, timeLeft }) => {
-      lobbyBanner.classList.remove('open'); if (!participants[socket.id]) return;
-      const myGroup = groups.find(g => g.memberIds.includes(socket.id));
-      document.getElementById('cmodal-title').innerText = '✊✌️🖐️ 술래 선발 (목표 ' + targetItCount + '명)';
-      if (!myGroup) { document.getElementById('cmodal-body').innerHTML = '도망자 확정! 대기 중... (' + timeLeft + '초)'; document.getElementById('cmodal-footer').innerHTML = ''; }
-      else {
-        const opp = myGroup.memberIds.map(id => participants[id] ? participants[id].name : '').join(' vs ');
-        document.getElementById('cmodal-body').innerHTML = '<div style="margin-bottom:8px;color:#fbbf24;">' + opp + '</div><div>선택하세요 (<span id="rps-sec">' + timeLeft + '</span>초)</div>';
-        document.getElementById('cmodal-footer').innerHTML = '<button class="modal-btn" style="background:#3b82f6;" onclick="pickRps(\'scissors\')">✌️ 가위</button><button class="modal-btn" style="background:#ef4444;" onclick="pickRps(\'rock\')">✊ 바위</button><button class="modal-btn" style="background:#10b981;" onclick="pickRps(\'paper\')">🖐️ 보</button>';
-      }
-      cModal.classList.add('open');
-    });
+    socket.on('colorflipTick', ({ timeLeft, scoreboard }) => { if (gameState !== 'colorflip') return; document.getElementById('mg-big-timer').innerText = formatTime(timeLeft); document.getElementById('mg-live-board').innerHTML = '<div style="font-weight:bold;color:#fbbf24;margin-bottom:2px;">👑 순위</div>' + scoreboard.slice(0, 6).map((item, i) => '<div class="rank-row"><span>' + (i+1) + '. ' + item.name + '</span><b>' + item.count + '칸</b></div>').join(''); });
+    socket.on('rpsRoundStarted', ({ targetItCount, groups, participants, timeLeft }) => { lobbyBanner.classList.remove('open'); if (!participants[socket.id]) return; const myGroup = groups.find(g => g.memberIds.includes(socket.id)); document.getElementById('cmodal-title').innerText = '✊✌️🖐️ 술래 선발 (' + targetItCount + '명)'; if (!myGroup) { document.getElementById('cmodal-body').innerHTML = '도망자 확정! 대기 중...'; document.getElementById('cmodal-footer').innerHTML = ''; } else { document.getElementById('cmodal-body').innerHTML = '선택하세요 (<span id="rps-sec">' + timeLeft + '</span>초)'; document.getElementById('cmodal-footer').innerHTML = '<button class="modal-btn" style="background:#3b82f6;" onclick="pickRps(\'scissors\')">✌️ 가위</button><button class="modal-btn" style="background:#ef4444;" onclick="pickRps(\'rock\')">✊ 바위</button><button class="modal-btn" style="background:#10b981;" onclick="pickRps(\'paper\')">🖐️ 보</button>'; } cModal.classList.add('open'); });
     window.pickRps = (c) => { socket.emit('submitRps', c); document.getElementById('cmodal-footer').innerHTML = '<div style="color:#34d399;font-weight:bold;">선택 완료!</div>'; };
     socket.on('rpsTick', ({ timeLeft }) => { const el = document.getElementById('rps-sec'); if (el) el.innerText = timeLeft; });
-    socket.on('rpsRoundResult', ({ losers, participants }) => { document.getElementById('cmodal-body').innerHTML = '패배(술래 후보): <b style="color:#f87171;">' + losers.map(id => participants[id] ? participants[id].name : '').join(', ') + '</b>'; document.getElementById('cmodal-footer').innerHTML = ''; });
-
+    socket.on('rpsRoundResult', ({ losers, participants }) => { document.getElementById('cmodal-body').innerHTML = '술래 후보: ' + losers.map(id => participants[id] ? participants[id].name : '').join(', '); document.getElementById('cmodal-footer').innerHTML = ''; });
     socket.on('freezetagMatchStarted', (data) => { cModal.classList.remove('open'); if (!data.participants[socket.id]) return; document.getElementById('mg-big-timer').innerText = formatTime(data.timeLeft); enterFreezeTagArena(data); applyFreezeVisuals(data.participants); });
-    socket.on('freezetagAction', ({ type, actorId, targetId, participants, updatedPlayers }) => {
-      if (updatedPlayers && updatedPlayers[socket.id]) { myAccount.mong = updatedPlayers[socket.id].mong; renderShopUI(); }
-      if (gameState !== 'freezetag') return;
-      const aN = participants[actorId] ? participants[actorId].name : '', tN = participants[targetId] ? participants[targetId].name : '';
-      if (type === 'freeze') showLiveToast('🧊 얼음!', aN + '님 얼음!');
-      else if (type === 'fire') showLiveToast('🔥 불!', aN + '님이 ' + tN + '님 해제!');
-      else if (type === 'clang') showLiveToast('💥 쨍그랑!', aN + '님 & ' + tN + '님 해제!');
-      else if (type === 'out') showLiveToast('📺 아웃!', tN + '님 생중계 관중석 이동 (-10몽)');
-      applyFreezeVisuals(participants); updateFreezeTagHud(participants);
-    });
+    socket.on('freezetagAction', ({ participants, updatedPlayers }) => { if (updatedPlayers && updatedPlayers[socket.id]) { myAccount.mong = updatedPlayers[socket.id].mong; renderShopUI(); } if (gameState === 'freezetag') { applyFreezeVisuals(participants); updateFreezeTagHud(participants); } });
     socket.on('freezetagTick', ({ timeLeft }) => { if (gameState === 'freezetag') document.getElementById('mg-big-timer').innerText = formatTime(timeLeft); });
-
-    socket.on('liarGameStarted', (data) => {
-      lobbyBanner.classList.remove('open');
-      const badge = document.getElementById('liar-my-word-badge');
-      if (data.isLiar) { badge.style.background = '#ef4444'; badge.style.color = '#fff'; badge.innerText = '😈 당신은 라이어입니다'; document.getElementById('liar-big-speech').innerText = '당신은 라이어입니다! 들키지 않게 설명하세요!'; }
-      else { badge.style.background = '#f59e0b'; badge.style.color = '#000'; badge.innerText = '[' + data.category + '] 제시어: ' + data.word; document.getElementById('liar-big-speech').innerText = '제시어 [' + data.word + ']를 설명하세요!'; }
-      document.getElementById('liar-speech-log').innerHTML = ''; enterLiarArena(data);
-    });
-    socket.on('liarTurnUpdate', ({ speakerId, speakerName, label, timeLeft }) => {
-      document.getElementById('mg-big-timer').innerText = formatTime(timeLeft);
-      document.getElementById('liar-turn-badge').innerText = label + ' — 차례: ' + speakerName;
-      if (speakerId === socket.id) { liarSpeechForm.style.display = 'flex'; liarSpeechInput.focus(); } else liarSpeechForm.style.display = 'none';
-    });
+    socket.on('liarGameStarted', (data) => { lobbyBanner.classList.remove('open'); const badge = document.getElementById('liar-my-word-badge'); badge.innerText = data.isLiar ? '😈 당신은 라이어입니다' : '[' + data.category + '] 제시어: ' + data.word; document.getElementById('liar-speech-log').innerHTML = ''; enterLiarArena(data); });
+    socket.on('liarTurnUpdate', ({ speakerId, speakerName, label, timeLeft }) => { document.getElementById('mg-big-timer').innerText = formatTime(timeLeft); document.getElementById('liar-turn-badge').innerText = label + ' — ' + speakerName; liarSpeechForm.style.display = (speakerId === socket.id) ? 'flex' : 'none'; });
     socket.on('liarTurnTick', ({ timeLeft }) => { if (gameState === 'liar') document.getElementById('mg-big-timer').innerText = formatTime(timeLeft); });
-    socket.on('liarNewSpeech', ({ entry }) => {
-      document.getElementById('liar-big-speech').innerHTML = '💬 <span style="color:#fef08a;">' + entry.name + '</span>: "' + entry.text + '"';
-      const lb = document.getElementById('liar-speech-log'), d = document.createElement('div'); d.innerHTML = '<b>' + entry.name + ':</b> ' + entry.text; lb.appendChild(d); lb.scrollTop = lb.scrollHeight;
-    });
-    socket.on('liarRunoffAnnounced', ({ tieNames }) => { document.getElementById('liar-big-speech').innerHTML = '⚖️ 동점! (<b>' + tieNames + '</b>) 최후 변론 후 재투표!'; });
-    socket.on('liarVoteStarted', ({ candidateIds, participants, timeLeft, isRunoff }) => {
-      liarSpeechForm.style.display = 'none'; document.getElementById('mg-big-timer').innerText = formatTime(timeLeft);
-      document.getElementById('cmodal-title').innerText = isRunoff ? '⚖️ 동점자 재투표!' : '🗳️ 라이어 지목 투표!';
-      document.getElementById('cmodal-body').innerHTML = '라이어를 선택하세요! (<span id="vote-sec">' + timeLeft + '</span>초)';
-      document.getElementById('cmodal-footer').innerHTML = candidateIds.map(cid => '<button class="modal-btn" style="background:#ef4444;" onclick="castLiarVote(\'' + cid + '\')">' + (participants[cid] ? participants[cid].name : '') + '</button>').join('');
-      cModal.classList.add('open');
-    });
+    socket.on('liarNewSpeech', ({ entry }) => { document.getElementById('liar-big-speech').innerHTML = '💬 ' + entry.name + ': "' + entry.text + '"'; const lb = document.getElementById('liar-speech-log'), d = document.createElement('div'); d.innerHTML = '<b>' + entry.name + ':</b> ' + entry.text; lb.appendChild(d); lb.scrollTop = lb.scrollHeight; });
+    socket.on('liarVoteStarted', ({ candidateIds, participants, timeLeft }) => { liarSpeechForm.style.display = 'none'; document.getElementById('cmodal-title').innerText = '🗳️ 라이어 지목 투표!'; document.getElementById('cmodal-body').innerHTML = '라이어를 선택하세요! (<span id="vote-sec">' + timeLeft + '</span>초)'; document.getElementById('cmodal-footer').innerHTML = candidateIds.map(cid => '<button class="modal-btn" style="background:#ef4444;" onclick="castLiarVote(\'' + cid + '\')">' + (participants[cid] ? participants[cid].name : '') + '</button>').join(''); cModal.classList.add('open'); });
     window.castLiarVote = (tid) => { socket.emit('submitLiarVote', tid); document.getElementById('cmodal-footer').innerHTML = '<div style="color:#34d399;font-weight:bold;">투표 완료!</div>'; };
-    socket.on('liarVoteTick', ({ timeLeft }) => { const el = document.getElementById('vote-sec'); if (el) el.innerText = timeLeft; if (gameState === 'liar') document.getElementById('mg-big-timer').innerText = formatTime(timeLeft); });
-
-    socket.on('minigameActorsUpdate', (participants) => {
-      if (gameState === 'world' || gameState === 'liar') return;
-      Object.values(participants).forEach(p => { if (p.isCpu && cpuAvatars[p.id]) { cpuAvatars[p.id].userData.targetPos.set(p.x, p.y || 0, p.z); cpuAvatars[p.id].userData.targetRotY = p.rotY; cpuAvatars[p.id].userData.isMoving = p.isMoving; } });
-      if (gameState === 'freezetag') applyFreezeVisuals(participants);
-    });
+    socket.on('liarVoteTick', ({ timeLeft }) => { const el = document.getElementById('vote-sec'); if (el) el.innerText = timeLeft; });
+    socket.on('minigameActorsUpdate', (participants) => { if (gameState === 'world' || gameState === 'liar' || gameState === 'attack') return; Object.values(participants).forEach(p => { if (p.isCpu && cpuAvatars[p.id]) { cpuAvatars[p.id].userData.targetPos.set(p.x, p.y || 0, p.z); cpuAvatars[p.id].userData.targetRotY = p.rotY; cpuAvatars[p.id].userData.isMoving = p.isMoving; } }); if (gameState === 'freezetag') applyFreezeVisuals(participants); });
     socket.on('minigameEnded', ({ title, summaryText, updatedPlayers }) => {
       lobbyBanner.classList.remove('open'); cModal.classList.remove('open');
-      if (updatedPlayers && updatedPlayers[socket.id]) { myAccount.mong = updatedPlayers[socket.id].mong; renderShopUI(); }
-      if (gameState !== 'world') {
-        exitMinigameToWorld();
-        document.getElementById('cmodal-title').innerText = title; document.getElementById('cmodal-body').innerHTML = summaryText;
-        document.getElementById('cmodal-footer').innerHTML = '<button class="modal-btn" style="background:#0284c7;" onclick="document.getElementById(\'center-modal\').classList.remove(\'open\')">확인</button>';
-        cModal.classList.add('open');
-      }
+      if (updatedPlayers && updatedPlayers[socket.id]) { myAccount = { ...myAccount, ...updatedPlayers[socket.id] }; renderShopUI(); }
+      if (gameState !== 'world') { exitMinigameToWorld(); document.getElementById('cmodal-title').innerText = title; document.getElementById('cmodal-body').innerHTML = summaryText; document.getElementById('cmodal-footer').innerHTML = '<button class="modal-btn" style="background:#0284c7;" onclick="document.getElementById(\'center-modal\').classList.remove(\'open\')">확인</button>'; cModal.classList.add('open'); }
     });
     socket.on('playerDisconnected', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id]); delete otherPlayers[id]; delete savedPlayerProfiles[id]; updatePlayerCount(); } });
 
+    // ============================================================
+    // 모바일 멀티터치 완벽 지원 (조이스틱 + 시점 회전 + 점프 동시 조작)
+    // ============================================================
     const keys = {}; let joyX = 0, joyY = 0, velY = 0, isGrounded = true, camYaw = 0, camPitch = 0.42;
-    function getJumpPower() {
-      if (myAccount.isAdmin && myAccount.adminBoostActive) return 0.22 * 20;
-      return 0.22 + (myAccount.jumpLevel || 0) * 0.035;
+
+    function getCitizenshipMultiplier() {
+      if (myAccount.isAdmin && myAccount.adminBoostActive) return 20.0;
+      if (myAccount.citizenship === 'yellow') return 1.2;
+      if (myAccount.citizenship === 'special') return 1.1;
+      return 1.0;
     }
+    function getJumpPower() {
+      const m = getCitizenshipMultiplier();
+      return (m >= 20) ? 0.22 * 20 : 0.22 * m;
+    }
+
     window.addEventListener('keydown', (e) => {
-      if ([authUserInput, authNickInput, authPwInput, chatInput, liarSpeechInput, document.getElementById('my-nickname-input'), document.getElementById('my-password-input'), document.getElementById('admin-id-input'), document.getElementById('admin-pw-input'), document.getElementById('admin-alert-input')].includes(document.activeElement)) return;
-      keys[e.code] = true; if (e.code === 'Space' && isGrounded && gameState !== 'liar') { velY = getJumpPower(); isGrounded = false; }
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+      keys[e.code] = true;
+      if (e.code === 'Space' && isGrounded && gameState !== 'liar' && gameState !== 'attack') { velY = getJumpPower(); isGrounded = false; }
     });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-    let isDragging = false, prevX = 0, prevY = 0;
-    renderer.domElement.addEventListener('pointerdown', (e) => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
-    window.addEventListener('pointerup', () => { isDragging = false; });
-    window.addEventListener('pointermove', (e) => { if (!isDragging) return; camYaw -= (e.clientX - prevX) * 0.006; camPitch = Math.max(0.1, Math.min(1.3, camPitch + (e.clientY - prevY) * 0.006)); prevX = e.clientX; prevY = e.clientY; });
+    // 터치 ID 분리: 조이스틱 손가락(joyTouchId)과 시점 회전 손가락(camTouchId)을 독립 추적!
+    const joyZone = document.getElementById('joystick-zone'), joyKnob = document.getElementById('joystick-knob');
+    let joyTouchId = null, camTouchId = null, prevCamX = 0, prevCamY = 0, mouseCamDrag = false;
 
-    const joyZone = document.getElementById('joystick-zone'), joyKnob = document.getElementById('joystick-knob'); let joyActive = false;
     function updateJoystick(cx, cy) {
       const rect = joyZone.getBoundingClientRect(), dx = cx - (rect.left + rect.width / 2), dy = cy - (rect.top + rect.height / 2);
-      const dist = Math.min(34, Math.hypot(dx, dy)), ang = Math.atan2(dy, dx);
+      const dist = Math.min(36, Math.hypot(dx, dy)), ang = Math.atan2(dy, dx);
       joyKnob.style.transform = 'translate(calc(-50% + ' + (Math.cos(ang)*dist) + 'px), calc(-50% + ' + (Math.sin(ang)*dist) + 'px))';
-      joyX = (Math.cos(ang) * dist) / 34; joyY = (Math.sin(ang) * dist) / 34;
+      joyX = (Math.cos(ang) * dist) / 36; joyY = (Math.sin(ang) * dist) / 36;
     }
-    function resetJoystick() { joyActive = false; joyKnob.style.transform = 'translate(-50%, -50%)'; joyX = 0; joyY = 0; }
-    joyZone.addEventListener('touchstart', (e) => { e.preventDefault(); joyActive = true; updateJoystick(e.touches[0].clientX, e.touches[0].clientY); });
-    joyZone.addEventListener('touchmove', (e) => { e.preventDefault(); if (joyActive) updateJoystick(e.touches[0].clientX, e.touches[0].clientY); });
-    joyZone.addEventListener('touchend', resetJoystick);
-    joyZone.addEventListener('mousedown', (e) => { e.stopPropagation(); joyActive = true; updateJoystick(e.clientX, e.clientY); });
-    window.addEventListener('mousemove', (e) => { if (joyActive) updateJoystick(e.clientX, e.clientY); });
-    window.addEventListener('mouseup', () => { if (joyActive) resetJoystick(); });
-    document.getElementById('jump-btn').onclick = () => { if (isGrounded && gameState !== 'liar') { velY = getJumpPower(); isGrounded = false; } };
+    function resetJoystick() { joyTouchId = null; joyKnob.style.transform = 'translate(-50%, -50%)'; joyX = 0; joyY = 0; }
+
+    joyZone.addEventListener('touchstart', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (joyTouchId === null && e.changedTouches.length > 0) {
+        const t = e.changedTouches[0]; joyTouchId = t.identifier; updateJoystick(t.clientX, t.clientY);
+      }
+    }, { passive: false });
+
+    renderer.domElement.addEventListener('touchstart', (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier !== joyTouchId && camTouchId === null) {
+          camTouchId = t.identifier; prevCamX = t.clientX; prevCamY = t.clientY;
+        }
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === joyTouchId) {
+          updateJoystick(t.clientX, t.clientY);
+        } else if (t.identifier === camTouchId) {
+          camYaw -= (t.clientX - prevCamX) * 0.0065;
+          camPitch = Math.max(0.12, Math.min(1.28, camPitch + (t.clientY - prevCamY) * 0.0065));
+          prevCamX = t.clientX; prevCamY = t.clientY;
+        }
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === joyTouchId) resetJoystick();
+        if (t.identifier === camTouchId) camTouchId = null;
+      }
+    });
+    window.addEventListener('touchcancel', (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === joyTouchId) resetJoystick();
+        if (t.identifier === camTouchId) camTouchId = null;
+      }
+    });
+
+    // PC 마우스 지원
+    let joyMouseActive = false;
+    joyZone.addEventListener('mousedown', (e) => { e.stopPropagation(); joyMouseActive = true; updateJoystick(e.clientX, e.clientY); });
+    renderer.domElement.addEventListener('mousedown', (e) => { mouseCamDrag = true; prevCamX = e.clientX; prevCamY = e.clientY; });
+    window.addEventListener('mousemove', (e) => {
+      if (joyMouseActive) updateJoystick(e.clientX, e.clientY);
+      else if (mouseCamDrag) {
+        camYaw -= (e.clientX - prevCamX) * 0.006;
+        camPitch = Math.max(0.12, Math.min(1.28, camPitch + (e.clientY - prevCamY) * 0.006));
+        prevCamX = e.clientX; prevCamY = e.clientY;
+      }
+    });
+    window.addEventListener('mouseup', () => { if (joyMouseActive) { joyMouseActive = false; resetJoystick(); } mouseCamDrag = false; });
+
+    // 점프 버튼: 조이스틱 조작 중에도 멀티터치로 즉시 반응!
+    const jumpBtn = document.getElementById('jump-btn');
+    function doJump(e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      if (isGrounded && gameState !== 'liar' && gameState !== 'attack') { velY = getJumpPower(); isGrounded = false; }
+    }
+    jumpBtn.addEventListener('touchstart', doJump, { passive: false });
+    jumpBtn.addEventListener('mousedown', doJump);
+
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
-    // 오픈월드 3초 구역 체류 로직
+    // 3초 구역 체류 로직
     let currentDwellZoneId = null, dwellProgressSec = 0, dwellTriggered = false;
-    const dwellHud = document.getElementById('zone-dwell-hud');
-    const dwellLabel = document.getElementById('zone-dwell-label');
-    const dwellFill = document.getElementById('zone-dwell-bar-fill');
-    const dwellSecTxt = document.getElementById('zone-dwell-sec');
+    const dwellHud = document.getElementById('zone-dwell-hud'), dwellLabel = document.getElementById('zone-dwell-label'), dwellFill = document.getElementById('zone-dwell-bar-fill'), dwellSecTxt = document.getElementById('zone-dwell-sec');
     const DWELL_TARGET_SEC = 3.0;
 
     function triggerZoneAction(zone) {
       if (zone.action === 'openAvatar') { renderShopUI(); togglePanel('avatar-panel'); }
       else if (zone.action === 'openTheme') { renderShopUI(); togglePanel('theme-panel'); }
-      else if (zone.action === 'openExchange') { openExchangeModal(); }
-      else if (zone.action === 'openMgSetup_colorflip') { openMinigameHostSetupModal('colorflip'); }
-      else if (zone.action === 'openMgSetup_freezetag') { openMinigameHostSetupModal('freezetag'); }
-      else if (zone.action === 'openMgSetup_liar') { openMinigameHostSetupModal('liar'); }
-      else if (zone.action === 'openCastleGate') {
-        castleGateUnlocked = true;
-        showLiveToast('🏰 성문 개방!', '3초 대기 완료! 성문이 열렸어요! 안으로 들어가세요!');
-      } else if (zone.action === 'openAdminIdModal') {
-        openAdminPanelForStage('id');
-      } else if (zone.action === 'openAdminPwModal') {
-        openAdminPanelForStage('pw');
+      else if (zone.action === 'openExchange') openExchangeModal();
+      else if (zone.action === 'openAttack') { renderAttackShopUI(); togglePanel('attack-panel'); }
+      else if (zone.action === 'openMgSetup_colorflip') openMinigameHostSetupModal('colorflip');
+      else if (zone.action === 'openMgSetup_freezetag') openMinigameHostSetupModal('freezetag');
+      else if (zone.action === 'openMgSetup_liar') openMinigameHostSetupModal('liar');
+      else if (zone.action === 'openCastleGate') { castleGateUnlocked = true; showLiveToast('🏰 성문 개방!', '성문이 열렸습니다! 안으로 들어가세요.'); }
+      else if (zone.action === 'openAdminIdModal') openAdminPanelForStage('id');
+      else if (zone.action === 'openAdminPwModal') openAdminPanelForStage('pw');
+    }
+
+    // 성벽 4면 충돌 판정 (절대 뚫고 들어갈 수 없도록 차단!)
+    function resolveCastleWallCollision(pos, prevX, prevZ) {
+      const minX = CASTLE_CX - CASTLE_HALF - 1.3, maxX = CASTLE_CX + CASTLE_HALF + 1.3;
+      const minZ = CASTLE_CZ - CASTLE_HALF - 1.3, maxZ = CASTLE_CZ + CASTLE_HALF + 1.3;
+      const inGateGap = castleGateUnlocked && Math.abs(pos.x - CASTLE_CX) < 3.1;
+
+      // 뒤벽, 좌벽, 우벽
+      if (pos.x > minX && pos.x < maxX && pos.z > minZ && pos.z < maxZ) {
+        const wasOutside = (prevX <= minX || prevX >= maxX || prevZ <= minZ || prevZ >= maxZ);
+        if (wasOutside) {
+          if (prevZ >= maxZ && inGateGap) return; // 열린 정문으로만 통과 허용!
+          pos.x = prevX; pos.z = prevZ;
+        }
+      } else {
+        const wasInside = (prevX > minX + 1.5 && prevX < maxX - 1.5 && prevZ > minZ + 1.5 && prevZ < maxZ - 1.5);
+        if (wasInside && !(pos.z >= maxZ - 1.5 && inGateGap)) {
+          pos.x = prevX; pos.z = prevZ;
+        }
       }
     }
 
@@ -1863,13 +1938,34 @@
           if (p.type === 'float') { p.mesh.position.y = p.baseY + Math.sin(time * 0.002 + p.phase) * 0.5; p.mesh.rotation.y += dt * 0.8; }
           else if (p.type === 'cloud') { p.mesh.position.x += dt * p.speed; if (p.mesh.position.x > 110) p.mesh.position.x = -110; }
         }
-        // 성문은 한 번 열리면 닫히지 않고 계속 열려 있음
         if (castleGateLeft && castleGateRight) {
           const targetOpen = castleGateUnlocked ? 3.6 : 0;
           castleGateOpenAmount += (targetOpen - castleGateOpenAmount) * Math.min(1, dt * 5);
           castleGateLeft.position.x = (CASTLE_CX - 1.75) - castleGateOpenAmount;
           castleGateRight.position.x = (CASTLE_CX + 1.75) + castleGateOpenAmount;
         }
+      }
+
+      // Attack 독립 월드 조작 & 탑다운 카메라
+      if (gameState === 'attack' && atkState && atkState.fighters[socket.id]) {
+        const me = atkState.fighters[socket.id];
+        let mx = joyX, mz = joyY;
+        if (keys['KeyW'] || keys['ArrowUp']) mz -= 1;
+        if (keys['KeyS'] || keys['ArrowDown']) mz += 1;
+        if (keys['KeyA'] || keys['ArrowLeft']) mx -= 1;
+        if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
+        if (me.alive && (mx !== 0 || mz !== 0)) {
+          const len = Math.hypot(mx, mz); mx /= len; mz /= len;
+          const spd = me.speed * (me.hyperActiveTimer > 0 ? 1.3 : 1.0);
+          me.x = Math.max(-27, Math.min(27, me.x + mx * spd));
+          me.z = Math.max(-24, Math.min(24, me.z + mz * spd));
+          me.rotY = Math.atan2(mx, mz);
+          if (time - lastSent >= 35) { socket.emit('attackPlayerMove', { x: me.x, z: me.z, rotY: me.rotY }); lastSent = time; }
+        }
+        camera.position.set(ATK_OFFSET + me.x, 22, ATK_OFFSET + me.z + 14);
+        camera.lookAt(ATK_OFFSET + me.x, 0.5, ATK_OFFSET + me.z);
+        renderer.render(scene, camera);
+        return;
       }
 
       if (myAvatar) {
@@ -1886,23 +1982,18 @@
         const isMoving = (moveX !== 0 || moveZ !== 0); myAvatar.userData.isMoving = isMoving;
 
         if (isMoving) {
+          const prevX = myAvatar.position.x, prevZ = myAvatar.position.z;
           const len = Math.hypot(moveX, moveZ); moveX /= len; moveZ /= len;
           const fX = -Math.sin(camYaw), fZ = -Math.cos(camYaw), rX = Math.cos(camYaw), rZ = -Math.sin(camYaw);
           let speed = 0.21;
-          if (gameState === 'world') {
-            if (myAccount.isAdmin && myAccount.adminBoostActive) speed = 0.16 * 20;
-            else speed = 0.16 + (myAccount.speedLevel || 0) * 0.025;
-          } else if (gameState === 'freezetag' && meFt && meFt.role === 'it') speed = 0.23;
+          if (gameState === 'world') speed = 0.16 * getCitizenshipMultiplier();
+          else if (gameState === 'freezetag' && meFt && meFt.role === 'it') speed = 0.23;
+
           const dx = (fX * -moveZ + rX * moveX) * speed, dz = (fZ * -moveZ + rZ * moveX) * speed;
           myAvatar.position.x += dx; myAvatar.position.z += dz; myAvatar.rotation.y = Math.atan2(dx, dz);
 
-          // 닫힌 성문 충돌 방지 (열리면 통과 가능)
-          const gateZ = CASTLE_CZ + 14;
-          if (gameState === 'world' && !castleGateUnlocked && Math.abs(myAvatar.position.x - CASTLE_CX) < 3.6 && Math.abs(myAvatar.position.z - gateZ) < 1.8) {
-            myAvatar.position.z = gateZ + 1.9;
-          }
-
-          if (gameState === 'colorflip') { myAvatar.position.x = Math.max(-15, Math.min(15, myAvatar.position.x)); myAvatar.position.z = Math.max(-15, Math.min(15, myAvatar.position.z)); }
+          if (gameState === 'world') resolveCastleWallCollision(myAvatar.position, prevX, prevZ);
+          else if (gameState === 'colorflip') { myAvatar.position.x = Math.max(-15, Math.min(15, myAvatar.position.x)); myAvatar.position.z = Math.max(-15, Math.min(15, myAvatar.position.z)); }
           else if (gameState === 'freezetag') { const lim = ftArenaHalf - 1.0; myAvatar.position.x = Math.max(-lim, Math.min(lim, myAvatar.position.x)); myAvatar.position.z = Math.max(-lim, Math.min(lim, myAvatar.position.z)); }
         }
 
@@ -1912,7 +2003,6 @@
           }
         }
 
-        // 3초 체류 구역 판정
         if (gameState === 'world') {
           const hitZone = WORLD_ZONES.find(z => {
             if (z.requiresGate && !castleGateUnlocked) return false;
@@ -1920,32 +2010,17 @@
             return Math.hypot(myAvatar.position.x - z.x, myAvatar.position.z - z.z) <= z.radius;
           });
           if (hitZone) {
-            if (currentDwellZoneId !== hitZone.id) {
-              currentDwellZoneId = hitZone.id;
-              dwellProgressSec = 0;
-              dwellTriggered = false;
-            }
+            if (currentDwellZoneId !== hitZone.id) { currentDwellZoneId = hitZone.id; dwellProgressSec = 0; dwellTriggered = false; }
             if (!dwellTriggered) {
               dwellProgressSec = Math.min(DWELL_TARGET_SEC, dwellProgressSec + dt);
               dwellHud.classList.add('open');
               dwellLabel.innerText = hitZone.label + ' 체류 중';
               dwellFill.style.width = ((dwellProgressSec / DWELL_TARGET_SEC) * 100) + '%';
               dwellSecTxt.innerText = dwellProgressSec.toFixed(1) + '초 / 3.0초';
-              if (dwellProgressSec >= DWELL_TARGET_SEC) {
-                dwellTriggered = true;
-                dwellHud.classList.remove('open');
-                triggerZoneAction(hitZone);
-              }
+              if (dwellProgressSec >= DWELL_TARGET_SEC) { dwellTriggered = true; dwellHud.classList.remove('open'); triggerZoneAction(hitZone); }
             }
-          } else {
-            currentDwellZoneId = null;
-            dwellProgressSec = 0;
-            dwellTriggered = false;
-            dwellHud.classList.remove('open');
-          }
-        } else {
-          dwellHud.classList.remove('open');
-        }
+          } else { currentDwellZoneId = null; dwellProgressSec = 0; dwellTriggered = false; dwellHud.classList.remove('open'); }
+        } else dwellHud.classList.remove('open');
 
         if (!isOutSpectator) {
           myAvatar.position.y += velY;
@@ -1954,13 +2029,9 @@
         }
         updateAvatarAnimation(myAvatar, dt);
 
-        if (isOutSpectator) {
-          camera.position.set(myAvatar.position.x * 0.5, 13.5, -(ftArenaHalf + 1.5));
-          camera.lookAt(0, 0.5, 2);
-        } else if (gameState === 'liar') {
-          camera.position.set(0, 10.5, 13.5);
-          camera.lookAt(0, 1.0, 0);
-        } else {
+        if (isOutSpectator) { camera.position.set(myAvatar.position.x * 0.5, 13.5, -(ftArenaHalf + 1.5)); camera.lookAt(0, 0.5, 2); }
+        else if (gameState === 'liar') { camera.position.set(0, 10.5, 13.5); camera.lookAt(0, 1.0, 0); }
+        else {
           const cd = (gameState !== 'world') ? 13 : ((myAccount.isAdmin && myAccount.adminBoostActive) ? 13.5 : 9.5);
           camera.position.set(myAvatar.position.x + Math.sin(camYaw) * Math.cos(camPitch) * cd, myAvatar.position.y + Math.sin(camPitch) * cd + 1.8, myAvatar.position.z + Math.cos(camYaw) * Math.cos(camPitch) * cd);
           camera.lookAt(myAvatar.position.x, myAvatar.position.y + 1.5, myAvatar.position.z);
