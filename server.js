@@ -505,7 +505,7 @@ function finishFreezeTagMatch(itsWon) {
         savePlayerToDB(players[p.id]);
       }
     });
-    summaryText = '👹 술래 팀 승리! 전원 얼음/아웃 성공 — 술래 전원 +200몽 지급!';
+    summaryText = '👹 술래 팀 승리! 술래 +200몽 지급!';
   } else {
     allP.forEach(p => {
       if (p.role === 'runner' && !p.isCpu && players[p.id]) {
@@ -514,7 +514,7 @@ function finishFreezeTagMatch(itsWon) {
         savePlayerToDB(players[p.id]);
       }
     });
-    summaryText = '🏃 도망자 팀 승리! 생존·얼음 상태 +200몽 / 생중계 관중석(아웃) +100몽 지급!';
+    summaryText = '🏃 도망자 팀 승리! 생존·얼음 상태 +200몽 / 아웃 +100몽 지급!';
   }
   io.emit('minigameEnded', { title: '🧊 얼음땡 최종 결과', summaryText, updatedPlayers: players });
   resetMinigame();
@@ -736,11 +736,11 @@ io.on('connection', (socket) => {
     const cleanUser = (username || '').trim().substring(0, 12);
     const cleanPw = (password || '').trim();
     if (!cleanUser || !cleanPw) {
-      socket.emit('authError', '아이디와 비밀번호를 모두 입력해 주세요.');
+      socket.emit('authError', '아이디와 비밀번호를 모두 입력해 주세요!');
       return;
     }
     if (!supabase) {
-      socket.emit('authError', '서버 데이터베이스(Supabase) 환경변수가 연결되지 않았습니다.');
+      socket.emit('authError', '서버 데이터베이스(Supabase) 환경변수가 연결되지 않았습니다ㅠㅠ');
       return;
     }
     try {
@@ -751,11 +751,11 @@ io.on('connection', (socket) => {
         .maybeSingle();
 
       if (error || !row) {
-        socket.emit('authError', '존재하지 않는 아이디입니다. 먼저 회원가입을 해주세요.');
+        socket.emit('authError', '존재하지 않는 아이디에유. 먼저 회원가입을 해주세요.');
         return;
       }
       if (row.password !== cleanPw) {
-        socket.emit('authError', '비밀번호가 일치하지 않습니다.');
+        socket.emit('authError', '비밀번호가 일치하지 않습니다.ㅋ');
         return;
       }
 
@@ -772,7 +772,7 @@ io.on('connection', (socket) => {
       socket.emit('authSuccess', { me: p, players, worldCoins: WORLD_COINS });
       socket.broadcast.emit('newPlayer', p);
     } catch (e) {
-      socket.emit('authError', '로그인 처리 중 오류가 발생했습니다.');
+      socket.emit('authError', '로그인 처리 중 오류가 발생했습니다.ㅠㅠ');
     }
   });
 
@@ -830,7 +830,7 @@ io.on('connection', (socket) => {
     io.emit('playerDisconnected', targetId);
     io.emit('adminGlobalAlert', {
       senderName: 'ADMIN',
-      message: '[' + kickedName + '] 님이 관리자에 의해 월드에서 내보내졌습니다.'
+      message: '[' + kickedName + '] 님이 관리자에 의해 하준의 오픈!온라인 월드에서 내보내졌어요! 아쉬운거죠 뭐;ㅋ'
     });
   });
 
@@ -918,7 +918,7 @@ io.on('connection', (socket) => {
     io.to(targetId).emit('shopUpdated', receiver);
     io.to(targetId).emit('chatMessage', {
       id: 'system', name: '🏦 교환소 알림',
-      text: sender.name + '님이 ' + amt + '몽' + giftText + '을 보냈습니다!'
+      text: sender.name + '님이 ' + amt + '몽' + giftText + '을 보냈습니다!!!'
     });
   });
 
@@ -950,7 +950,7 @@ io.on('connection', (socket) => {
   socket.on('hostForceStartLobby', () => { if (mg.phase === 'lobby' && socket.id === mg.hostId) onLobbyFinished(); });
   socket.on('hostCancelLobby', () => {
     if (mg.phase === 'lobby' && socket.id === mg.hostId) {
-      io.emit('minigameCancelled', { reason: '방장이 미니게임 모집을 취소했습니다.' }); resetMinigame();
+      io.emit('minigameCancelled', { reason: '방장이 미니게임 모집을 취소했습니다ㅠㅠ' }); resetMinigame();
     }
   });
   socket.on('joinMinigameLobby', () => {
