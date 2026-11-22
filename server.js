@@ -12,6 +12,13 @@ app.use(express.static(__dirname));
 
 const players = {};
 
+const ADMIN_ID = 'hajun1234adminuser';
+const ADMIN_PW = '2cv8cF';
+
+const ALL_TOPS = ['tshirt', 'hoodie', 'sweater', 'suit', 'uniform', 'hanbok', 'armor', 'royal'];
+const ALL_BOTTOMS = ['pants', 'shorts', 'skirt', 'jeans', 'overalls', 'armorpants'];
+const ALL_THEMES = ['original', 'simple', 'cute', 'colorful', 'dreamy', 'jungle', 'cathouse'];
+
 const GAME_COLORS = [
   '#ef4444', '#3b82f6', '#10b981', '#f59e0b',
   '#8b5cf6', '#ec4899', '#06b6d4', '#f97316',
@@ -32,7 +39,6 @@ const SHOP_PRICES = {
   themes: { original: 0, simple: 40, cute: 60, colorful: 70, dreamy: 90, jungle: 110, cathouse: 120 }
 };
 
-// 월드 바닥 황금 몽 코인 20개 (+5몽)
 const WORLD_COINS = [];
 function spawnCoinPosition(id) {
   return {
@@ -45,58 +51,57 @@ for (let i = 0; i < 20; i++) {
   WORLD_COINS.push(spawnCoinPosition('coin_' + i));
 }
 
-// 거짓말 탐지기 50개 구체적 제시어 + CPU용 구체적 힌트 + 키워드
 const LIAR_WORDS_50 = [
-  { cat: '음식', word: '짜장면', kw: ['검은', '춘장', '면', '단무지', '배달'], hints: ['검은 춘장 소스에 쫄깃한 면발을 비벼 먹는 국민 배달음식이에요', '중국집에서 시키면 노란 단무지랑 양파가 꼭 같이 와요', '졸업식이나 이사하는 날에 다 같이 시켜 먹기 딱 좋아요'] },
-  { cat: '음식', word: '떡볶이', kw: ['빨간', '매운', '떡', '어묵', '분식'], hints: ['빨간 고추장 양념에 말랑한 떡과 어묵이 들어간 분식이에요', '학교 끝나고 친구들이랑 분식집에서 자주 사 먹는 매콤달콤한 메뉴예요', '튀김이나 순대를 국물에 찍어 먹으면 훨씬 맛있어요'] },
-  { cat: '음식', word: '치킨', kw: ['닭', '튀김', '바삭', '야식', '배달'], hints: ['겉은 바삭하고 속은 촉촉하게 튀겨낸 야식의 제왕이에요', '후라이드랑 양념 반반으로 시켜 먹는 사람들이 정말 많아요', '무 피클이랑 콜라를 곁들여 먹으면 느끼함이 싹 사라져요'] },
-  { cat: '음식', word: '피자', kw: ['치즈', '둥근', '조각', '오븐', '도우는'], hints: ['둥근 도우 위에 토마토 소스와 치즈를 듬뿍 올려 오븐에 구워요', '삼각형 모양으로 여덟 조각을 나눠서 손으로 들고 먹어요', '치즈가 쭉 늘어날 때 뜨겁게 먹으면 제일 맛있어요'] },
-  { cat: '음식', word: '라면', kw: ['국물', '면', '냄비', '김치', '스프'], hints: ['끓는 물에 스프와 꼬불꼬불한 면을 넣고 3~4분 끓여 먹어요', '계란을 풀거나 잘 익은 김치를 얹어 먹으면 최고예요', '밤늦게 배고플 때 냄비 뚜껑에 덜어 먹는 맛이 일품이에요'] },
-  { cat: '음식', word: '초밥', kw: ['생선', '밥', '와사비', '간장', '회'], hints: ['식초로 간을 한 작은 밥 덩어리 위에 신선한 생선회를 올려요', '간장에 살짝 찍어 먹는데 코가 찡한 와사비가 들어가요', '회전 레일 위에서 접시를 골라 먹는 식당도 인기가 많아요'] },
-  { cat: '음식', word: '김밥', kw: ['김', '밥', '소풍', '단무지', '말아'], hints: ['검은 김 위에 밥과 시금치, 당근, 햄을 올려 돌돌 말아 썰어요', '어릴 때 소풍이나 운동회 갈 때 도시락으로 꼭 싸가던 메뉴예요', '한 입 크기로 동그랗게 썰려 있어서 간편하게 집어 먹기 좋아요'] },
-  { cat: '음식', word: '삼겹살', kw: ['고기', '불판', '상추', '쌈', '구워'], hints: ['불판 위에 올려 지글지글 구워 먹는 고소한 돼지고기 부위예요', '상추나 깻잎에 마늘과 쌈장을 올려 한 입에 싸 먹어요', '기름이 지글지글 나올 때 김치도 같이 구워 먹으면 환상적이에요'] },
-  { cat: '음식', word: '아이스크림', kw: ['차가운', '달콤', '여름', '녹아', '콘'], hints: ['입에 넣으면 사르르 녹아내리는 차갑고 달콤한 디저트예요', '바삭한 콘이나 컵에 여러 가지 맛을 골라 담아 먹어요', '무더운 여름날 더위를 식히기 위해 가장 먼저 찾게 돼요'] },
-  { cat: '음식', word: '햄버거', kw: ['빵', '패티', '감자튀김', '양상추', '패스트푸드'], hints: ['동그란 빵 사이에 구운 고기 패티와 양상추, 치즈를 끼워 넣었어요', '세트 메뉴로 시키면 짭짤한 감자튀김이랑 콜라가 같이 나와요', '손으로 꾹 눌러서 크게 한 입 베어 먹는 패스트푸드예요'] },
-  { cat: '동물', word: '강아지', kw: ['멍멍', '산책', '꼬리', '주인', '반려'], hints: ['주인이 집에 돌아오면 꼬리를 힘차게 흔들며 반겨주는 동물이에요', '하루에 한 번씩 목줄을 매고 밖으로 산책 나가는 걸 제일 좋아해요', '멍멍 짖기도 하고 앉아나 손 같은 훈련을 잘 따라해요'] },
-  { cat: '동물', word: '고양이', kw: ['야옹', '털', '높은', '그루밍', '발톱'], hints: ['발소리가 거의 안 나고 높은 캣타워 위에 올라가 쉬는 걸 좋아해요', '혀로 자기 털을 핥아 씻는 그루밍을 자주 하는 깔끔한 동물이에요', '야옹 하고 울면서 기분이 좋으면 목에서 골골송을 불러요'] },
-  { cat: '동물', word: '코끼리', kw: ['코', '큰', '귀', '상아', '육지'], hints: ['육지에 사는 동물 중 덩치가 가장 크고 긴 코를 손처럼 써요', '부채처럼 커다란 귀를 펄럭이며 더운 몸의 열을 식혀요', '긴 코로 물을 빨아들여서 자기 등에 샤워하듯 뿌리기도 해요'] },
-  { cat: '동물', word: '기린', kw: ['목', '키', '무늬', '나뭇잎', '아프리카'], hints: ['세상에서 목이 가장 길어서 높은 나무 꼭대기의 잎을 뜯어 먹어요', '온몸에 갈색 그물 모양의 독특한 얼룩무늬가 퍼져 있어요', '다리가 아주 길어서 물 마실 때는 앞다리를 넓게 벌려야 해요'] },
-  { cat: '동물', word: '펭귄', kw: ['남극', '얼음', '뒤뚱', '수영', '새'], hints: ['날개가 있지만 하늘을 날지 못하고 대신 바닷속에서 수영을 엄청 잘해요', '남극의 추운 빙하 위에서 배를 깔고 미끄럼 타듯 이동해요', '검은색과 흰색 턱시도를 입은 것처럼 보이고 뒤뚱뒤뚱 걸어요'] },
-  { cat: '동물', word: '사자', kw: ['갈기', '왕', '초원', '어흥', '맹수'], hints: ['수컷의 목 주변에 풍성하고 멋진 갈기가 있어서 동물의 왕이라 불려요', '아프리카 초원에서 무리를 지어 생활하는 강력한 맹수예요', '어흥 하고 크게 포효하면 몇 킬로미터 밖에서도 들릴 정도예요'] },
-  { cat: '동물', word: '토끼', kw: ['귀', '당근', '깡총', '하얀', '앞니'], hints: ['길쭉한 두 귀가 쫑긋 서 있고 깡총깡총 뛰어다니는 귀여운 동물이에요', '앞니가 톡 튀어나와 있어서 아삭한 당근이나 풀을 잘 갉아먹어요', '동화 속에서 거북이랑 달리기 경주를 하다가 낮잠을 자기도 해요'] },
-  { cat: '동물', word: '판다', kw: ['대나무', '흑백', '눈', '중국', '곰'], hints: ['온몸이 하얀색과 검은색으로 되어 있고 눈 주위가 까만 다크서클 같아요', '하루 종일 앉아서 싱싱한 대나무 잎과 줄기를 우적우적 씹어 먹어요', '데굴데굴 구르는 모습이 사랑스러워서 동물원에서 인기가 최고예요'] },
-  { cat: '동물', word: '돌고래', kw: ['바다', '점프', '초음파', '지능', '수영'], hints: ['바다 위를 힘차게 뛰어오르며 무리 지어 헤엄치는 똑똑한 동물이에요', '초음파를 쏴서 물속의 물고기 위치나 장애물을 정확히 파악해요', '사람에게 친근하고 입꼬리가 올라가서 항상 웃는 얼굴처럼 보여요'] },
-  { cat: '동물', word: '다람쥐', kw: ['도토리', '볼', '나무', '줄무늬', '겨울'], hints: ['등에 갈색 줄무늬가 있고 도토리를 양쪽 볼에 빵빵하게 넣고 다녀요', '겨울잠을 대비해서 땅속이나 나무 구멍에 먹이를 숨겨 놓아요', '작고 재빨라서 나무 줄기를 순식간에 타고 올라가요'] },
-  { cat: '스포츠', word: '축구', kw: ['발', '골대', '잔디', '월드컵', '11명'], hints: ['골키퍼를 제외한 선수들이 오직 발과 머리로만 공을 다루는 경기예요', '11명이 한 팀을 이루어 넓은 잔디밭에서 골대에 공을 넣어요', '4년마다 열리는 월드컵에서 전 세계가 열광하는 스포츠예요'] },
-  { cat: '스포츠', word: '농구', kw: ['손', '드리블', '덩크', '골대', '코트'], hints: ['주황색 공을 바닥에 튕기며 드리블해서 높은 링 안에 넣는 경기예요', '키가 큰 선수들이 뛰어올라 링에 공을 꽂아 넣는 덩크슛이 멋져요', '3점 라인 밖에서 슛을 성공시키면 한 번에 3점을 얻어요'] },
-  { cat: '스포츠', word: '야구', kw: ['배트', '홈런', '투수', '글러브', '9회'], hints: ['투수가 던진 공을 타자가 방망이로 힘껏 쳐서 베이스를 도는 경기예요', '공이 담장을 훌쩍 넘어가면 관중들이 환호하는 홈런이 돼요', '수비할 때는 손에 가죽 글러브를 끼고 날아오는 공을 잡아요'] },
-  { cat: '스포츠', word: '배드민턴', kw: ['셔틀콕', '라켓', '네트', '깃털', '스매시'], hints: ['가벼운 라켓으로 깃털 달린 셔틀콕을 네트 너머로 쳐 넘기는 운동이에요', '공이 땅에 떨어지기 전에 빠르게 받아쳐야 해서 순발력이 중요해요', '동네 공원이나 체육관에서 남녀노소 누구나 쉽게 즐길 수 있어요'] },
-  { cat: '스포츠', word: '수영', kw: ['물', '레인', '자유형', '수경', '호흡'], hints: ['물안경과 수영모를 쓰고 파란 물속을 팔다리로 저어 나가는 운동이에요', '자유형, 배영, 평영, 접영 네 가지 영법으로 속도를 겨뤄요', '물속에서 숨을 쉬는 호흡법과 발차기 리듬이 아주 중요해요'] },
-  { cat: '스포츠', word: '태권도', kw: ['발차기', '도복', '띠', '품새', '격파'], hints: ['하얀 도복을 입고 허리에 실력별 색깔 띠를 매는 우리나라 전통 무술이에요', '화려한 돌려차기와 뛰어 앞차기 같은 발차기 기술이 핵심이에요', '송판을 손이나 발로 힘껏 쳐서 부수는 격파 시범이 멋져요'] },
-  { cat: '스포츠', word: '탁구', kw: ['작은', '공', '테이블', '라켓', '핑퐁'], hints: ['초록색이나 파란색 테이블 위에서 가벼운 작은 공을 주고받는 경기예요', '공이 톡톡 튀는 소리가 경쾌해서 핑퐁이라고도 불려요', '스핀을 강하게 걸어 서브를 넣으면 상대방이 받기 아주 까다로워요'] },
-  { cat: '스포츠', word: '스키', kw: ['눈', '겨울', '슬로프', '플레이트', '리프트'], hints: ['겨울철 하얀 눈이 쌓인 산비탈을 긴 판 두 개를 신고 미끄러져 내려와요', '양손에 폴을 짚고 리프트를 타고 정상까지 올라가서 활강해요', '초급, 중급, 상급 슬로프 코스를 골라 짜릿한 속도감을 즐겨요'] },
-  { cat: '스포츠', word: '양궁', kw: ['활', '화살', '과녁', '10점', '집중'], hints: ['활시위를 당겨 멀리 있는 원형 과녁의 정중앙을 맞히는 경기예요', '바람의 방향을 계산하고 숨을 멈춘 채 고도의 집중력을 발휘해야 해요', '정중앙 노란 원에 화살이 꽂히면 최고 점수인 10점을 받아요'] },
-  { cat: '스포츠', word: '볼링', kw: ['핀', '스트라이크', '무거운', '레인', '구멍'], hints: ['손가락 구멍이 세 개 뚫린 무거운 공을 굴려 10개의 핀을 쓰러뜨려요', '한 번에 열 개의 핀을 모두 쓰러뜨리면 짜릿한 스트라이크가 나와요', '전용 신발로 갈아 신고 매끄러운 나무 레인 끝을 향해 공을 굴려요'] },
-  { cat: '악기', word: '피아노', kw: ['건반', '페달', '양손', '클래식', '검은'], hints: ['하얀 건반과 검은 건반이 나란히 놓여 있어 손가락으로 눌러 연주해요', '발로 아래 페달을 밟으면 소리가 길게 울리거나 부드러워져요', '오른손으로 멜로디를 치고 왼손으로 반주를 동시에 넣을 수 있어요'] },
-  { cat: '악기', word: '바이올린', kw: ['활', '어깨', '턱', '현악기', '4줄'], hints: ['왼쪽 어깨와 턱 사이에 끼우고 오른손에 든 활로 네 줄을 그어 연주해요', '오케스트라에서 가장 높고 화려한 주선율을 담당하는 현악기예요', '지판에 칸이 없어서 정확한 음정을 잡으려면 귀와 손가락 연습이 필수예요'] },
-  { cat: '악기', word: '기타', kw: ['줄', '코드', '피크', '통', '밴드'], hints: ['여섯 개의 줄을 왼손으로 코드를 잡고 오른손이나 피크로 튕겨 연주해요', '캠프파이어에서 노래 부를 때나 록 밴드 무대에서 빠지지 않아요', '나무 울림통이 있는 어쿠스틱과 앰프에 연결하는 일렉 종류가 있어요'] },
-  { cat: '악기', word: '드럼', kw: ['스틱', '박자', '북', '심벌즈', '리듬'], hints: ['양손에 나무 스틱을 쥐고 여러 개의 북과 심벌즈를 두드려 리듬을 만들어요', '발로 페달을 밟아 쿵쿵 울리는 베이스 소리를 동시에 내야 해요', '밴드 연주에서 전체 곡의 박자와 에너지를 책임지는 타악기예요'] },
-  { cat: '악기', word: '플루트', kw: ['입김', '옆으로', '은색', '관악기', '맑은'], hints: ['반짝이는 은색 금속 관을 입 옆으로 길게 들고 바람을 불어 소리 내요', '새가 지저귀는 것처럼 아주 맑고 청아한 고음 소리가 매력적이에요', '손가락으로 작은 은색 키들을 누르며 음높이를 조절해요'] },
-  { cat: '장소', word: '학교', kw: ['교실', '선생님', '수업', '칠판', '친구'], hints: ['아침마다 가방을 메고 가서 친구들과 수업을 듣고 급식을 먹는 곳이에요', '교실 앞 칠판 앞에서 선생님이 설명해 주시고 쉬는 시간 종이 울려요', '운동장에서 체육 시간이나 축제를 하며 추억을 쌓는 공간이에요'] },
-  { cat: '장소', word: '놀이공원', kw: ['롤러코스터', '퍼레이드', '티켓', '기구', '회전목마'], hints: ['짜릿한 롤러코스터와 예쁜 회전목마를 타며 하루 종일 노는 곳이에요', '머리띠를 쓰고 다니며 밤에는 화려한 퍼레이드와 불꽃놀이를 구경해요', '인기 있는 기구를 타려면 줄을 길게 서서 기다려야 해요'] },
-  { cat: '장소', word: '도서관', kw: ['책', '조용히', '대출', '공부', '열람실'], hints: ['수많은 책이 분야별로 꽂혀 있어서 조용히 책을 읽거나 빌려가는 곳이에요', '떠들지 않고 발소리를 죽여야 하며 시험 기간엔 공부하는 사람이 많아요', '회원증을 찍으면 원하는 책을 집으로 며칠 동안 대출해 갈 수 있어요'] },
-  { cat: '장소', word: '영화관', kw: ['팝콘', '스크린', '어두운', '예매', '콜라'], hints: ['고소한 팝콘과 콜라를 들고 어두운 상영관의 큰 스크린을 보는 곳이에요', '좌석 번호를 미리 예매하고 들어가서 상영 중에는 휴대폰을 꺼야 해요', '웅장한 사운드와 함께 최신 개봉작을 생생하게 감상할 수 있어요'] },
-  { cat: '장소', word: '병원', kw: ['의사', '진료', '약', '주사', '간호사'], hints: ['몸이 아프거나 다쳤을 때 의사 선생님께 진료를 받으러 가는 곳이에요', '청진기로 진찰을 받고 처방전을 받아서 약국에서 약을 타요', '대기실에서 자기 이름이 불릴 때까지 기다리며 주사 맞을까 봐 떨려요'] },
-  { cat: '물건', word: '스마트폰', kw: ['화면', '터치', '충전', '앱', '카메라'], hints: ['손바닥 안에 쏙 들어오며 화면을 터치해서 연락과 게임을 모두 해결해요', '배터리가 다 닳으면 충전 케이블을 꽂아 전기를 채워줘야 해요', '사진도 찍고 영상도 보며 현대인이 하루 종일 손에서 놓지 않는 기기예요'] },
-  { cat: '물건', word: '우산', kw: ['비', '펼쳐', '손잡이', '장마', '젖지'], hints: ['하늘에서 비가 내릴 때 머리 위로 활짝 펼쳐서 몸이 젖지 않게 막아줘요', '비가 그치면 물기를 털어내고 돌돌 말아 똑딱이 단추로 접어둬요', '강풍이 불면 가끔 뒤집어지기도 하고 버스에 깜빡 두고 내리기 쉬워요'] },
-  { cat: '물건', word: '시계', kw: ['시간', '바늘', '숫자', '손목', '알람'], hints: ['시침과 분침이 계속 돌아가며 지금이 몇 시 몇 분인지 정확히 알려줘요', '손목에 차고 다니거나 방 벽에 걸어두고 약속 시간을 확인해요', '아침에 늦잠 자지 않도록 정해진 시각에 알람을 울려 깨워줘요'] },
-  { cat: '물건', word: '거울', kw: ['얼굴', '반사', '외출', '유리', '모습'], hints: ['앞에 서면 내 얼굴과 옷차림이 좌우가 바뀌어 그대로 비쳐 보이는 물건이에요', '아침에 외출하기 전에 머리가 헝클어지지 않았는지 꼭 확인해요', '유리 뒷면에 빛을 반사하는 코팅이 되어 있어서 화장실이나 방에 꼭 있어요'] },
-  { cat: '물건', word: '자전거', kw: ['바퀴', '페달', '핸들', '안장', '헬멧'], hints: ['두 바퀴로 균형을 잡으며 발로 페달을 밟아 앞으로 나아가는 탈것이에요', '안장에 앉아 양손으로 핸들을 잡고 브레이크를 당겨 속도를 줄여요', '한강 공원이나 전용 도로를 달릴 때 시원한 바람을 느낄 수 있어요'] },
-  { cat: '직업', word: '소방관', kw: ['불', '사이렌', '물', '구조', '소방차'], hints: ['화재가 발생하면 빨간 차를 타고 사이렌을 울리며 출동해 불을 꺼요', '방화복을 입고 위험한 현장에 들어가 사람들을 안전하게 구조해요', '119 신고가 들어오면 밤낮없이 가장 먼저 달려가는 영웅 같은 직업이에요'] },
-  { cat: '직업', word: '경찰관', kw: ['범인', '순찰', '112', '제복', '안전'], hints: ['파란 제복을 입고 동네를 순찰하며 시민들의 안전과 질서를 지켜요', '나쁜 범인을 잡거나 교통정리를 하며 112 신고를 받고 출동해요', '도움이 필요한 사람이나 길을 잃은 아이를 안전하게 도와줘요'] },
-  { cat: '직업', word: '요리사', kw: ['주방', '칼', '프라이팬', '레시피', '맛있는'], hints: ['앞치마와 높은 모자를 쓰고 주방에서 신선한 재료로 맛있는 음식을 만들어요', '불 조절과 칼질 솜씨가 뛰어나며 새로운 메뉴 레시피를 연구해요', '손님들이 자기가 만든 음식을 맛있게 먹고 웃을 때 가장 보람을 느껴요'] },
-  { cat: '직업', word: '우주비행사', kw: ['로켓', '우주복', '무중력', '달', '정거장'], hints: ['커다란 로켓을 타고 지구를 떠나 둥둥 떠다니는 무중력 공간에서 임무를 해요', '하얀 우주복과 헬멧을 쓰고 우주정거장에서 과학 실험을 진행해요', '까만 우주 밖에서 푸른 지구를 직접 내려다볼 수 있는 멋진 직업이에요'] },
-  { cat: '직업', word: '선생님', kw: ['학생', '수업', '칠판', '가르쳐', '학교'], hints: ['교실에서 학생들에게 여러 과목의 지식과 바른 생활을 가르쳐 주세요', '시험 문제를 내고 채점하며 고민이 있는 학생들과 상담도 해주세요', '분필이나 마커를 들고 칠판에 중요한 내용을 정리해 주시는 분이에요'] }
+  { cat: '음식', word: '짜장면', kw: ['면', '소스', '단무지'], hints: ['식사 시간마다 어김없이 후보에 오르는 익숙한 한 그릇이에요', '그릇 바닥에 남는 진한 여운이 꽤 오래가요', '곁들임 반찬 하나가 없으면 은근히 허전한 느낌이에요'] },
+  { cat: '음식', word: '떡볶이', kw: ['양념', '분식', '간식'], hints: ['갑자기 기분이 꿀꿀할 때 생각나는 강렬한 기억이 있어요', '한 번 손이 가면 멈추기 힘든 묘한 중독성이 있어요', '누군가와 나눠 먹으면 분위기가 금방 살아나요'] },
+  { cat: '음식', word: '치킨', kw: ['야식', '바삭', '조각'], hints: ['시계가 밤을 향해 갈수록 존재감이 커지는 아이콘이에요', '손가락에 묻는 흔적마저 기분 좋게 느껴지는 순간이 있어요', '모임이나 축하 자리에서 빠지면 섭섭한 단골손님이에요'] },
+  { cat: '음식', word: '피자', kw: ['조각', '도우', '치즈'], hints: ['나눠 갖는 모양새부터 파티 분위기를 만드는 음식이에요', '가장자리 끝부분을 어떻게 처리하느냐로 취향이 갈려요', '따뜻할 때와 식었을 때의 매력이 꽤 다르게 다가와요'] },
+  { cat: '음식', word: '라면', kw: ['끓여', '국물', '면'], hints: ['조리 과정이 단순해서 누구든 자기만의 레시피를 품고 있어요', '비 오는 날이나 유독 지치는 날에 더 깊게 와닿아요', '작은 차이 하나가 전체 인상을 완전히 바꿔놓기도 해요'] },
+  { cat: '음식', word: '초밥', kw: ['한입', '간장', '회'], hints: ['정성과 균형이 한 점 안에 압축된 느낌을 줘요', '먹는 순서나 작은 습관에 따라 맛이 미묘하게 달라져요', '조용히 집중해서 음미하게 만드는 매력이 있어요'] },
+  { cat: '음식', word: '김밥', kw: ['말아', '소풍', '조각'], hints: ['길게 이어진 형태를 단숨에 여러 조각으로 바꾸는 과정이 인상적이에요', '밖으로 나가는 설레는 기억과 잘 어울리는 메뉴예요', '한입에 쏙 들어가는 크기 덕분에 부담 없이 다가가기 좋아요'] },
+  { cat: '음식', word: '삼겹살', kw: ['불판', '굽는', '쌈'], hints: ['시간이 흐르면서 색과 소리가 변해가는 과정을 지켜보는 재미가 있어요', '함께 마주 앉은 사람들과 대화를 자연스럽게 이어줘요', '마지막 마무리 한 입까지 신경 쓰게 만드는 존재예요'] },
+  { cat: '음식', word: '아이스크림', kw: ['차가운', '녹는', '디저트'], hints: ['망설이면 금방 형태가 달라져서 서두르게 만드는 대상이에요', '계절의 온도와 정반대되는 감각을 선물해 줘요', '입안에서 사라진 뒤에도 상쾌한 잔상이 남아요'] },
+  { cat: '음식', word: '햄버거', kw: ['겹겹', '손', '세트'], hints: ['여러 층이 쌓여 완성되는 구조가 매력적인 음식이에요', '입을 크게 벌려야 하는 순간이 꼭 한 번씩 찾아와요', '빠르고 간편하게 하루의 에너지를 채워주는 느낌이에요'] },
+  { cat: '동물', word: '강아지', kw: ['반려', '감정', '산책'], hints: ['감정을 숨기지 않고 온몸으로 표현하는 순수함이 있어요', '함께 시간을 보낼수록 서로의 리듬에 맞춰지게 돼요', '밖으로 향하는 발걸음을 가장 설레게 만드는 존재예요'] },
+  { cat: '동물', word: '고양이', kw: ['자유', '공간', '움직임'], hints: ['자기만의 페이스를 잃지 않는 도도한 매력이 있어요', '평범한 공간도 단숨에 자기 영역으로 바꾸는 재주가 있어요', '가만히 바라보기만 해도 마음이 차분해지는 순간이 있어요'] },
+  { cat: '동물', word: '코끼리', kw: ['거대한', '기억', '움직임'], hints: ['압도적인 존재감 속에 의외로 섬세한 면이 숨어 있어요', '오랜 기억을 간직할 것 같은 묵직한 인상을 줘요', '천천히 내딛는 걸음마다 무게감이 느껴져요'] },
+  { cat: '동물', word: '기린', kw: ['높이', '시선', '자세'], hints: ['남들과는 전혀 다른 높이에서 세상을 바라보는 시선을 가졌어요', '단번에 잊히지 않는 독특한 실루엣이 특징이에요', '일상적인 행동조차 조금 특별해 보이는 자세가 있어요'] },
+  { cat: '동물', word: '펭귄', kw: ['추위', '대비', '물'], hints: ['극한의 환경에서도 꿋꿋하게 버텨내는 강인함이 있어요', '환경이 바뀔 때 모습이 극적으로 달라지는 반전이 있어요', '무리를 지어 함께 견뎌내는 모습이 인상적이에요'] },
+  { cat: '동물', word: '사자', kw: ['위엄', '무리', '초원'], hints: ['가만히 있어도 주변 공기를 바꾸는 카리스마가 있어요', '왕관처럼 빛나는 상징적인 포인트가 돋보여요', '자연의 거친 질서 속에서 중심을 잡는 느낌이에요'] },
+  { cat: '동물', word: '토끼', kw: ['작은', '경계', '도약'], hints: ['작은 인기척에도 민감하게 반응하는 섬세함이 있어요', '가만히 있다가도 순식간에 거리를 좁히거나 멀어져요', '동화 속 이미지가 강하게 겹쳐 떠오르는 존재예요'] },
+  { cat: '동물', word: '판다', kw: ['느긋함', '대조', '인기'], hints: ['서두르지 않는 느긋한 태도가 오히려 큰 매력으로 다가와요', '서로 다른 두 가지 색의 대비가 뚜렷하게 기억돼요', '보는 것만으로도 입가에 미소가 번지게 만드는 힘이 있어요'] },
+  { cat: '동물', word: '돌고래', kw: ['바다', '신호', '물살'], hints: ['넓고 푸른 공간을 자유롭게 가르며 호흡하는 모습이 멋져요', '보이지 않는 신호로 서로 소통하는 지혜로움이 있어요', '경쾌한 곡선을 그리며 떠오르는 장면이 인상적이에요'] },
+  { cat: '동물', word: '다람쥐', kw: ['준비', '작은', '나무'], hints: ['다가올 계절을 미리 준비하는 부지런함이 돋보여요', '작은 몸집으로 분주하게 오가는 모습이 귀여워요', '소중한 것을 꼭꼭 챙겨두는 습관이 떠올라요'] },
+  { cat: '스포츠', word: '축구', kw: ['팀', '흐름', '경기'], hints: ['예측 불가능한 변수 속에서 흐름을 읽는 눈이 중요해요', '단 한 번의 순간이 경기 전체의 분위기를 뒤집기도 해요', '수많은 사람들의 함성과 함께 커지는 열기가 있어요'] },
+  { cat: '스포츠', word: '농구', kw: ['속도', '공격', '점수'], hints: ['공수 전환이 순식간에 일어나서 눈을 뗄 틈이 없어요', '공중에서 펼쳐지는 짧은 순간의 승부가 짜릿해요', '짧은 시간 안에 점수가 크게 출렁이는 역동성이 있어요'] },
+  { cat: '스포츠', word: '야구', kw: ['수싸움', '순간', '경기'], hints: ['조용한 긴장감 속에서 단 한 번의 선택이 승부를 갈라요', '느긋해 보이다가도 순식간에 긴장감이 최고조에 달해요', '기록과 숫자 하나하나에 담긴 이야기가 풍부해요'] },
+  { cat: '스포츠', word: '배드민턴', kw: ['공중', '반응', '속도'], hints: ['가벼운 물체가 공중에서 그리는 궤적을 읽는 게 관건이에요', '한 템포만 늦어도 흐름을 내주기 쉬운 섬세한 경기예요', '짧고 빠른 랠리가 이어질 때 손에 땀을 쥐게 해요'] },
+  { cat: '스포츠', word: '수영', kw: ['물', '리듬', '숨'], hints: ['나만의 호흡과 리듬을 유지하는 것이 무엇보다 중요해요', '중력에서 조금 벗어난 듯한 독특한 감각을 줘요', '묵묵히 앞으로 나아가는 집중력이 돋보이는 운동이에요'] },
+  { cat: '스포츠', word: '태권도', kw: ['절제', '동작', '기합'], hints: ['절제된 균형과 폭발적인 에너지가 공존하는 매력이 있어요', '정해진 틀 속에서 완성도를 끌어올리는 과정이 중요해요', '단단한 정신력과 예의가 함께 따라오는 수련이에요'] },
+  { cat: '스포츠', word: '탁구', kw: ['회전', '순발력', '좁은'], hints: ['아주 좁은 공간에서 빛의 속도처럼 오가는 판단력이 필요해요', '보이지 않는 회전력을 얼마나 읽어내느냐가 핵심이에요', '짧은 순간에 승부가 결정되는 긴장감이 있어요'] },
+  { cat: '스포츠', word: '스키', kw: ['설원', '균형', '활강'], hints: ['하얀 풍경 위를 가르며 바람을 맞는 해방감이 있어요', '기울기와 무게중심을 미세하게 조절하는 감각이 중요해요', '겨울이 기다려지는 이유 중 하나로 손꼽히곤 해요'] },
+  { cat: '스포츠', word: '양궁', kw: ['고요함', '집중', '과녁'], hints: ['주변 소음이 모두 사라진 듯한 고요한 집중력이 필요해요', '숨을 고르고 방아쇠를 놓기 직전의 정적이 압권이에요', '아주 작은 흔들림도 결과에 크게 작용하는 종목이에요'] },
+  { cat: '스포츠', word: '볼링', kw: ['집중', '굴림', '결과'], hints: ['내 손을 떠난 뒤에도 마음을 졸이며 지켜보게 되는 과정이 있어요', '일관된 자세와 감각을 유지하는 것이 관건이에요', '마지막 하나가 남았을 때의 긴장감이 특별해요'] },
+  { cat: '악기', word: '피아노', kw: ['소리', '화음', '연주'], hints: ['혼자서도 풍성한 울림과 입체적인 분위기를 만들어낼 수 있어요', '손끝의 힘 조절에 따라 거칠기도 하고 부드럽기도 해요', '오랜 시간 곁에 두고 친해지기 좋은 기본기 같은 존재예요'] },
+  { cat: '악기', word: '바이올린', kw: ['선율', '표현', '소리'], hints: ['사람의 목소리처럼 섬세하고 애절한 감정을 담아낼 수 있어요', '조금만 각도가 어긋나도 날카로운 소리가 날 수 있어 조심스러워요', '무대 위에서 시선을 사로잡는 우아한 아우라가 있어요'] },
+  { cat: '악기', word: '기타', kw: ['울림', '코드', '분위기'], hints: ['어디에 있든 분위기를 가볍고 따뜻하게 띄우는 힘이 있어요', '작은 진동이 몸통을 타고 울려 퍼지는 감각이 좋아요', '함께 노래를 부를 때 가장 자연스럽게 어울리는 악기예요'] },
+  { cat: '악기', word: '드럼', kw: ['박자', '심장', '리듬'], hints: ['전체의 심장 박동처럼 중심을 잡아주는 역할을 해요', '에너지를 마음껏 발산할 때 가장 잘 어울리는 존재예요', '소리가 커질수록 현장의 열기도 함께 뜨거워져요'] },
+  { cat: '악기', word: '플루트', kw: ['숨결', '맑은', '소리'], hints: ['내쉬는 숨결이 곧바로 맑은 울림으로 바뀌는 신비로움이 있어요', '차가운 금속이 따뜻한 숨을 만나 소리를 내는 과정이 독특해요', '은은하고 청량한 여운을 남기는 음색이 매력적이에요'] },
+  { cat: '장소', word: '학교', kw: ['시간', '사람', '성장'], hints: ['매일 같은 시간에 모여 각자의 하루를 쌓아가는 공간이에요', '웃음과 고민, 작은 사건들이 한데 모이는 추억의 무대예요', '종소리와 함께 공기의 결이 달라지는 순간들이 있어요'] },
+  { cat: '장소', word: '놀이공원', kw: ['설렘', '현실', '하루'], hints: ['일상의 걱정을 잠시 문밖에 두고 설렘에 집중하게 해줘요', '해가 지고 조명이 켜지면 전혀 다른 세계처럼 변해요', '돌아오는 길에는 기분 좋은 피로감이 남는 곳이에요'] },
+  { cat: '장소', word: '도서관', kw: ['정적', '책', '집중'], hints: ['발걸음 소리조차 조심스러워지는 차분한 공기가 흘러요', '각자 다른 세계를 향해 조용히 몰입하는 사람들이 모여 있어요', '시간이 천천히 흐르는 것처럼 느껴지는 공간이에요'] },
+  { cat: '장소', word: '영화관', kw: ['어둠', '스크린', '몰입'], hints: ['빛이 꺼지고 화면만 살아남는 순간 완전히 다른 시공간으로 빠져들어요', '낯선 사람들과 같은 타이밍에 숨을 죽이거나 웃게 돼요', '문이 열리고 밖으로 나올 때 여운이 길게 남아요'] },
+  { cat: '장소', word: '병원', kw: ['안심', '기다림', '회복'], hints: ['누구나 가급적이면 자주 가지 않길 바라지만 꼭 필요한 곳이에요', '차례를 기다리는 동안 마음이 조금씩 복잡해지곤 해요', '몸과 마음의 신호를 점검하고 안심을 얻는 공간이에요'] },
+  { cat: '물건', word: '스마트폰', kw: ['연결', '화면', '일상'], hints: ['하루를 시작하고 끝낼 때 가장 먼저 마주하게 되는 창구예요', '손끝 몇 번만으로 세상과 연결되는 편리함을 줘요', '곁에 없으면 괜히 허전하고 마음이 쓰이는 물건이에요'] },
+  { cat: '물건', word: '우산', kw: ['비', '보호', '날씨'], hints: ['하늘의 변덕에 대비해 미리 챙기거나 후회하게 만드는 물건이에요', '작은 방패처럼 머리 위 공간을 지켜주는 역할을 해요', '쓰임이 끝난 뒤 관리하는 방식까지 개성이 드러나요'] },
+  { cat: '물건', word: '시계', kw: ['시간', '흐름', '약속'], hints: ['멈추지 않고 계속 앞으로 나아가는 흐름을 보여주는 상징이에요', '약속과 기준을 맞추기 위해 모두가 따르는 약속의 기준점이에요', '문득 올려다볼 때마다 남은 시간을 실감하게 해줘요'] },
+  { cat: '물건', word: '거울', kw: ['반사', '모습', '확인'], hints: ['아무 말 없이 있는 그대로의 모습을 비춰주는 정직한 물건이에요', '외출 전 마지막 점검을 맡기는 든든한 도우미예요', '각도와 빛에 따라 전혀 다른 인상을 보여주기도 해요'] },
+  { cat: '물건', word: '자전거', kw: ['바람', '균형', '이동'], hints: ['스스로 균형을 잡아야 앞으로 나아갈 수 있는 정직한 탈것이에요', '거리를 스치는 바람을 온몸으로 느끼며 달리는 맛이 있어요', '처음 배울 때 넘어졌던 기억이 유독 선명하게 남곤 해요'] },
+  { cat: '직업', word: '소방관', kw: ['위험', '용기', '출동'], hints: ['남들이 등을 돌릴 때 오히려 안쪽으로 발걸음을 옮기는 용기가 있어요', '가장 긴박한 순간에 가장 먼저 떠오르는 믿음직한 이름이에요', '일상의 안전이 얼마나 큰 노력 위에 서 있는지 깨닫게 해줘요'] },
+  { cat: '직업', word: '경찰관', kw: ['질서', '신뢰', '순찰'], hints: ['거리의 질서와 사람의 안전을 지키는 든든한 버팀목이에요', '제복에서 풍기는 단단한 신뢰감이 주변을 안심시켜 줘요', '예상치 못한 사건 앞에서 침착하게 움직이는 모습이 인상적이에요'] },
+  { cat: '직업', word: '요리사', kw: ['재료', '정성', '맛'], hints: ['평범한 재료에 시간과 감각을 더해 새로운 가치를 만들어내요', '눈과 코와 입을 동시에 사로잡는 마법 같은 과정을 이끌어요', '누군가의 행복한 표정을 목표로 땀 흘리는 직업이에요'] },
+  { cat: '직업', word: '우주비행사', kw: ['미지', '도전', '궤도'], hints: ['인류가 닿은 가장 먼 미지의 영역을 향해 떠나는 개척자예요', '철저한 준비와 훈련 끝에 비로소 허락되는 특별한 여정이에요', '익숙한 세상을 멀리서 바라보는 시선이 상상력을 자극해요'] },
+  { cat: '직업', word: '선생님', kw: ['배움', '길잡이', '기억'], hints: ['어린 시절의 기억 속에 한마디 말로 오래 남는 분들이 많아요', '스스로 길을 찾을 수 있도록 힌트와 방향을 건네주는 존재예요', '가르치는 순간보다 지켜보며 기다려주는 힘이 큰 자리예요'] }
 ];
 
 const GRID_SIZE = 16;
@@ -251,6 +256,7 @@ function onLobbyFinished() {
 }
 
 function startColorFlipMatch(teamCount, assignments) {
+  const safeTeamCount = (mg.mode === 'team') ? Math.max(2, Math.min(4, parseInt(teamCount) || 2)) : 1;
   mg.phase = 'playing';
   mg.timeLeft = 60;
   mg.tiles = new Array(GRID_SIZE * GRID_SIZE).fill(null);
@@ -260,8 +266,9 @@ function startColorFlipMatch(teamCount, assignments) {
     let color = GAME_COLORS[idx % GAME_COLORS.length];
     let teamIdx = null;
     if (mg.mode === 'team') {
-      teamIdx = (assignments[p.id] !== undefined) ? parseInt(assignments[p.id]) : (idx % teamCount);
-      color = TEAM_PALETTE[teamIdx % TEAM_PALETTE.length].color;
+      const rawT = (assignments[p.id] !== undefined) ? parseInt(assignments[p.id]) : (idx % safeTeamCount);
+      teamIdx = ((rawT % safeTeamCount) + safeTeamCount) % safeTeamCount;
+      color = TEAM_PALETTE[teamIdx].color;
     }
     const angle = Math.random() * Math.PI * 2;
     p.color = color;
@@ -277,7 +284,7 @@ function startColorFlipMatch(teamCount, assignments) {
 
   io.emit('colorflipMatchStarted', {
     mode: mg.mode,
-    teamCount,
+    teamCount: safeTeamCount,
     timeLeft: mg.timeLeft,
     participants: mg.participants,
     tiles: mg.tiles
@@ -462,7 +469,7 @@ function resolveRpsRound() {
 
 function startFreezeTagMatch(itIds) {
   mg.phase = 'playing';
-  mg.timeLeft = 90; // 1분 30초
+  mg.timeLeft = 90;
 
   const count = Object.keys(mg.participants).length;
   mg.arenaHalfSize = Math.min(33, 18 + Math.floor(count * 1.1));
@@ -472,14 +479,14 @@ function startFreezeTagMatch(itIds) {
     const isIt = itIds.includes(p.id);
     p.role = isIt ? 'it' : 'runner';
     p.status = 'normal';
-    p.x = isIt ? (Math.random() - 0.5) * 5 : (Math.random() > 0.5 ? 1 : -1) * (spawnLim * 0.55 + Math.random() * (spawnLim * 0.35));
+    p.x = isIt ? (Math.random() - 0.5) * 4 : (Math.random() > 0.5 ? 1 : -1) * (spawnLim * 0.65 + Math.random() * (spawnLim * 0.25));
     p.y = 0;
-    p.z = isIt ? (Math.random() - 0.5) * 5 : (Math.random() > 0.5 ? 1 : -1) * (spawnLim * 0.55 + Math.random() * (spawnLim * 0.35));
+    p.z = isIt ? (Math.random() - 0.5) * 4 : (Math.random() > 0.5 ? 1 : -1) * (spawnLim * 0.65 + Math.random() * (spawnLim * 0.25));
     p.rotY = Math.random() * Math.PI * 2;
     p.isMoving = p.isCpu;
     p.dirX = Math.sin(p.rotY);
     p.dirZ = Math.cos(p.rotY);
-    p.aiTimer = 1;
+    p.aiTimer = 0.6;
     p.freezeCooldown = 0;
   });
 
@@ -511,36 +518,75 @@ function startFreezeTagMatch(itIds) {
           const t = targets[0];
           const ang = Math.atan2(t.x - p.x, t.z - p.z);
           p.rotY = ang;
-          p.x = Math.max(-lim, Math.min(lim, p.x + Math.sin(ang) * 0.25));
-          p.z = Math.max(-lim, Math.min(lim, p.z + Math.cos(ang) * 0.25));
+          p.x = Math.max(-lim, Math.min(lim, p.x + Math.sin(ang) * 0.23));
+          p.z = Math.max(-lim, Math.min(lim, p.z + Math.cos(ang) * 0.23));
           p.isMoving = true;
         }
       } else {
-        if (p.status === 'frozen' || p.status === 'out') { p.isMoving = false; return; }
-        p.isMoving = true;
-        const nearIt = its.find(it => Math.hypot(it.x - p.x, it.z - p.z) < 3.2);
-        if (nearIt && p.freezeCooldown <= 0) {
-          p.status = 'frozen'; p.isMoving = false;
+        if (p.status === 'out') { p.isMoving = false; return; }
+
+        if (p.status === 'frozen') {
+          p.isMoving = false;
+          const nearbyFrozen = runners.filter(r => r.status === 'frozen' && Math.hypot(r.x - p.x, r.z - p.z) <= 3.2);
+          if (nearbyFrozen.length === 2) {
+            nearbyFrozen.forEach(r => { r.status = 'normal'; r.freezeCooldown = 2.0; });
+            io.emit('freezetagAction', {
+              type: 'clang',
+              actorId: p.id,
+              targetId: nearbyFrozen.find(r => r.id !== p.id).id,
+              participants: mg.participants
+            });
+          }
+          return;
+        }
+
+        let nearestIt = null;
+        let minItDist = Infinity;
+        its.forEach(it => {
+          const d = Math.hypot(it.x - p.x, it.z - p.z);
+          if (d < minItDist) { minItDist = d; nearestIt = it; }
+        });
+
+        if (nearestIt && minItDist < 3.6 && p.freezeCooldown <= 0) {
+          p.status = 'frozen';
+          p.isMoving = false;
           io.emit('freezetagAction', { type: 'freeze', actorId: p.id, targetId: p.id, participants: mg.participants });
           return;
         }
+
         const frozenMate = runners.find(r => r.status === 'frozen');
         if (frozenMate) {
           const dist = Math.hypot(frozenMate.x - p.x, frozenMate.z - p.z);
           const ang = Math.atan2(frozenMate.x - p.x, frozenMate.z - p.z);
           p.rotY = ang;
-          p.x = Math.max(-lim, Math.min(lim, p.x + Math.sin(ang) * 0.23));
-          p.z = Math.max(-lim, Math.min(lim, p.z + Math.cos(ang) * 0.23));
+          p.x = Math.max(-lim, Math.min(lim, p.x + Math.sin(ang) * 0.24));
+          p.z = Math.max(-lim, Math.min(lim, p.z + Math.cos(ang) * 0.24));
+          p.isMoving = true;
           if (dist < 2.3) {
-            frozenMate.status = 'normal'; frozenMate.freezeCooldown = 2.0;
+            frozenMate.status = 'normal';
+            frozenMate.freezeCooldown = 2.0;
             io.emit('freezetagAction', { type: 'fire', actorId: p.id, targetId: frozenMate.id, participants: mg.participants });
           }
+          return;
+        }
+
+        p.isMoving = true;
+        if (nearestIt && minItDist < 14) {
+          const awayX = p.x - nearestIt.x;
+          const awayZ = p.z - nearestIt.z;
+          let ang = Math.atan2(awayX, awayZ);
+          if (Math.abs(p.x) > lim - 2.0 || Math.abs(p.z) > lim - 2.0) {
+            ang = Math.atan2(-p.x, -p.z) + (Math.random() - 0.5) * 1.2;
+          }
+          p.rotY = ang;
+          p.x = Math.max(-lim, Math.min(lim, p.x + Math.sin(ang) * 0.24));
+          p.z = Math.max(-lim, Math.min(lim, p.z + Math.cos(ang) * 0.24));
         } else {
           p.aiTimer -= dt;
-          if (p.aiTimer <= 0 || Math.abs(p.x) > lim - 1 || Math.abs(p.z) > lim - 1) {
+          if (p.aiTimer <= 0 || Math.abs(p.x) > lim - 1.5 || Math.abs(p.z) > lim - 1.5) {
             const ang = Math.atan2(-p.x + (Math.random() - 0.5) * lim, -p.z + (Math.random() - 0.5) * lim);
             p.dirX = Math.sin(ang); p.dirZ = Math.cos(ang); p.rotY = ang;
-            p.aiTimer = 1 + Math.random() * 1.5;
+            p.aiTimer = 0.8 + Math.random() * 1.2;
           }
           p.x = Math.max(-lim, Math.min(lim, p.x + p.dirX * 0.22));
           p.z = Math.max(-lim, Math.min(lim, p.z + p.dirZ * 0.22));
@@ -550,7 +596,7 @@ function startFreezeTagMatch(itIds) {
 
     its.forEach(it => {
       runners.forEach(r => {
-        if (r.status === 'normal' && Math.hypot(it.x - r.x, it.z - r.z) < 1.55) {
+        if (r.status === 'normal' && Math.hypot(it.x - r.x, it.z - r.z) < 1.5) {
           r.status = 'out';
           r.isMoving = false;
           r.x = (Math.random() - 0.5) * 14;
@@ -681,20 +727,16 @@ function generateSmartCpuSpeech(cpuId) {
   const isLiar = (cpuId === mg.liarId);
   if (!isLiar) {
     const num = parseInt(cpuId.replace('cpu_', '') || '1');
-    const idx = (mg.roundNum * 2 + mg.turnIndex + num) % mg.liarTopic.hints.length;
+    const idx = (mg.roundNum * 3 + mg.turnIndex + num) % mg.liarTopic.hints.length;
     return mg.liarTopic.hints[idx];
   } else {
-    const prevTexts = mg.speeches.map(s => s.text).join(' ');
-    if (prevTexts.length === 0) {
-      return '일상생활에서 정말 친숙하고 많은 사람들이 좋아하는 ' + mg.liarTopic.cat + ' 관련이에요.';
-    }
-    if (mg.liarTopic.cat === '음식') return '앞분 말씀처럼 호불호가 거의 없고 식사나 간식으로 생각날 때 자주 찾는 메뉴예요.';
-    if (mg.liarTopic.cat === '동물') return '생김새나 행동이 정말 매력적이고 특징이 뚜렷해서 누구나 바로 떠올릴 수 있어요.';
-    if (mg.liarTopic.cat === '스포츠') return '규칙이 흥미진진하고 친구들이랑 같이 하거나 경기를 보면 정말 재미있는 종목이에요.';
-    if (mg.liarTopic.cat === '악기') return '연주하는 모습을 보면 정말 멋지고 아름다운 소리가 나서 인기 있는 악기예요.';
-    if (mg.liarTopic.cat === '장소') return '주말이나 평일에 사람들이 목적을 가지고 자주 방문하는 아주 익숙한 공간이에요.';
-    if (mg.liarTopic.cat === '직업') return '우리 사회에서 꼭 필요한 중요한 역할을 맡고 있어서 존경받는 멋진 직업이에요.';
-    return '주변에서 쉽게 접할 수 있고 특징이 아주 분명해서 설명하기 좋은 주제예요.';
+    const crypticPool = [
+      '분위기나 상황으로만 떠올리면 은근히 헷갈릴 수도 있을 것 같아요.',
+      '앞에서 나온 이야기들을 들으면서 머릿속으로 그림을 그려보고 있어요.',
+      '직접 마주했을 때 느껴지는 공기나 템포가 꽤 인상적인 주제네요.',
+      '사람마다 받아들이는 포인트가 조금씩 다를 수 있는 대상이라고 생각해요.'
+    ];
+    return crypticPool[(mg.turnIndex + mg.roundNum) % crypticPool.length];
   }
 }
 
@@ -747,13 +789,13 @@ function computeSmartCpuVote(voterId, candidateIds) {
   const suspicionScores = others.map(cid => {
     const userSpeeches = mg.speeches.filter(s => s.id === cid).map(s => s.text).join(' ');
     let score = 0;
-    if (userSpeeches.includes('시간 초과') || userSpeeches.trim().length < 6) score += 50;
+    if (userSpeeches.includes('시간 초과') || userSpeeches.trim().length < 8) score += 45;
     let kwHits = 0;
     keywords.forEach(k => { if (userSpeeches.includes(k)) kwHits++; });
-    if (kwHits === 0) score += 35;
+    if (kwHits === 0) score += 25;
     else score -= kwHits * 15;
-    if (userSpeeches.includes('친숙') || userSpeeches.includes('매력적') || userSpeeches.includes('익숙한')) score += 20;
-    score += Math.random() * 12;
+    if (userSpeeches.includes('분위기') || userSpeeches.includes('그림을 그려') || userSpeeches.includes('조금씩 다를')) score += 25;
+    score += Math.random() * 14;
     return { id: cid, score };
   });
 
@@ -840,6 +882,8 @@ io.on('connection', (socket) => {
     mong: 200,
     speedLevel: 0,
     jumpLevel: 0,
+    isAdmin: false,
+    isInvisible: false,
     ownedTops: ['tshirt'],
     ownedBottoms: ['pants'],
     ownedThemes: ['original'],
@@ -858,6 +902,64 @@ io.on('connection', (socket) => {
 
   socket.emit('currentPlayers', { players, worldCoins: WORLD_COINS });
   socket.broadcast.emit('newPlayer', players[socket.id]);
+
+  // Admin 로그인 인증: +1000몽, 모든 의상/테마 해제, 20배 능력치, 캐릭터 1.5배 크기
+  socket.on('adminLogin', ({ id, pw }) => {
+    const p = players[socket.id];
+    if (!p) return;
+    if (id === ADMIN_ID && pw === ADMIN_PW) {
+      p.isAdmin = true;
+      p.mong = (p.mong || 0) + 1000;
+      p.speedLevel = 20;
+      p.jumpLevel = 20;
+      p.ownedTops = [...ALL_TOPS];
+      p.ownedBottoms = [...ALL_BOTTOMS];
+      p.ownedThemes = [...ALL_THEMES];
+      socket.emit('adminAuthSuccess', p);
+      io.emit('playerUpdated', p);
+    } else {
+      socket.emit('adminAuthFail', '아이디 또는 비밀번호가 올바르지 않습니다.');
+    }
+  });
+
+  // Admin 투명 모드 토글
+  socket.on('adminToggleInvisible', () => {
+    const p = players[socket.id];
+    if (!p || !p.isAdmin) return;
+    p.isInvisible = !p.isInvisible;
+    io.emit('adminPlayerStealth', { id: socket.id, isInvisible: p.isInvisible });
+    socket.emit('adminAuthSuccess', p);
+  });
+
+  // Admin 특정 사용자 월드에서 내보내기(킥)
+  socket.on('adminKickUser', (targetId) => {
+    const p = players[socket.id];
+    if (!p || !p.isAdmin || !players[targetId] || targetId === socket.id) return;
+    const kickedName = players[targetId].name;
+    io.to(targetId).emit('adminKicked', { byName: p.name });
+    const targetSocket = io.sockets.sockets.get(targetId);
+    if (targetSocket) {
+      targetSocket.disconnect(true);
+    }
+    delete players[targetId];
+    io.emit('playerDisconnected', targetId);
+    io.emit('adminGlobalAlert', {
+      senderName: 'ADMIN',
+      message: '[' + kickedName + '] 님이 관리자에 의해 월드에서 내보내졌습니다.'
+    });
+  });
+
+  // Admin 전체 대형 경고 알림 발송
+  socket.on('adminBroadcastAlert', (alertText) => {
+    const p = players[socket.id];
+    if (!p || !p.isAdmin) return;
+    const clean = (alertText || '').trim().substring(0, 120);
+    if (!clean) return;
+    io.emit('adminGlobalAlert', {
+      senderName: p.name,
+      message: clean
+    });
+  });
 
   socket.on('collectWorldCoin', (coinId) => {
     const p = players[socket.id];
@@ -888,10 +990,11 @@ io.on('connection', (socket) => {
   socket.on('buyItem', ({ category, itemId }) => {
     const p = players[socket.id];
     if (!p) return;
-    if (category === 'speed' && p.speedLevel < 5) {
+    const maxLv = p.isAdmin ? 20 : 5;
+    if (category === 'speed' && p.speedLevel < maxLv) {
       const cost = (p.speedLevel + 1) * 50;
       if (p.mong >= cost) { p.mong -= cost; p.speedLevel += 1; socket.emit('shopUpdated', p); }
-    } else if (category === 'jump' && p.jumpLevel < 5) {
+    } else if (category === 'jump' && p.jumpLevel < maxLv) {
       const cost = (p.jumpLevel + 1) * 50;
       if (p.mong >= cost) { p.mong -= cost; p.jumpLevel += 1; socket.emit('shopUpdated', p); }
     } else if (category === 'top') {
@@ -996,7 +1099,8 @@ io.on('connection', (socket) => {
 
   socket.on('confirmColorflipTeams', ({ teamCount, assignments }) => {
     if (mg.phase === 'team_setup' && socket.id === mg.hostId) {
-      startColorFlipMatch(teamCount, assignments);
+      const safeTeams = Math.max(2, Math.min(4, parseInt(teamCount) || 2));
+      startColorFlipMatch(safeTeams, assignments);
     }
   });
 
