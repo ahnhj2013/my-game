@@ -16,6 +16,7 @@ const supabaseKey = (process.env.SUPABASE_KEY || '').trim();
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 const players = {};
+const rooms = {};
 
 const ADMIN_ID = 'hajun1234adminuser';
 const ADMIN_PW = '2cv8cF';
@@ -50,6 +51,7 @@ async function savePlayerToDB(p) {
     await supabase
       .from('game_profiles')
       .update({
+        nickname: p.name,
         mong: p.mong,
         speed_level: p.speedLevel,
         jump_level: p.jumpLevel,
@@ -74,8 +76,8 @@ const WORLD_COINS = [];
 function spawnCoinPosition(id) {
   return {
     id,
-    x: (Math.random() - 0.5) * 90,
-    z: (Math.random() - 0.5) * 90
+    x: (Math.random() - 0.5) * 85,
+    z: (Math.random() - 0.5) * 85
   };
 }
 for (let i = 0; i < 20; i++) {
@@ -138,34 +140,48 @@ const LIAR_WORDS_50 = [
 const GRID_SIZE = 16;
 const TILE_SIZE = 2.0;
 
-let mgLock = false;
-let mg = {
-  phase: 'idle', type: null, hostId: null, cpuCount: 0, mode: 'solo',
-  timeLeft: 0, participants: {}, tiles: [], teamAssignments: {},
-  arenaHalfSize: 19, rpsGroups: [], rpsPool: [], targetItCount: 1,
-  liarId: null, liarTopic: null, turnOrder: [], turnIndex: 0,
-  roundNum: 1, speeches: [], votes: {}, runoffIds: null, loopTimer: null
-};
-
-function resetMinigame() {
-  if (mg.loopTimer) clearInterval(mg.loopTimer);
-  mg.phase = 'idle'; mg.type = null; mg.hostId = null;
-  mg.participants = {}; mg.tiles = []; mg.teamAssignments = {};
-  mg.rpsGroups = []; mg.rpsPool = []; mg.liarId = null; mg.liarTopic = null;
-  mg.turnOrder = []; mg.speeches = []; mg.votes = {}; mg.runoffIds = null;
-  mgLock = false;
-  Object.values(players).forEach(p => { p.inMinigame = false; });
+function emitToRoom(room, event, payload) {
+  Object.values(room.participants).forEach(p => {
+    if (!p.isCpu) io.to(p.id).emit(event, payload);
+  });
 }
 
-function openMinigameLobby(hostId, type, cpuCount, mode) {
-  if (mgLock || mg.phase !== 'idle' || !players[hostId]) return false;
-  mgLock = true;
-  mg.phase = 'lobby'; mg.type = type; mg.hostId = hostId;
-  mg.cpuCount = Math.max(0, Math.min(10, parseInt(cpuCount) || 0));
-  mg.mode = mode || 'solo'; mg.timeLeft = 30; mg.participants = {};
+function getWorldIdleSocketIds() {
+  return Object.keys(players).filter(sid => !players[sid].roomId);
+}
 
-  players[hostId].inMinigame = true;
-  mg.participants[hostId] = { id: hostId, name: players[hostId].name, isCpu: false };
+function broadcastLobbyToIdle(event, payload) {
+  getWorldIdleSocketIds().forEach(sid => io.to(sid).emit(event, payload));
+}
+
+function cleanupRoom(roomId) {
+  const room = rooms[roomId];
+  if (!room) return;
+  if (room.loopTimer) clearInterval(room.loopTimer);
+  Object.values(room.participants).forEach(p => {
+    if (!p.isCpu && players[p.id]) players[p.id].roomId = null;
+  });
+  delete rooms[roomId];
+}
+
+function createMinigameRoom(hostId, type, cpuCount, mode) {
+  const host = players[hostId];
+  if (!host || host.roomId) return null;
+
+  const roomId = 'room_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+  const room = {
+    id: roomId, phase: 'lobby', type, hostId,
+    cpuCount: Math.max(0, Math.min(10, parseInt(cpuCount) || 0)),
+    mode: mode || 'solo', timeLeft: 30,
+    participants: {}, tiles: [], teamAssignments: {},
+    arenaHalfSize: 19, rpsGroups: [], rpsPool: [], targetItCount: 1,
+    liarId: null, liarTopic: null, turnOrder: [], turnIndex: 0,
+    roundNum: 1, speeches: [], votes: {}, runoffIds: null, loopTimer: null
+  };
+
+  rooms[roomId] = room;
+  host.roomId = roomId;
+  room.participants[hostId] = { id: hostId, name: host.name, isCpu: false };
 
   const titleMap = {
     colorflip: '🎨 색깔 뒤집기 (1분 / 최소 3명)',
@@ -173,65 +189,79 @@ function openMinigameLobby(hostId, type, cpuCount, mode) {
     liar: '🕵️ 거짓말 탐지기 (최소 4명)'
   };
 
-  io.emit('minigameLobbyStarted', {
-    type: mg.type, title: titleMap[type] || type, hostId,
-    hostName: players[hostId].name, mode: mg.mode, cpuCount: mg.cpuCount,
-    timeLeft: mg.timeLeft, participants: mg.participants
+  broadcastLobbyToIdle('minigameLobbyStarted', {
+    roomId, type: room.type, title: titleMap[type] || type,
+    hostId, hostName: host.name, mode: room.mode, cpuCount: room.cpuCount,
+    timeLeft: room.timeLeft, participants: room.participants
   });
 
-  mg.loopTimer = setInterval(() => {
-    mg.timeLeft -= 1;
-    io.emit('minigameLobbyTick', { timeLeft: mg.timeLeft, participants: mg.participants });
-    if (mg.timeLeft <= 0) { clearInterval(mg.loopTimer); onLobbyFinished(); }
+  room.loopTimer = setInterval(() => {
+    room.timeLeft -= 1;
+    const payload = { roomId, timeLeft: room.timeLeft, participants: room.participants };
+    emitToRoom(room, 'minigameLobbyTick', payload);
+    broadcastLobbyToIdle('minigameLobbyTick', payload);
+    if (room.timeLeft <= 0) {
+      clearInterval(room.loopTimer);
+      onRoomLobbyFinished(roomId);
+    }
   }, 1000);
-  return true;
+
+  return room;
 }
 
-function onLobbyFinished() {
-  if (mg.phase !== 'lobby') return;
-  if (mg.loopTimer) clearInterval(mg.loopTimer);
+function onRoomLobbyFinished(roomId) {
+  const room = rooms[roomId];
+  if (!room || room.phase !== 'lobby') return;
+  if (room.loopTimer) clearInterval(room.loopTimer);
 
-  for (let i = 1; i <= mg.cpuCount; i++) {
+  for (let i = 1; i <= room.cpuCount; i++) {
     const cpuId = 'cpu_' + i;
-    mg.participants[cpuId] = { id: cpuId, name: 'CPU봇_' + i, isCpu: true };
+    room.participants[cpuId] = { id: cpuId, name: 'CPU봇_' + i, isCpu: true };
   }
 
-  const allList = Object.values(mg.participants);
-  if (mg.type === 'colorflip') {
+  const allList = Object.values(room.participants);
+  if (room.type === 'colorflip') {
     if (allList.length < 3) {
-      io.emit('minigameCancelled', { reason: '색깔 뒤집기는 총 3명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명)' });
-      resetMinigame(); return;
+      emitToRoom(room, 'minigameCancelled', { roomId, reason: '색깔 뒤집기는 총 3명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명)' });
+      broadcastLobbyToIdle('minigameLobbyClosed', { roomId });
+      cleanupRoom(roomId); return;
     }
-    if (mg.mode === 'team') {
-      mg.phase = 'team_setup';
-      allList.forEach((p, idx) => { mg.teamAssignments[p.id] = idx % 2; });
-      io.emit('colorflipTeamSetup', { hostId: mg.hostId, participants: mg.participants, assignments: mg.teamAssignments });
+    broadcastLobbyToIdle('minigameLobbyClosed', { roomId });
+    if (room.mode === 'team') {
+      room.phase = 'team_setup';
+      allList.forEach((p, idx) => { room.teamAssignments[p.id] = idx % 2; });
+      emitToRoom(room, 'colorflipTeamSetup', { roomId, hostId: room.hostId, participants: room.participants, assignments: room.teamAssignments });
     } else {
-      startColorFlipMatch(1, {});
+      startColorFlipRoom(roomId, 1, {});
     }
-  } else if (mg.type === 'freezetag') {
+  } else if (room.type === 'freezetag') {
     if (allList.length < 5) {
-      io.emit('minigameCancelled', { reason: '얼음땡은 총 5명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명)' });
-      resetMinigame(); return;
+      emitToRoom(room, 'minigameCancelled', { roomId, reason: '얼음땡은 총 5명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명)' });
+      broadcastLobbyToIdle('minigameLobbyClosed', { roomId });
+      cleanupRoom(roomId); return;
     }
-    startRpsTournament();
-  } else if (mg.type === 'liar') {
+    broadcastLobbyToIdle('minigameLobbyClosed', { roomId });
+    startRpsRoom(roomId);
+  } else if (room.type === 'liar') {
     if (allList.length < 4) {
-      io.emit('minigameCancelled', { reason: '거짓말 탐지기는 총 4명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명)' });
-      resetMinigame(); return;
+      emitToRoom(room, 'minigameCancelled', { roomId, reason: '거짓말 탐지기는 총 4명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명)' });
+      broadcastLobbyToIdle('minigameLobbyClosed', { roomId });
+      cleanupRoom(roomId); return;
     }
-    startLiarGame();
+    broadcastLobbyToIdle('minigameLobbyClosed', { roomId });
+    startLiarRoom(roomId);
   }
 }
 
-function startColorFlipMatch(teamCount, assignments) {
-  const safeTeamCount = (mg.mode === 'team') ? Math.max(2, Math.min(4, parseInt(teamCount) || 2)) : 1;
-  mg.phase = 'playing'; mg.timeLeft = 60;
-  mg.tiles = new Array(GRID_SIZE * GRID_SIZE).fill(null);
+function startColorFlipRoom(roomId, teamCount, assignments) {
+  const room = rooms[roomId]; if (!room) return;
+  const safeTeamCount = (room.mode === 'team') ? Math.max(2, Math.min(4, parseInt(teamCount) || 2)) : 1;
+  room.phase = 'playing'; room.timeLeft = 60;
+  room.tiles = new Array(GRID_SIZE * GRID_SIZE).fill(null);
 
-  Object.values(mg.participants).forEach((p, idx) => {
+  Object.values(room.participants).forEach((p, idx) => {
     let color = GAME_COLORS[idx % GAME_COLORS.length], teamIdx = null;
-    if (mg.mode === 'team') {
+    if (room.mode === 'team') {
       const rawT = (assignments[p.id] !== undefined) ? parseInt(assignments[p.id]) : (idx % safeTeamCount);
       teamIdx = ((rawT % safeTeamCount) + safeTeamCount) % safeTeamCount;
       color = TEAM_PALETTE[teamIdx].color;
@@ -244,14 +274,13 @@ function startColorFlipMatch(teamCount, assignments) {
     p.aiTimer = 1 + Math.random() * 1.5;
   });
 
-  io.emit('colorflipMatchStarted', { mode: mg.mode, teamCount: safeTeamCount, timeLeft: mg.timeLeft, participants: mg.participants, tiles: mg.tiles });
+  emitToRoom(room, 'colorflipMatchStarted', { roomId, mode: room.mode, teamCount: safeTeamCount, timeLeft: room.timeLeft, participants: room.participants, tiles: room.tiles });
 
   let secAccum = 0;
-  mg.loopTimer = setInterval(() => {
-    if (mg.phase !== 'playing') return;
+  room.loopTimer = setInterval(() => {
+    if (room.phase !== 'playing') return;
     const dt = 0.05; secAccum += dt;
-
-    Object.values(mg.participants).forEach(p => {
+    Object.values(room.participants).forEach(p => {
       if (p.isCpu) {
         p.aiTimer -= dt;
         if (p.aiTimer <= 0 || Math.abs(p.x) > 14.5 || Math.abs(p.z) > 14.5) {
@@ -266,28 +295,27 @@ function startColorFlipMatch(teamCount, assignments) {
       const row = Math.floor((p.z + (GRID_SIZE * TILE_SIZE) / 2) / TILE_SIZE);
       if (col >= 0 && col < GRID_SIZE && row >= 0 && row < GRID_SIZE) {
         const idx = row * GRID_SIZE + col;
-        const ownerKey = (mg.mode === 'team') ? ('team_' + p.teamIdx) : p.id;
-        if (mg.tiles[idx] !== ownerKey) {
-          mg.tiles[idx] = ownerKey;
-          io.emit('tileFlipped', { index: idx, ownerKey, color: p.color });
+        const ownerKey = (room.mode === 'team') ? ('team_' + p.teamIdx) : p.id;
+        if (room.tiles[idx] !== ownerKey) {
+          room.tiles[idx] = ownerKey;
+          emitToRoom(room, 'tileFlipped', { index: idx, ownerKey, color: p.color });
         }
       }
     });
-
-    io.emit('minigameActorsUpdate', mg.participants);
+    emitToRoom(room, 'minigameActorsUpdate', room.participants);
     if (secAccum >= 1.0) {
-      secAccum = 0; mg.timeLeft -= 1;
-      io.emit('colorflipTick', { timeLeft: mg.timeLeft, scoreboard: computeColorFlipScores() });
-      if (mg.timeLeft <= 0) finishColorFlipMatch();
+      secAccum = 0; room.timeLeft -= 1;
+      emitToRoom(room, 'colorflipTick', { timeLeft: room.timeLeft, scoreboard: computeRoomColorFlipScores(room) });
+      if (room.timeLeft <= 0) finishColorFlipRoom(roomId);
     }
   }, 50);
 }
 
-function computeColorFlipScores() {
-  if (mg.mode === 'team') {
+function computeRoomColorFlipScores(room) {
+  if (room.mode === 'team') {
     const teamCounts = {};
-    mg.tiles.forEach(k => { if (k) teamCounts[k] = (teamCounts[k] || 0) + 1; });
-    const usedTeams = [...new Set(Object.values(mg.participants).map(p => p.teamIdx))];
+    room.tiles.forEach(k => { if (k) teamCounts[k] = (teamCounts[k] || 0) + 1; });
+    const usedTeams = [...new Set(Object.values(room.participants).map(p => p.teamIdx))];
     return usedTeams.map(tIdx => ({
       key: 'team_' + tIdx, teamIdx: tIdx,
       name: TEAM_PALETTE[tIdx] ? TEAM_PALETTE[tIdx].name : (tIdx + 1) + '팀',
@@ -296,20 +324,21 @@ function computeColorFlipScores() {
     })).sort((a, b) => b.count - a.count);
   } else {
     const counts = {};
-    mg.tiles.forEach(id => { if (id) counts[id] = (counts[id] || 0) + 1; });
-    return Object.values(mg.participants).map(p => ({
+    room.tiles.forEach(id => { if (id) counts[id] = (counts[id] || 0) + 1; });
+    return Object.values(room.participants).map(p => ({
       key: p.id, id: p.id, name: p.name, color: p.color, isCpu: p.isCpu, count: counts[p.id] || 0
     })).sort((a, b) => b.count - a.count);
   }
 }
 
-function finishColorFlipMatch() {
-  if (mg.loopTimer) clearInterval(mg.loopTimer);
-  const scoreboard = computeColorFlipScores(), top = scoreboard[0];
+function finishColorFlipRoom(roomId) {
+  const room = rooms[roomId]; if (!room) return;
+  if (room.loopTimer) clearInterval(room.loopTimer);
+  const scoreboard = computeRoomColorFlipScores(room), top = scoreboard[0];
   let summaryText = '';
 
-  if (mg.mode === 'team' && top) {
-    Object.values(mg.participants).forEach(p => {
+  if (room.mode === 'team' && top) {
+    Object.values(room.participants).forEach(p => {
       if (p.teamIdx === top.teamIdx && !p.isCpu && players[p.id]) {
         players[p.id].mong = (players[p.id].mong || 0) + 100;
         savePlayerToDB(players[p.id]);
@@ -323,29 +352,31 @@ function finishColorFlipMatch() {
     }
     summaryText = '1등 우승: ' + top.name + ' (' + top.count + '칸) — +100몽 지급!';
   }
-  io.emit('minigameEnded', { title: '🎨 색깔 뒤집기 결과', summaryText, updatedPlayers: players });
-  resetMinigame();
+  emitToRoom(room, 'minigameEnded', { title: '🎨 색깔 뒤집기 결과', summaryText, updatedPlayers: players });
+  cleanupRoom(roomId);
 }
 
-function startRpsTournament() {
-  mg.phase = 'rps';
-  const allIds = Object.keys(mg.participants);
-  mg.targetItCount = Math.max(1, Math.round(allIds.length * 0.13));
-  mg.rpsPool = [...allIds];
-  runRpsRound();
+function startRpsRoom(roomId) {
+  const room = rooms[roomId]; if (!room) return;
+  room.phase = 'rps';
+  const allIds = Object.keys(room.participants);
+  room.targetItCount = Math.max(1, Math.round(allIds.length * 0.13));
+  room.rpsPool = [...allIds];
+  runRpsRoomRound(roomId);
 }
 
-function runRpsRound() {
-  if (mg.rpsPool.length <= mg.targetItCount) {
-    const itIds = mg.rpsPool.slice(0, mg.targetItCount);
-    if (itIds.length < mg.targetItCount) {
-      const others = Object.keys(mg.participants).filter(id => !itIds.includes(id));
-      while (itIds.length < mg.targetItCount && others.length > 0) itIds.push(others.shift());
+function runRpsRoomRound(roomId) {
+  const room = rooms[roomId]; if (!room) return;
+  if (room.rpsPool.length <= room.targetItCount) {
+    const itIds = room.rpsPool.slice(0, room.targetItCount);
+    if (itIds.length < room.targetItCount) {
+      const others = Object.keys(room.participants).filter(id => !itIds.includes(id));
+      while (itIds.length < room.targetItCount && others.length > 0) itIds.push(others.shift());
     }
-    startFreezeTagMatch(itIds); return;
+    startFreezeTagRoom(roomId, itIds); return;
   }
 
-  const shuffled = [...mg.rpsPool].sort(() => Math.random() - 0.5), groups = [];
+  const shuffled = [...room.rpsPool].sort(() => Math.random() - 0.5), groups = [];
   let i = 0;
   while (i < shuffled.length) {
     const rem = shuffled.length - i;
@@ -354,10 +385,10 @@ function runRpsRound() {
     else { groups.push(shuffled.slice(i, i + 3)); i += 3; }
   }
 
-  mg.rpsGroups = groups.map((memberIds, idx) => {
+  room.rpsGroups = groups.map((memberIds, idx) => {
     const choices = {};
     memberIds.forEach(id => {
-      if (mg.participants[id] && mg.participants[id].isCpu) {
+      if (room.participants[id] && room.participants[id].isCpu) {
         const opts = ['rock', 'paper', 'scissors'];
         choices[id] = opts[Math.floor(Math.random() * 3)];
       }
@@ -365,12 +396,12 @@ function runRpsRound() {
     return { groupIdx: idx, memberIds, choices };
   });
 
-  io.emit('rpsRoundStarted', { targetItCount: mg.targetItCount, groups: mg.rpsGroups, participants: mg.participants, timeLeft: 10 });
+  emitToRoom(room, 'rpsRoundStarted', { targetItCount: room.targetItCount, groups: room.rpsGroups, participants: room.participants, timeLeft: 10 });
   let rpsTimer = 10;
-  mg.loopTimer = setInterval(() => {
-    rpsTimer -= 1; io.emit('rpsTick', { timeLeft: rpsTimer });
-    if (mg.rpsGroups.every(g => g.memberIds.every(id => g.choices[id])) || rpsTimer <= 0) {
-      clearInterval(mg.loopTimer); resolveRpsRound();
+  room.loopTimer = setInterval(() => {
+    rpsTimer -= 1; emitToRoom(room, 'rpsTick', { timeLeft: rpsTimer });
+    if (room.rpsGroups.every(g => g.memberIds.every(id => g.choices[id])) || rpsTimer <= 0) {
+      clearInterval(room.loopTimer); resolveRpsRoomRound(roomId);
     }
   }, 1000);
 }
@@ -386,21 +417,23 @@ function getRpsLosers(memberIds, choices) {
   return memberIds.filter(id => choices[id] === losingMove);
 }
 
-function resolveRpsRound() {
+function resolveRpsRoomRound(roomId) {
+  const room = rooms[roomId]; if (!room) return;
   const nextPool = [];
-  mg.rpsGroups.forEach(g => nextPool.push(...getRpsLosers(g.memberIds, g.choices)));
-  io.emit('rpsRoundResult', { losers: nextPool, participants: mg.participants });
-  mg.rpsPool = nextPool;
-  setTimeout(() => { if (mg.phase === 'rps') runRpsRound(); }, 2000);
+  room.rpsGroups.forEach(g => nextPool.push(...getRpsLosers(g.memberIds, g.choices)));
+  emitToRoom(room, 'rpsRoundResult', { losers: nextPool, participants: room.participants });
+  room.rpsPool = nextPool;
+  setTimeout(() => { if (rooms[roomId] && rooms[roomId].phase === 'rps') runRpsRoomRound(roomId); }, 2000);
 }
 
-function startFreezeTagMatch(itIds) {
-  mg.phase = 'playing'; mg.timeLeft = 90;
-  const count = Object.keys(mg.participants).length;
-  mg.arenaHalfSize = Math.min(33, 18 + Math.floor(count * 1.1));
-  const spawnLim = mg.arenaHalfSize - 2.5;
+function startFreezeTagRoom(roomId, itIds) {
+  const room = rooms[roomId]; if (!room) return;
+  room.phase = 'playing'; room.timeLeft = 90;
+  const count = Object.keys(room.participants).length;
+  room.arenaHalfSize = Math.min(33, 18 + Math.floor(count * 1.1));
+  const spawnLim = room.arenaHalfSize - 2.5;
 
-  Object.values(mg.participants).forEach(p => {
+  Object.values(room.participants).forEach(p => {
     const isIt = itIds.includes(p.id);
     p.role = isIt ? 'it' : 'runner'; p.status = 'normal';
     p.x = isIt ? (Math.random() - 0.5) * 4 : (Math.random() > 0.5 ? 1 : -1) * (spawnLim * 0.65 + Math.random() * (spawnLim * 0.25));
@@ -411,14 +444,14 @@ function startFreezeTagMatch(itIds) {
     p.aiTimer = 0.6; p.freezeCooldown = 0;
   });
 
-  io.emit('freezetagMatchStarted', { timeLeft: mg.timeLeft, arenaHalfSize: mg.arenaHalfSize, participants: mg.participants });
+  emitToRoom(room, 'freezetagMatchStarted', { timeLeft: room.timeLeft, arenaHalfSize: room.arenaHalfSize, participants: room.participants });
 
   let secAccum = 0;
-  mg.loopTimer = setInterval(() => {
-    if (mg.phase !== 'playing') return;
+  room.loopTimer = setInterval(() => {
+    if (room.phase !== 'playing') return;
     const dt = 0.05; secAccum += dt;
-    const allP = Object.values(mg.participants), its = allP.filter(p => p.role === 'it'), runners = allP.filter(p => p.role === 'runner');
-    const lim = mg.arenaHalfSize - 1.0;
+    const allP = Object.values(room.participants), its = allP.filter(p => p.role === 'it'), runners = allP.filter(p => p.role === 'runner');
+    const lim = room.arenaHalfSize - 1.0;
 
     allP.forEach(p => {
       if (p.freezeCooldown > 0) p.freezeCooldown = Math.max(0, p.freezeCooldown - dt);
@@ -437,7 +470,7 @@ function startFreezeTagMatch(itIds) {
           const nearbyFrozen = runners.filter(r => r.status === 'frozen' && Math.hypot(r.x - p.x, r.z - p.z) <= 3.2);
           if (nearbyFrozen.length === 2) {
             nearbyFrozen.forEach(r => { r.status = 'normal'; r.freezeCooldown = 2.0; });
-            io.emit('freezetagAction', { type: 'clang', actorId: p.id, targetId: nearbyFrozen.find(r => r.id !== p.id).id, participants: mg.participants });
+            emitToRoom(room, 'freezetagAction', { type: 'clang', actorId: p.id, targetId: nearbyFrozen.find(r => r.id !== p.id).id, participants: room.participants });
           }
           return;
         }
@@ -445,13 +478,13 @@ function startFreezeTagMatch(itIds) {
         its.forEach(it => { const d = Math.hypot(it.x - p.x, it.z - p.z); if (d < minItDist) { minItDist = d; nearestIt = it; } });
         if (nearestIt && minItDist < 3.6 && p.freezeCooldown <= 0) {
           p.status = 'frozen'; p.isMoving = false;
-          io.emit('freezetagAction', { type: 'freeze', actorId: p.id, targetId: p.id, participants: mg.participants }); return;
+          emitToRoom(room, 'freezetagAction', { type: 'freeze', actorId: p.id, targetId: p.id, participants: room.participants }); return;
         }
         const frozenMate = runners.find(r => r.status === 'frozen');
         if (frozenMate) {
           const dist = Math.hypot(frozenMate.x - p.x, frozenMate.z - p.z), ang = Math.atan2(frozenMate.x - p.x, frozenMate.z - p.z);
           p.rotY = ang; p.x = Math.max(-lim, Math.min(lim, p.x + Math.sin(ang) * 0.24)); p.z = Math.max(-lim, Math.min(lim, p.z + Math.cos(ang) * 0.24)); p.isMoving = true;
-          if (dist < 2.3) { frozenMate.status = 'normal'; frozenMate.freezeCooldown = 2.0; io.emit('freezetagAction', { type: 'fire', actorId: p.id, targetId: frozenMate.id, participants: mg.participants }); }
+          if (dist < 2.3) { frozenMate.status = 'normal'; frozenMate.freezeCooldown = 2.0; emitToRoom(room, 'freezetagAction', { type: 'fire', actorId: p.id, targetId: frozenMate.id, participants: room.participants }); }
           return;
         }
         p.isMoving = true;
@@ -474,28 +507,29 @@ function startFreezeTagMatch(itIds) {
       runners.forEach(r => {
         if (r.status === 'normal' && Math.hypot(it.x - r.x, it.z - r.z) < 1.5) {
           r.status = 'out'; r.isMoving = false;
-          r.x = (Math.random() - 0.5) * 14; r.y = 4.6; r.z = -(mg.arenaHalfSize + 4.5); r.rotY = 0;
+          r.x = (Math.random() - 0.5) * 14; r.y = 4.6; r.z = -(room.arenaHalfSize + 3.0); r.rotY = 0;
           if (!r.isCpu && players[r.id]) {
             players[r.id].mong = Math.max(0, (players[r.id].mong || 0) - 10);
             savePlayerToDB(players[r.id]);
           }
-          io.emit('freezetagAction', { type: 'out', actorId: it.id, targetId: r.id, participants: mg.participants, updatedPlayers: players });
+          emitToRoom(room, 'freezetagAction', { type: 'out', actorId: it.id, targetId: r.id, participants: room.participants, updatedPlayers: players });
         }
       });
     });
 
-    io.emit('minigameActorsUpdate', mg.participants);
-    if (runners.filter(r => r.status === 'normal').length === 0) { finishFreezeTagMatch(true); return; }
+    emitToRoom(room, 'minigameActorsUpdate', room.participants);
+    if (runners.filter(r => r.status === 'normal').length === 0) { finishFreezeTagRoom(roomId, true); return; }
     if (secAccum >= 1.0) {
-      secAccum = 0; mg.timeLeft -= 1; io.emit('freezetagTick', { timeLeft: mg.timeLeft });
-      if (mg.timeLeft <= 0) finishFreezeTagMatch(false);
+      secAccum = 0; room.timeLeft -= 1; emitToRoom(room, 'freezetagTick', { timeLeft: room.timeLeft });
+      if (room.timeLeft <= 0) finishFreezeTagRoom(roomId, false);
     }
   }, 50);
 }
 
-function finishFreezeTagMatch(itsWon) {
-  if (mg.loopTimer) clearInterval(mg.loopTimer);
-  const allP = Object.values(mg.participants);
+function finishFreezeTagRoom(roomId, itsWon) {
+  const room = rooms[roomId]; if (!room) return;
+  if (room.loopTimer) clearInterval(room.loopTimer);
+  const allP = Object.values(room.participants);
   let summaryText = '';
 
   if (itsWon) {
@@ -505,7 +539,7 @@ function finishFreezeTagMatch(itsWon) {
         savePlayerToDB(players[p.id]);
       }
     });
-    summaryText = '👹 술래 팀 승리! 술래 +200몽 지급!';
+    summaryText = '👹 술래 팀 승리! — 술래 +200몽 지급!';
   } else {
     allP.forEach(p => {
       if (p.role === 'runner' && !p.isCpu && players[p.id]) {
@@ -514,52 +548,54 @@ function finishFreezeTagMatch(itsWon) {
         savePlayerToDB(players[p.id]);
       }
     });
-    summaryText = '🏃 도망자 팀 승리! 생존·얼음 상태 +200몽 / 아웃 +100몽 지급!';
+    summaryText = '🏃 도망자 팀 승리! 생존·얼음 상태 +200몽 / 관중석(아웃) +100몽 지급!';
   }
-  io.emit('minigameEnded', { title: '🧊 얼음땡 최종 결과', summaryText, updatedPlayers: players });
-  resetMinigame();
+  emitToRoom(room, 'minigameEnded', { title: '🧊 얼음땡 최종 결과', summaryText, updatedPlayers: players });
+  cleanupRoom(roomId);
 }
 
-function startLiarGame() {
-  mg.phase = 'liar_speak';
-  const ids = Object.keys(mg.participants);
-  mg.liarId = ids[Math.floor(Math.random() * ids.length)];
-  mg.liarTopic = LIAR_WORDS_50[Math.floor(Math.random() * LIAR_WORDS_50.length)];
-  mg.turnOrder = [...ids].sort(() => Math.random() - 0.5);
-  mg.turnIndex = 0; mg.roundNum = 1; mg.speeches = []; mg.votes = {}; mg.runoffIds = null;
+function startLiarRoom(roomId) {
+  const room = rooms[roomId]; if (!room) return;
+  room.phase = 'liar_speak';
+  const ids = Object.keys(room.participants);
+  room.liarId = ids[Math.floor(Math.random() * ids.length)];
+  room.liarTopic = LIAR_WORDS_50[Math.floor(Math.random() * LIAR_WORDS_50.length)];
+  room.turnOrder = [...ids].sort(() => Math.random() - 0.5);
+  room.turnIndex = 0; room.roundNum = 1; room.speeches = []; room.votes = {}; room.runoffIds = null;
 
   const radius = 5.5;
-  mg.turnOrder.forEach((id, idx) => {
-    const ang = (idx / mg.turnOrder.length) * Math.PI * 2, p = mg.participants[id];
+  room.turnOrder.forEach((id, idx) => {
+    const ang = (idx / room.turnOrder.length) * Math.PI * 2, p = room.participants[id];
     p.x = Math.sin(ang) * radius; p.y = 0; p.z = Math.cos(ang) * radius; p.rotY = ang + Math.PI; p.isMoving = false;
   });
 
-  mg.turnOrder.forEach(id => {
-    if (!mg.participants[id].isCpu) {
-      const isLiar = (id === mg.liarId);
-      io.to(id).emit('liarGameStarted', { category: mg.liarTopic.cat, word: isLiar ? null : mg.liarTopic.word, isLiar, turnOrder: mg.turnOrder, participants: mg.participants });
+  room.turnOrder.forEach(id => {
+    if (!room.participants[id].isCpu) {
+      const isLiar = (id === room.liarId);
+      io.to(id).emit('liarGameStarted', { category: room.liarTopic.cat, word: isLiar ? null : room.liarTopic.word, isLiar, turnOrder: room.turnOrder, participants: room.participants });
     }
   });
-  advanceLiarTurn();
+  advanceLiarRoomTurn(roomId);
 }
 
-function advanceLiarTurn() {
-  if (mg.loopTimer) clearInterval(mg.loopTimer);
-  if (mg.runoffIds) {
-    if (mg.turnIndex >= mg.runoffIds.length) { startLiarVote(mg.runoffIds); return; }
-    broadcastSpeakerTurn(mg.runoffIds[mg.turnIndex], '동점자 최후 변론'); return;
+function advanceLiarRoomTurn(roomId) {
+  const room = rooms[roomId]; if (!room) return;
+  if (room.loopTimer) clearInterval(room.loopTimer);
+  if (room.runoffIds) {
+    if (room.turnIndex >= room.runoffIds.length) { startLiarRoomVote(roomId, room.runoffIds); return; }
+    broadcastRoomSpeakerTurn(roomId, room.runoffIds[room.turnIndex], '동점자 최후 변론'); return;
   }
-  if (mg.turnIndex >= mg.turnOrder.length) {
-    if (mg.roundNum < 2) { mg.roundNum += 1; mg.turnIndex = 0; }
-    else { startLiarVote(mg.turnOrder); return; }
+  if (room.turnIndex >= room.turnOrder.length) {
+    if (room.roundNum < 2) { room.roundNum += 1; room.turnIndex = 0; }
+    else { startLiarRoomVote(roomId, room.turnOrder); return; }
   }
-  broadcastSpeakerTurn(mg.turnOrder[mg.turnIndex], mg.roundNum + '바퀴째 발언');
+  broadcastRoomSpeakerTurn(roomId, room.turnOrder[room.turnIndex], room.roundNum + '바퀴째 발언');
 }
 
-function generateSmartCpuSpeech(cpuId) {
-  if (cpuId !== mg.liarId) {
+function generateRoomCpuSpeech(room, cpuId) {
+  if (cpuId !== room.liarId) {
     const num = parseInt(cpuId.replace('cpu_', '') || '1');
-    return mg.liarTopic.hints[(mg.roundNum * 3 + mg.turnIndex + num) % mg.liarTopic.hints.length];
+    return room.liarTopic.hints[(room.roundNum * 3 + room.turnIndex + num) % room.liarTopic.hints.length];
   }
   const crypticPool = [
     '분위기나 상황으로만 떠올리면 은근히 헷갈릴 수도 있을 것 같아요.',
@@ -567,37 +603,39 @@ function generateSmartCpuSpeech(cpuId) {
     '직접 마주했을 때 느껴지는 공기나 템포가 꽤 인상적인 주제네요.',
     '사람마다 받아들이는 포인트가 조금씩 다를 수 있는 대상이라고 생각해요.'
   ];
-  return crypticPool[(mg.turnIndex + mg.roundNum) % crypticPool.length];
+  return crypticPool[(room.turnIndex + room.roundNum) % crypticPool.length];
 }
 
-function broadcastSpeakerTurn(speakerId, label) {
+function broadcastRoomSpeakerTurn(roomId, speakerId, label) {
+  const room = rooms[roomId]; if (!room) return;
   let turnTime = 60;
-  io.emit('liarTurnUpdate', { speakerId, speakerName: mg.participants[speakerId] ? mg.participants[speakerId].name : '', label, timeLeft: turnTime, speeches: mg.speeches });
-  if (mg.participants[speakerId] && mg.participants[speakerId].isCpu) {
-    setTimeout(() => { if (mg.phase === 'liar_speak') recordLiarSpeech(speakerId, generateSmartCpuSpeech(speakerId)); }, 3200);
+  emitToRoom(room, 'liarTurnUpdate', { speakerId, speakerName: room.participants[speakerId] ? room.participants[speakerId].name : '', label, timeLeft: turnTime, speeches: room.speeches });
+  if (room.participants[speakerId] && room.participants[speakerId].isCpu) {
+    setTimeout(() => { if (rooms[roomId] && rooms[roomId].phase === 'liar_speak') recordRoomLiarSpeech(roomId, speakerId, generateRoomCpuSpeech(room, speakerId)); }, 3200);
     return;
   }
-  mg.loopTimer = setInterval(() => {
-    turnTime -= 1; io.emit('liarTurnTick', { timeLeft: turnTime });
-    if (turnTime <= 0) { clearInterval(mg.loopTimer); recordLiarSpeech(speakerId, '(시간 초과로 발언하지 못했습니다)'); }
+  room.loopTimer = setInterval(() => {
+    turnTime -= 1; emitToRoom(room, 'liarTurnTick', { timeLeft: turnTime });
+    if (turnTime <= 0) { clearInterval(room.loopTimer); recordRoomLiarSpeech(roomId, speakerId, '(시간 초과로 발언하지 못했습니다)'); }
   }, 1000);
 }
 
-function recordLiarSpeech(speakerId, text) {
-  if (mg.loopTimer) clearInterval(mg.loopTimer);
-  const p = mg.participants[speakerId]; if (!p) return;
+function recordRoomLiarSpeech(roomId, speakerId, text) {
+  const room = rooms[roomId]; if (!room) return;
+  if (room.loopTimer) clearInterval(room.loopTimer);
+  const p = room.participants[speakerId]; if (!p) return;
   const entry = { id: speakerId, name: p.name, text: text.trim().substring(0, 100) };
-  mg.speeches.push(entry); io.emit('liarNewSpeech', { entry, speeches: mg.speeches });
-  mg.turnIndex += 1;
-  setTimeout(() => { if (mg.phase === 'liar_speak') advanceLiarTurn(); }, 2000);
+  room.speeches.push(entry); emitToRoom(room, 'liarNewSpeech', { entry, speeches: room.speeches });
+  room.turnIndex += 1;
+  setTimeout(() => { if (rooms[roomId] && rooms[roomId].phase === 'liar_speak') advanceLiarRoomTurn(roomId); }, 2000);
 }
 
-function computeSmartCpuVote(voterId, candidateIds) {
+function computeRoomCpuVote(room, voterId, candidateIds) {
   const others = candidateIds.filter(id => id !== voterId);
   if (others.length === 0) return candidateIds[0];
-  const keywords = mg.liarTopic.kw || [];
+  const keywords = room.liarTopic.kw || [];
   const suspicionScores = others.map(cid => {
-    const userSpeeches = mg.speeches.filter(s => s.id === cid).map(s => s.text).join(' ');
+    const userSpeeches = room.speeches.filter(s => s.id === cid).map(s => s.text).join(' ');
     let score = 0;
     if (userSpeeches.includes('시간 초과') || userSpeeches.trim().length < 8) score += 45;
     let kwHits = 0; keywords.forEach(k => { if (userSpeeches.includes(k)) kwHits++; });
@@ -610,59 +648,61 @@ function computeSmartCpuVote(voterId, candidateIds) {
   return suspicionScores[0].id;
 }
 
-function startLiarVote(candidateIds) {
-  mg.phase = 'liar_vote'; mg.votes = {}; let voteTime = 20;
-  Object.values(mg.participants).forEach(p => { if (p.isCpu) mg.votes[p.id] = computeSmartCpuVote(p.id, candidateIds); });
-  io.emit('liarVoteStarted', { candidateIds, participants: mg.participants, timeLeft: voteTime, isRunoff: !!mg.runoffIds });
-  mg.loopTimer = setInterval(() => {
-    voteTime -= 1; io.emit('liarVoteTick', { timeLeft: voteTime });
-    if (Object.keys(mg.votes).length >= Object.keys(mg.participants).length || voteTime <= 0) {
-      clearInterval(mg.loopTimer); resolveLiarVote(candidateIds);
+function startLiarRoomVote(roomId, candidateIds) {
+  const room = rooms[roomId]; if (!room) return;
+  room.phase = 'liar_vote'; room.votes = {}; let voteTime = 20;
+  Object.values(room.participants).forEach(p => { if (p.isCpu) room.votes[p.id] = computeRoomCpuVote(room, p.id, candidateIds); });
+  emitToRoom(room, 'liarVoteStarted', { candidateIds, participants: room.participants, timeLeft: voteTime, isRunoff: !!room.runoffIds });
+  room.loopTimer = setInterval(() => {
+    voteTime -= 1; emitToRoom(room, 'liarVoteTick', { timeLeft: voteTime });
+    if (Object.keys(room.votes).length >= Object.keys(room.participants).length || voteTime <= 0) {
+      clearInterval(room.loopTimer); resolveLiarRoomVote(roomId, candidateIds);
     }
   }, 1000);
 }
 
-function resolveLiarVote(candidateIds) {
+function resolveLiarRoomVote(roomId, candidateIds) {
+  const room = rooms[roomId]; if (!room) return;
   const tally = {}; candidateIds.forEach(id => tally[id] = 0);
-  Object.values(mg.votes).forEach(tid => { if (tally[tid] !== undefined) tally[tid] += 1; });
+  Object.values(room.votes).forEach(tid => { if (tally[tid] !== undefined) tally[tid] += 1; });
   const maxVotes = Math.max(...Object.values(tally)), topIds = candidateIds.filter(id => tally[id] === maxVotes);
 
   if (topIds.length > 1) {
-    mg.phase = 'liar_speak'; mg.runoffIds = topIds; mg.turnIndex = 0;
-    io.emit('liarRunoffAnnounced', { tieNames: topIds.map(id => mg.participants[id] ? mg.participants[id].name : '').join(', ') });
-    setTimeout(() => { if (mg.phase === 'liar_speak') advanceLiarTurn(); }, 2200); return;
+    room.phase = 'liar_speak'; room.runoffIds = topIds; room.turnIndex = 0;
+    emitToRoom(room, 'liarRunoffAnnounced', { tieNames: topIds.map(id => room.participants[id] ? room.participants[id].name : '').join(', ') });
+    setTimeout(() => { if (rooms[roomId] && rooms[roomId].phase === 'liar_speak') advanceLiarRoomTurn(roomId); }, 2200); return;
   }
 
   const accusedId = topIds[0];
-  const liarName = mg.participants[mg.liarId] ? mg.participants[mg.liarId].name : '알 수 없음';
-  const accusedName = mg.participants[accusedId] ? mg.participants[accusedId].name : '알 수 없음';
-  const caught = (accusedId === mg.liarId);
+  const liarName = room.participants[room.liarId] ? room.participants[room.liarId].name : '알 수 없음';
+  const accusedName = room.participants[accusedId] ? room.participants[accusedId].name : '알 수 없음';
+  const caught = (accusedId === room.liarId);
   let summaryText = '';
 
   if (caught) {
-    Object.values(mg.participants).forEach(p => {
-      if (p.id !== mg.liarId && !p.isCpu && players[p.id]) {
+    Object.values(room.participants).forEach(p => {
+      if (p.id !== room.liarId && !p.isCpu && players[p.id]) {
         players[p.id].mong = (players[p.id].mong || 0) + 200;
         savePlayerToDB(players[p.id]);
       }
     });
-    summaryText = '🎉 라이어 검거 성공! 지목된 [' + accusedName + ']님이 라이어였습니다!<br>제시어: <b>' + mg.liarTopic.word + '</b> (' + mg.liarTopic.cat + ')<br>시민 전원 +200몽 지급!';
+    summaryText = '🎉 라이어 검거 성공! 지목된 [' + accusedName + ']님이 라이어였습니다!<br>제시어: <b>' + room.liarTopic.word + '</b> (' + room.liarTopic.cat + ')<br>시민 전원 +200몽 지급!';
   } else {
-    if (mg.participants[mg.liarId] && !mg.participants[mg.liarId].isCpu && players[mg.liarId]) {
-      players[mg.liarId].mong = (players[mg.liarId].mong || 0) + 350;
-      savePlayerToDB(players[mg.liarId]);
+    if (room.participants[room.liarId] && !room.participants[room.liarId].isCpu && players[room.liarId]) {
+      players[room.liarId].mong = (players[room.liarId].mong || 0) + 350;
+      savePlayerToDB(players[room.liarId]);
     }
-    summaryText = '😈 라이어 승리! 지목된 [' + accusedName + ']님은 시민이었습니다!<br>진짜 라이어: <b>' + liarName + '</b> / 제시어: <b>' + mg.liarTopic.word + '</b><br>라이어에게 +350몽 지급!';
+    summaryText = '😈 라이어 승리! 지목된 [' + accusedName + ']님은 시민이었습니다!<br>진짜 라이어: <b>' + liarName + '</b> / 제시어: <b>' + room.liarTopic.word + '</b><br>라이어에게 +350몽 지급!';
   }
-  io.emit('minigameEnded', { title: '🕵️ 거짓말 탐지기 결과', summaryText, updatedPlayers: players });
-  resetMinigame();
+  emitToRoom(room, 'minigameEnded', { title: '🕵️ 거짓말 탐지기 결과', summaryText, updatedPlayers: players });
+  cleanupRoom(roomId);
 }
 
 function buildPlayerSessionFromRow(socketId, row, isGuest) {
   return {
     id: socketId,
     username: row.username,
-    name: row.username,
+    name: row.nickname || row.username,
     isGuest: !!isGuest,
     mong: row.mong !== undefined ? row.mong : 200,
     speedLevel: row.speed_level || 0,
@@ -673,10 +713,10 @@ function buildPlayerSessionFromRow(socketId, row, isGuest) {
     ownedTops: Array.isArray(row.owned_tops) ? row.owned_tops : ['tshirt'],
     ownedBottoms: Array.isArray(row.owned_bottoms) ? row.owned_bottoms : ['pants'],
     ownedThemes: Array.isArray(row.owned_themes) ? row.owned_themes : ['original'],
-    inMinigame: false,
-    x: (Math.random() - 0.5) * 8,
+    roomId: null,
+    x: (Math.random() - 0.5) * 6,
     y: 0,
-    z: (Math.random() - 0.5) * 8,
+    z: (Math.random() - 0.5) * 6,
     rotY: 0,
     isMoving: false,
     face: row.face || 'happy',
@@ -688,15 +728,16 @@ function buildPlayerSessionFromRow(socketId, row, isGuest) {
 }
 
 io.on('connection', (socket) => {
-  socket.on('authRegister', async ({ username, password }) => {
-    const cleanUser = (username || '').trim().substring(0, 12);
+  socket.on('authRegister', async ({ username, nickname, password }) => {
+    const cleanUser = (username || '').trim().substring(0, 14);
+    const cleanNick = (nickname || '').trim().substring(0, 12);
     const cleanPw = (password || '').trim();
-    if (cleanUser.length < 2 || cleanPw.length < 2) {
-      socket.emit('authError', '아이디와 비밀번호는 2글자 이상 입력해 주세요.');
+    if (cleanUser.length < 2 || cleanNick.length < 2 || cleanPw.length < 2) {
+      socket.emit('authError', '아이디, 닉네임, 비밀번호를 모두 2글자 이상 입력해 주세욥!!');
       return;
     }
     if (!supabase) {
-      socket.emit('authError', '서버 데이터베이스(Supabase) 환경변수가 연결되지 않았습니다.');
+      socket.emit('authError', '서버 데이터베이스(Supabase) 환경변수가 연결되지 않았습니다ㅠㅠ');
       return;
     }
     try {
@@ -707,13 +748,14 @@ io.on('connection', (socket) => {
         .maybeSingle();
 
       if (existing) {
-        socket.emit('authError', '이미 사용 중인 아이디입니다. 다른 아이디를 입력해 주세요.');
+        socket.emit('authError', '이미 사용 중인 아이디에유. 다른 아이디를 입력해 주세요!');
         return;
       }
 
       const newRow = {
-        username: cleanUser, password: cleanPw, mong: 200, speed_level: 0, jump_level: 0,
-        is_admin: false, owned_tops: ['tshirt'], owned_bottoms: ['pants'], owned_themes: ['original'],
+        username: cleanUser, nickname: cleanNick, password: cleanPw,
+        mong: 200, speed_level: 0, jump_level: 0, is_admin: false,
+        owned_tops: ['tshirt'], owned_bottoms: ['pants'], owned_themes: ['original'],
         face: 'happy', top_style: 'tshirt', top_color: '#3b82f6', bottom_style: 'pants', bottom_color: '#1e293b'
       };
 
@@ -728,15 +770,15 @@ io.on('connection', (socket) => {
       socket.emit('authSuccess', { me: p, players, worldCoins: WORLD_COINS });
       socket.broadcast.emit('newPlayer', p);
     } catch (e) {
-      socket.emit('authError', '회원가입 처리 중 오류가 발생했습니다.');
+      socket.emit('authError', '회원가입 처리 중 오류가 발생했습니다.ㅠㅠ');
     }
   });
 
   socket.on('authLogin', async ({ username, password }) => {
-    const cleanUser = (username || '').trim().substring(0, 12);
+    const cleanUser = (username || '').trim().substring(0, 14);
     const cleanPw = (password || '').trim();
     if (!cleanUser || !cleanPw) {
-      socket.emit('authError', '아이디와 비밀번호를 모두 입력해 주세요!');
+      socket.emit('authError', '아이디와 비밀번호를 모두 입력하셈요');
       return;
     }
     if (!supabase) {
@@ -751,7 +793,7 @@ io.on('connection', (socket) => {
         .maybeSingle();
 
       if (error || !row) {
-        socket.emit('authError', '존재하지 않는 아이디에유. 먼저 회원가입을 해주세요.');
+        socket.emit('authError', '존재하지 않는 아이디에유ㅠ. 먼저 회원가입을 해주세요!');
         return;
       }
       if (row.password !== cleanPw) {
@@ -777,25 +819,46 @@ io.on('connection', (socket) => {
   });
 
   socket.on('authGuest', () => {
-    const guestName = '게스트_' + socket.id.substring(0, 4);
-    const p = buildPlayerSessionFromRow(socket.id, { username: guestName }, true);
+    const guestId = 'guest_' + socket.id.substring(0, 4);
+    const p = buildPlayerSessionFromRow(socket.id, { username: guestId, nickname: '게스트_' + socket.id.substring(0, 4) }, true);
     players[socket.id] = p;
     socket.emit('authSuccess', { me: p, players, worldCoins: WORLD_COINS });
     socket.broadcast.emit('newPlayer', p);
+  });
+
+  socket.on('updateAccountSettings', async ({ newNickname, newPassword }) => {
+    const p = players[socket.id];
+    if (!p) return;
+
+    const cleanNick = (newNickname || '').trim().substring(0, 12);
+    const cleanPw = (newPassword || '').trim();
+    let changed = false;
+
+    if (cleanNick && cleanNick.length >= 2 && cleanNick !== p.name) {
+      p.name = cleanNick;
+      changed = true;
+    }
+
+    if (cleanPw && cleanPw.length >= 2 && !p.isGuest && supabase) {
+      await supabase.from('game_profiles').update({ password: cleanPw }).eq('username', p.username);
+      changed = true;
+    }
+
+    if (changed) {
+      savePlayerToDB(p);
+      socket.emit('accountSettingsUpdated', { name: p.name, passwordChanged: cleanPw.length >= 2 });
+      io.emit('playerUpdated', p);
+    }
   });
 
   socket.on('adminLogin', ({ id, pw }) => {
     const p = players[socket.id];
     if (!p) return;
     if (id === ADMIN_ID && pw === ADMIN_PW) {
-      p.isAdmin = true;
-      p.adminBoostActive = true;
+      p.isAdmin = true; p.adminBoostActive = true;
       p.mong = (p.mong || 0) + 1000;
-      p.speedLevel = 20;
-      p.jumpLevel = 20;
-      p.ownedTops = [...ALL_TOPS];
-      p.ownedBottoms = [...ALL_BOTTOMS];
-      p.ownedThemes = [...ALL_THEMES];
+      p.speedLevel = 20; p.jumpLevel = 20;
+      p.ownedTops = [...ALL_TOPS]; p.ownedBottoms = [...ALL_BOTTOMS]; p.ownedThemes = [...ALL_THEMES];
       savePlayerToDB(p);
       socket.emit('adminAuthSuccess', p);
       io.emit('playerUpdated', p);
@@ -830,7 +893,7 @@ io.on('connection', (socket) => {
     io.emit('playerDisconnected', targetId);
     io.emit('adminGlobalAlert', {
       senderName: 'ADMIN',
-      message: '[' + kickedName + '] 님이 관리자에 의해 하준의 오픈!온라인 월드에서 내보내졌어요! 아쉬운거죠 뭐;ㅋ'
+      message: '[' + kickedName + '] 님이 관리자에 의해 하준의 오픈!온라인 월드에서 강제퇴장되었어요! 아쉬운거죠 뭐;ㅋ'
     });
   });
 
@@ -838,20 +901,19 @@ io.on('connection', (socket) => {
     const p = players[socket.id];
     if (!p || !p.isAdmin) return;
     const clean = (alertText || '').trim().substring(0, 120);
-    if (!clean) return;
-    io.emit('adminGlobalAlert', { senderName: p.name, message: clean });
+    if (clean) io.emit('adminGlobalAlert', { senderName: p.name, message: clean });
   });
 
   socket.on('collectWorldCoin', (coinId) => {
     const p = players[socket.id];
     const coin = WORLD_COINS.find(c => c.id === coinId);
-    if (!p || !coin || mg.phase === 'playing') return;
+    if (!p || !coin || p.roomId) return;
     if (Math.hypot(p.x - coin.x, p.z - coin.z) <= 2.6) {
-      p.mong = (p.mong || 0) + 5;
+      p.mong = (p.mong || 0) + 2;
       const nextPos = spawnCoinPosition(coinId);
       coin.x = nextPos.x; coin.z = nextPos.z;
       savePlayerToDB(p);
-      socket.emit('coinCollected', { mong: p.mong, earned: 5 });
+      socket.emit('coinCollected', { mong: p.mong, earned: 2 });
       io.emit('worldCoinMoved', coin);
     }
   });
@@ -910,8 +972,7 @@ io.on('connection', (socket) => {
       receiver.ownedTops.push(giftTop);
     }
 
-    savePlayerToDB(sender);
-    savePlayerToDB(receiver);
+    savePlayerToDB(sender); savePlayerToDB(receiver);
 
     const giftText = giftTop ? (' 및 [' + giftTop + '] 의상') : '';
     socket.emit('shopUpdated', sender);
@@ -926,90 +987,146 @@ io.on('connection', (socket) => {
     const p = players[socket.id];
     if (!p) return;
     p.x = data.x; p.y = data.y; p.z = data.z; p.rotY = data.rotY; p.isMoving = !!data.isMoving;
-    if (mg.phase === 'playing' && mg.participants[socket.id]) {
-      const mp = mg.participants[socket.id];
-      if (mg.type === 'freezetag' && (mp.status === 'frozen' || mp.status === 'out')) mp.isMoving = false;
-      else { mp.x = data.x; mp.z = data.z; mp.rotY = data.rotY; mp.isMoving = p.isMoving; }
+    if (p.roomId && rooms[p.roomId]) {
+      const room = rooms[p.roomId];
+      if (room.phase === 'playing' && room.participants[socket.id]) {
+        const mp = room.participants[socket.id];
+        if (room.type === 'freezetag' && (mp.status === 'frozen' || mp.status === 'out')) mp.isMoving = false;
+        else { mp.x = data.x; mp.z = data.z; mp.rotY = data.rotY; mp.isMoving = p.isMoving; }
+      }
     }
     socket.broadcast.emit('playerMoved', p);
   });
 
   socket.on('playGesture', (gestureName) => {
-    if (players[socket.id] && mg.phase === 'idle') io.emit('playerGesture', { id: socket.id, gesture: gestureName });
+    const p = players[socket.id];
+    if (p && !p.roomId) io.emit('playerGesture', { id: socket.id, gesture: gestureName });
   });
 
   socket.on('chatMessage', (msg) => {
-    if (players[socket.id] && msg && msg.trim()) {
-      io.emit('chatMessage', { id: socket.id, name: players[socket.id].name, text: msg.trim().substring(0, 100) });
+    const p = players[socket.id];
+    if (p && msg && msg.trim()) {
+      io.emit('chatMessage', { id: socket.id, name: p.name, text: msg.trim().substring(0, 100) });
     }
   });
 
   socket.on('requestStartLobby', ({ type, cpuCount, mode }) => {
-    if (mg.phase === 'idle' && !mgLock) openMinigameLobby(socket.id, type, cpuCount, mode);
+    const p = players[socket.id];
+    if (!p || p.roomId) return;
+    createMinigameRoom(socket.id, type, cpuCount, mode);
   });
-  socket.on('hostForceStartLobby', () => { if (mg.phase === 'lobby' && socket.id === mg.hostId) onLobbyFinished(); });
+
+  socket.on('joinMinigameLobby', ({ roomId }) => {
+    const p = players[socket.id];
+    const room = roomId ? rooms[roomId] : Object.values(rooms).find(r => r.phase === 'lobby');
+    if (!p || p.roomId || !room || room.phase !== 'lobby') return;
+
+    p.roomId = room.id;
+    room.participants[socket.id] = { id: socket.id, name: p.name, isCpu: false };
+    const payload = { roomId: room.id, timeLeft: room.timeLeft, participants: room.participants };
+    emitToRoom(room, 'minigameLobbyTick', payload);
+    broadcastLobbyToIdle('minigameLobbyTick', payload);
+  });
+
+  socket.on('hostForceStartLobby', () => {
+    const p = players[socket.id];
+    if (!p || !p.roomId) return;
+    const room = rooms[p.roomId];
+    if (room && room.phase === 'lobby' && room.hostId === socket.id) onRoomLobbyFinished(room.id);
+  });
+
   socket.on('hostCancelLobby', () => {
-    if (mg.phase === 'lobby' && socket.id === mg.hostId) {
-      io.emit('minigameCancelled', { reason: '방장이 미니게임 모집을 취소했습니다ㅠㅠ' }); resetMinigame();
+    const p = players[socket.id];
+    if (!p || !p.roomId) return;
+    const room = rooms[p.roomId];
+    if (room && room.phase === 'lobby' && room.hostId === socket.id) {
+      emitToRoom(room, 'minigameCancelled', { roomId: room.id, reason: '방장이 미니게임 모집을 취소했습니다ㅠㅠ' });
+      broadcastLobbyToIdle('minigameLobbyClosed', { roomId: room.id });
+      cleanupRoom(room.id);
     }
   });
-  socket.on('joinMinigameLobby', () => {
-    if (mg.phase === 'lobby' && players[socket.id] && !mg.participants[socket.id]) {
-      players[socket.id].inMinigame = true;
-      mg.participants[socket.id] = { id: socket.id, name: players[socket.id].name, isCpu: false };
-      io.emit('minigameLobbyTick', { timeLeft: mg.timeLeft, participants: mg.participants });
-    }
-  });
+
   socket.on('confirmColorflipTeams', ({ teamCount, assignments }) => {
-    if (mg.phase === 'team_setup' && socket.id === mg.hostId) {
-      startColorFlipMatch(Math.max(2, Math.min(4, parseInt(teamCount) || 2)), assignments);
+    const p = players[socket.id];
+    if (!p || !p.roomId) return;
+    const room = rooms[p.roomId];
+    if (room && room.phase === 'team_setup' && room.hostId === socket.id) {
+      startColorFlipRoom(room.id, Math.max(2, Math.min(4, parseInt(teamCount) || 2)), assignments);
     }
   });
+
   socket.on('submitRps', (choice) => {
-    if (mg.phase !== 'rps' || !['rock', 'paper', 'scissors'].includes(choice)) return;
-    const grp = mg.rpsGroups.find(g => g.memberIds.includes(socket.id));
+    const p = players[socket.id];
+    if (!p || !p.roomId) return;
+    const room = rooms[p.roomId];
+    if (!room || room.phase !== 'rps' || !['rock', 'paper', 'scissors'].includes(choice)) return;
+    const grp = room.rpsGroups.find(g => g.memberIds.includes(socket.id));
     if (grp) grp.choices[socket.id] = choice;
   });
+
   socket.on('freezetagUseSkill', (skill) => {
-    if (mg.phase !== 'playing' || mg.type !== 'freezetag') return;
-    const me = mg.participants[socket.id];
+    const p = players[socket.id];
+    if (!p || !p.roomId) return;
+    const room = rooms[p.roomId];
+    if (!room || room.phase !== 'playing' || room.type !== 'freezetag') return;
+    const me = room.participants[socket.id];
     if (!me || me.role !== 'runner' || me.status === 'out') return;
-    const runners = Object.values(mg.participants).filter(p => p.role === 'runner');
+    const runners = Object.values(room.participants).filter(r => r.role === 'runner');
     if (skill === 'freeze' && me.status === 'normal' && me.freezeCooldown <= 0) {
       me.status = 'frozen'; me.isMoving = false;
-      io.emit('freezetagAction', { type: 'freeze', actorId: me.id, targetId: me.id, participants: mg.participants });
+      emitToRoom(room, 'freezetagAction', { type: 'freeze', actorId: me.id, targetId: me.id, participants: room.participants });
     } else if (skill === 'fire' && me.status === 'normal') {
       const target = runners.find(r => r.id !== me.id && r.status === 'frozen' && Math.hypot(r.x - me.x, r.z - me.z) <= 2.8);
       if (target) {
         target.status = 'normal'; target.freezeCooldown = 2.0;
-        io.emit('freezetagAction', { type: 'fire', actorId: me.id, targetId: target.id, participants: mg.participants });
+        emitToRoom(room, 'freezetagAction', { type: 'fire', actorId: me.id, targetId: target.id, participants: room.participants });
       }
     } else if (skill === 'clang' && me.status === 'frozen') {
       const nearbyFrozen = runners.filter(r => r.status === 'frozen' && Math.hypot(r.x - me.x, r.z - me.z) <= 3.2);
       if (nearbyFrozen.length === 2) {
         nearbyFrozen.forEach(r => { r.status = 'normal'; r.freezeCooldown = 2.0; });
-        io.emit('freezetagAction', { type: 'clang', actorId: me.id, targetId: nearbyFrozen.find(r => r.id !== p.id).id, participants: mg.participants });
+        emitToRoom(room, 'freezetagAction', { type: 'clang', actorId: me.id, targetId: nearbyFrozen.find(r => r.id !== me.id).id, participants: room.participants });
       }
     }
   });
+
   socket.on('submitLiarSpeech', (text) => {
-    if (mg.phase !== 'liar_speak') return;
-    const list = mg.runoffIds || mg.turnOrder;
-    if (list[mg.turnIndex] === socket.id && text && text.trim()) recordLiarSpeech(socket.id, text);
+    const p = players[socket.id];
+    if (!p || !p.roomId) return;
+    const room = rooms[p.roomId];
+    if (!room || room.phase !== 'liar_speak') return;
+    const list = room.runoffIds || room.turnOrder;
+    if (list[room.turnIndex] === socket.id && text && text.trim()) recordRoomLiarSpeech(room.id, socket.id, text);
   });
+
   socket.on('submitLiarVote', (targetId) => {
-    if (mg.phase === 'liar_vote' && mg.participants[socket.id] && mg.participants[targetId]) mg.votes[socket.id] = targetId;
+    const p = players[socket.id];
+    if (!p || !p.roomId) return;
+    const room = rooms[p.roomId];
+    if (room && room.phase === 'liar_vote' && room.participants[socket.id] && room.participants[targetId]) {
+      room.votes[socket.id] = targetId;
+    }
   });
 
   socket.on('disconnect', () => {
-    if (players[socket.id]) savePlayerToDB(players[socket.id]);
+    const p = players[socket.id];
+    if (p) {
+      savePlayerToDB(p);
+      if (p.roomId && rooms[p.roomId]) {
+        const room = rooms[p.roomId];
+        delete room.participants[socket.id];
+        if (Object.values(room.participants).filter(m => !m.isCpu).length === 0) {
+          broadcastLobbyToIdle('minigameLobbyClosed', { roomId: room.id });
+          cleanupRoom(room.id);
+        }
+      }
+    }
     delete players[socket.id];
-    if (mg.participants[socket.id]) delete mg.participants[socket.id];
     io.emit('playerDisconnected', socket.id);
   });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log('Server v2.1-20261122 running on port ' + PORT);
+  console.log('Server v2.2-20261122 running on port ' + PORT);
 });
