@@ -5,9 +5,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" }
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(__dirname));
 
@@ -17,6 +15,7 @@ const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supaba
 
 const players = {};
 const rooms = {};
+const attackRooms = {};
 
 const ADMIN_ID = 'hajun1234adminuser';
 const ADMIN_PW = '2cv8cF';
@@ -29,7 +28,7 @@ const ALL_BOTTOMS = [
   'pants', 'shorts', 'skirt', 'jeans', 'overalls', 'armorpants',
   'admin_greaves', 'admin_leggings'
 ];
-const ALL_THEMES = ['original', 'simple', 'cute', 'colorful', 'dreamy', 'jungle', 'cathouse'];
+const ALL_THEMES = ['original', 'legacy_pillars', 'simple', 'cute', 'colorful', 'dreamy', 'jungle', 'cathouse'];
 
 const GAME_COLORS = [
   '#ef4444', '#3b82f6', '#10b981', '#f59e0b',
@@ -48,8 +47,43 @@ const TEAM_PALETTE = [
 const SHOP_PRICES = {
   tops: { tshirt: 0, hoodie: 40, sweater: 50, suit: 70, uniform: 80, hanbok: 100, armor: 120, royal: 150, admin_coat: 999999, admin_robe: 999999 },
   bottoms: { pants: 0, shorts: 30, skirt: 50, jeans: 50, overalls: 70, armorpants: 110, admin_greaves: 999999, admin_leggings: 999999 },
-  themes: { original: 0, simple: 40, cute: 60, colorful: 70, dreamy: 90, jungle: 110, cathouse: 120 }
+  themes: { original: 0, legacy_pillars: 30, simple: 40, cute: 60, colorful: 70, dreamy: 90, jungle: 110, cathouse: 120 }
 };
+
+// Attack 캐릭터 목록 (희귀도 높을수록 비싸고 강력함: 무료 ~ 10,000몽)
+const ATTACK_CHARS = {
+  rookie:    { id: 'rookie',    name: '루키 슈터',   rarity: '일반', price: 0,     hp: 3200, atk: 420,  def: 10, speed: 0.24, range: 16, projCount: 1, spread: 0,    color: '#38bdf8' },
+  brawler:   { id: 'brawler',   name: '아이언 펀치', rarity: '희귀', price: 500,   hp: 4600, atk: 540,  def: 22, speed: 0.25, range: 11, projCount: 3, spread: 0.25, color: '#ef4444' },
+  sniper:    { id: 'sniper',    name: '스카이 스나이퍼', rarity: '초희귀', price: 1200, hp: 2900, atk: 880, def: 12, speed: 0.25, range: 26, projCount: 1, spread: 0,    color: '#a855f7' },
+  pyro:      { id: 'pyro',      name: '블레이즈 킹', rarity: '영웅', price: 2000,  hp: 4200, atk: 720,  def: 20, speed: 0.26, range: 17, projCount: 3, spread: 0.18, color: '#f97316' },
+  cyber:     { id: 'cyber',     name: '사이버 닌자', rarity: '신화', price: 5000,  hp: 4800, atk: 960,  def: 28, speed: 0.29, range: 19, projCount: 4, spread: 0.22, color: '#10b981' },
+  emperor:   { id: 'emperor',   name: '갤럭시 엠페러', rarity: '전설', price: 10000, hp: 6200, atk: 1300, def: 38, speed: 0.31, range: 24, projCount: 5, spread: 0.24, color: '#facc15' }
+};
+
+function computeCitizenship(p) {
+  if (p.isAdmin) return 'admin';
+  if ((p.minigameWins || 0) >= 20) return 'yellow';
+  if ((p.maxMong || 0) >= 500) return 'special';
+  return 'normal';
+}
+
+function syncCitizenship(p, socketToNotify) {
+  if (!p) return;
+  if ((p.mong || 0) > (p.maxMong || 0)) p.maxMong = p.mong;
+  const prev = p.citizenship || 'normal';
+  const next = computeCitizenship(p);
+  p.citizenship = next;
+  if (prev !== next && socketToNotify) {
+    const labelMap = {
+      special: '✨ 특수 시민권 (속도/점프 1.1배 · 테마 해금 · Attack 가젯/스타파워)',
+      yellow: '🌟 YELLOW 시민권 (속도/점프 1.2배 · 어드민 1:1 채팅 · 90초마다 +10몽 · Attack 하이퍼차지/버피)',
+      admin: '👑 ADMIN 최고권한'
+    };
+    if (labelMap[next]) {
+      socketToNotify.emit('citizenshipUpgraded', { tier: next, message: labelMap[next] + '을 획득했습니다!' });
+    }
+  }
+}
 
 async function savePlayerToDB(p) {
   if (!supabase || !p || !p.username || p.isGuest) return;
@@ -59,8 +93,8 @@ async function savePlayerToDB(p) {
       .update({
         nickname: p.name,
         mong: p.mong,
-        speed_level: p.speedLevel,
-        jump_level: p.jumpLevel,
+        max_mong: p.maxMong || p.mong,
+        minigame_wins: p.minigameWins || 0,
         is_admin: !!p.isAdmin,
         owned_tops: p.ownedTops,
         owned_bottoms: p.ownedBottoms,
@@ -70,6 +104,7 @@ async function savePlayerToDB(p) {
         top_color: p.topColor,
         bottom_style: p.bottomStyle,
         bottom_color: p.bottomColor,
+        attack_data: p.attackData,
         updated_at: new Date().toISOString()
       })
       .eq('username', p.username);
@@ -78,17 +113,23 @@ async function savePlayerToDB(p) {
   }
 }
 
+// YELLOW 시민권(및 ADMIN) 접속 중 1분 30초(90초)마다 자동 +10몽 지급
+setInterval(() => {
+  Object.values(players).forEach(p => {
+    if (p.citizenship === 'yellow' || p.isAdmin) {
+      p.mong = (p.mong || 0) + 10;
+      syncCitizenship(p, io.sockets.sockets.get(p.id));
+      savePlayerToDB(p);
+      io.to(p.id).emit('yellowAutoMong', { mong: p.mong, earned: 10 });
+    }
+  });
+}, 90000);
+
 const WORLD_COINS = [];
 function spawnCoinPosition(id) {
-  return {
-    id,
-    x: (Math.random() - 0.5) * 80,
-    z: (Math.random() - 0.5) * 80
-  };
+  return { id, x: (Math.random() - 0.5) * 80, z: (Math.random() - 0.5) * 80 };
 }
-for (let i = 0; i < 20; i++) {
-  WORLD_COINS.push(spawnCoinPosition('coin_' + i));
-}
+for (let i = 0; i < 20; i++) WORLD_COINS.push(spawnCoinPosition('coin_' + i));
 
 const LIAR_WORDS_50 = [
   { cat: '음식', word: '짜장면', kw: ['면', '소스', '단무지'], hints: ['식사 시간마다 어김없이 후보에 오르는 익숙한 한 그릇이에요', '그릇 바닥에 남는 진한 여운이 꽤 오래가요', '곁들임 반찬 하나가 없으면 은근히 허전한 느낌이에요'] },
@@ -116,31 +157,11 @@ const LIAR_WORDS_50 = [
   { cat: '스포츠', word: '야구', kw: ['수싸움', '순간', '경기'], hints: ['조용한 긴장감 속에서 단 한 번의 선택이 승부를 갈라요', '느긋해 보이다가도 순식간에 긴장감이 최고조에 달해요', '기록과 숫자 하나하나에 담긴 이야기가 풍부해요'] },
   { cat: '스포츠', word: '배드민턴', kw: ['공중', '반응', '속도'], hints: ['가벼운 물체가 공중에서 그리는 궤적을 읽는 게 관건이에요', '한 템포만 늦어도 흐름을 내주기 쉬운 섬세한 경기예요', '짧고 빠른 랠리가 이어질 때 손에 땀을 쥐게 해요'] },
   { cat: '스포츠', word: '수영', kw: ['물', '리듬', '숨'], hints: ['나만의 호흡과 리듬을 유지하는 것이 무엇보다 중요해요', '중력에서 조금 벗어난 듯한 독특한 감각을 줘요', '묵묵히 앞으로 나아가는 집중력이 돋보이는 운동이에요'] },
-  { cat: '스포츠', word: '태권도', kw: ['절제', '동작', '기합'], hints: ['절제된 균형과 폭발적인 에너지가 공존하는 매력이 있어요', '정해진 틀 속에서 완성도를 끌어올리는 과정이 중요해요', '단단한 정신력과 예의가 함께 따라오는 수련이에요'] },
-  { cat: '스포츠', word: '탁구', kw: ['회전', '순발력', '좁은'], hints: ['아주 좁은 공간에서 빛의 속도처럼 오가는 판단력이 필요해요', '보이지 않는 회전력을 얼마나 읽어내느냐가 핵심이에요', '짧은 순간에 승부가 결정되는 긴장감이 있어요'] },
-  { cat: '스포츠', word: '스키', kw: ['설원', '균형', '활강'], hints: ['하얀 풍경 위를 가르며 바람을 맞는 해방감이 있어요', '기울기와 무게중심을 미세하게 조절하는 감각이 중요해요', '겨울이 기다려지는 이유 중 하나로 손꼽히곤 해요'] },
-  { cat: '스포츠', word: '양궁', kw: ['고요함', '집중', '과녁'], hints: ['주변 소음이 모두 사라진 듯한 고요한 집중력이 필요해요', '숨을 고르고 방아쇠를 놓기 직전의 정적이 압권이에요', '아주 작은 흔들림도 결과에 크게 작용하는 종목이에요'] },
-  { cat: '스포츠', word: '볼링', kw: ['집중', '굴림', '결과'], hints: ['내 손을 떠난 뒤에도 마음을 졸이며 지켜보게 되는 과정이 있어요', '일관된 자세와 감각을 유지하는 것이 관건이에요', '마지막 하나가 남았을 때의 긴장감이 특별해요'] },
   { cat: '악기', word: '피아노', kw: ['소리', '화음', '연주'], hints: ['혼자서도 풍성한 울림과 입체적인 분위기를 만들어낼 수 있어요', '손끝의 힘 조절에 따라 거칠기도 하고 부드럽기도 해요', '오랜 시간 곁에 두고 친해지기 좋은 기본기 같은 존재예요'] },
   { cat: '악기', word: '바이올린', kw: ['선율', '표현', '소리'], hints: ['사람의 목소리처럼 섬세하고 애절한 감정을 담아낼 수 있어요', '조금만 각도가 어긋나도 날카로운 소리가 날 수 있어 조심스러워요', '무대 위에서 시선을 사로잡는 우아한 아우라가 있어요'] },
-  { cat: '악기', word: '기타', kw: ['울림', '코드', '분위기'], hints: ['어디에 있든 분위기를 가볍고 따뜻하게 띄우는 힘이 있어요', '작은 진동이 몸통을 타고 울려 퍼지는 감각이 좋아요', '함께 노래를 부를 때 가장 자연스럽게 어울리는 악기예요'] },
-  { cat: '악기', word: '드럼', kw: ['박자', '심장', '리듬'], hints: ['전체의 심장 박동처럼 중심을 잡아주는 역할을 해요', '에너지를 마음껏 발산할 때 가장 잘 어울리는 존재예요', '소리가 커질수록 현장의 열기도 함께 뜨거워져요'] },
-  { cat: '악기', word: '플루트', kw: ['숨결', '맑은', '소리'], hints: ['내쉬는 숨결이 곧바로 맑은 울림으로 바뀌는 신비로움이 있어요', '차가운 금속이 따뜻한 숨을 만나 소리를 내는 과정이 독특해요', '은은하고 청량한 여운을 남기는 음색이 매력적이에요'] },
   { cat: '장소', word: '학교', kw: ['시간', '사람', '성장'], hints: ['매일 같은 시간에 모여 각자의 하루를 쌓아가는 공간이에요', '웃음과 고민, 작은 사건들이 한데 모이는 추억의 무대예요', '종소리와 함께 공기의 결이 달라지는 순간들이 있어요'] },
-  { cat: '장소', word: '놀이공원', kw: ['설렘', '현실', '하루'], hints: ['일상의 걱정을 잠시 문밖에 두고 설렘에 집중하게 해줘요', '해가 지고 조명이 켜지면 전혀 다른 세계처럼 변해요', '돌아오는 길에는 기분 좋은 피로감이 남는 곳이에요'] },
-  { cat: '장소', word: '도서관', kw: ['정적', '책', '집중'], hints: ['발걸음 소리조차 조심스러워지는 차분한 공기가 흘러요', '각자 다른 세계를 향해 조용히 몰입하는 사람들이 모여 있어요', '시간이 천천히 흐르는 것처럼 느껴지는 공간이에요'] },
-  { cat: '장소', word: '영화관', kw: ['어둠', '스크린', '몰입'], hints: ['빛이 꺼지고 화면만 살아남는 순간 완전히 다른 시공간으로 빠져들어요', '낯선 사람들과 같은 타이밍에 숨을 죽이거나 웃게 돼요', '문이 열리고 밖으로 나올 때 여운이 길게 남아요'] },
-  { cat: '장소', word: '병원', kw: ['안심', '기다림', '회복'], hints: ['누구나 가급적이면 자주 가지 않길 바라지만 꼭 필요한 곳이에요', '차례를 기다리는 동안 마음이 조금씩 복잡해지곤 해요', '몸과 마음의 신호를 점검하고 안심을 얻는 공간이에요'] },
   { cat: '물건', word: '스마트폰', kw: ['연결', '화면', '일상'], hints: ['하루를 시작하고 끝낼 때 가장 먼저 마주하게 되는 창구예요', '손끝 몇 번만으로 세상과 연결되는 편리함을 줘요', '곁에 없으면 괜히 허전하고 마음이 쓰이는 물건이에요'] },
-  { cat: '물건', word: '우산', kw: ['비', '보호', '날씨'], hints: ['하늘의 변덕에 대비해 미리 챙기거나 후회하게 만드는 물건이에요', '작은 방패처럼 머리 위 공간을 지켜주는 역할을 해요', '쓰임이 끝난 뒤 관리하는 방식까지 개성이 드러나요'] },
-  { cat: '물건', word: '시계', kw: ['시간', '흐름', '약속'], hints: ['멈추지 않고 계속 앞으로 나아가는 흐름을 보여주는 상징이에요', '약속과 기준을 맞추기 위해 모두가 따르는 약속의 기준점이에요', '문득 올려다볼 때마다 남은 시간을 실감하게 해줘요'] },
-  { cat: '물건', word: '거울', kw: ['반사', '모습', '확인'], hints: ['아무 말 없이 있는 그대로의 모습을 비춰주는 정직한 물건이에요', '외출 전 마지막 점검을 맡기는 든든한 도우미예요', '각도와 빛에 따라 전혀 다른 인상을 보여주기도 해요'] },
-  { cat: '물건', word: '자전거', kw: ['바람', '균형', '이동'], hints: ['스스로 균형을 잡아야 앞으로 나아갈 수 있는 정직한 탈것이에요', '거리를 스치는 바람을 온몸으로 느끼며 달리는 맛이 있어요', '처음 배울 때 넘어졌던 기억이 유독 선명하게 남곤 해요'] },
-  { cat: '직업', word: '소방관', kw: ['위험', '용기', '출동'], hints: ['남들이 등을 돌릴 때 오히려 안쪽으로 발걸음을 옮기는 용기가 있어요', '가장 긴박한 순간에 가장 먼저 떠오르는 믿음직한 이름이에요', '일상의 안전이 얼마나 큰 노력 위에 서 있는지 깨닫게 해줘요'] },
-  { cat: '직업', word: '경찰관', kw: ['질서', '신뢰', '순찰'], hints: ['거리의 질서와 사람의 안전을 지키는 든든한 버팀목이에요', '제복에서 풍기는 단단한 신뢰감이 주변을 안심시켜 줘요', '예상치 못한 사건 앞에서 침착하게 움직이는 모습이 인상적이에요'] },
-  { cat: '직업', word: '요리사', kw: ['재료', '정성', '맛'], hints: ['평범한 재료에 시간과 감각을 더해 새로운 가치를 만들어내요', '눈과 코와 입을 동시에 사로잡는 마법 같은 과정을 이끌어요', '누군가의 행복한 표정을 목표로 땀 흘리는 직업이에요'] },
-  { cat: '직업', word: '우주비행사', kw: ['미지', '도전', '궤도'], hints: ['인류가 닿은 가장 먼 미지의 영역을 향해 떠나는 개척자예요', '철저한 준비와 훈련 끝에 비로소 허락되는 특별한 여정이에요', '익숙한 세상을 멀리서 바라보는 시선이 상상력을 자극해요'] },
-  { cat: '직업', word: '선생님', kw: ['배움', '길잡이', '기억'], hints: ['어린 시절의 기억 속에 한마디 말로 오래 남는 분들이 많아요', '스스로 길을 찾을 수 있도록 힌트와 방향을 건네주는 존재예요', '가르치는 순간보다 지켜보며 기다려주는 힘이 큰 자리예요'] }
+  { cat: '직업', word: '우주비행사', kw: ['미지', '도전', '궤도'], hints: ['인류가 닿은 가장 먼 미지의 영역을 향해 떠나는 개척자예요', '철저한 준비와 훈련 끝에 비로소 허락되는 특별한 여정이에요', '익숙한 세상을 멀리서 바라보는 시선이 상상력을 자극해요'] }
 ];
 
 const GRID_SIZE = 16;
@@ -153,7 +174,7 @@ function emitToRoom(room, event, payload) {
 }
 
 function getWorldIdleSocketIds() {
-  return Object.keys(players).filter(sid => !players[sid].roomId);
+  return Object.keys(players).filter(sid => !players[sid].roomId && !players[sid].attackRoomId);
 }
 
 function broadcastLobbyToIdle(event, payload) {
@@ -172,7 +193,7 @@ function cleanupRoom(roomId) {
 
 function createMinigameRoom(hostId, type, cpuCount, mode) {
   const host = players[hostId];
-  if (!host || host.roomId) return null;
+  if (!host || host.roomId || host.attackRoomId) return null;
 
   const roomId = 'room_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
   const room = {
@@ -195,11 +216,15 @@ function createMinigameRoom(hostId, type, cpuCount, mode) {
     liar: '🕵️ 거짓말 탐지기 (최소 4명)'
   };
 
-  broadcastLobbyToIdle('minigameLobbyStarted', {
+  const startPayload = {
     roomId, type: room.type, title: titleMap[type] || type,
     hostId, hostName: host.name, mode: room.mode, cpuCount: room.cpuCount,
     timeLeft: room.timeLeft, participants: room.participants
-  });
+  };
+
+  // 방장에게도 반드시 30초 로비 UI가 뜨도록 emitToRoom + broadcastLobbyToIdle 동시 전송!
+  emitToRoom(room, 'minigameLobbyStarted', startPayload);
+  broadcastLobbyToIdle('minigameLobbyStarted', startPayload);
 
   room.loopTimer = setInterval(() => {
     room.timeLeft -= 1;
@@ -237,9 +262,7 @@ function onRoomLobbyFinished(roomId) {
       room.phase = 'team_setup';
       allList.forEach((p, idx) => { room.teamAssignments[p.id] = idx % 2; });
       emitToRoom(room, 'colorflipTeamSetup', { roomId, hostId: room.hostId, participants: room.participants, assignments: room.teamAssignments });
-    } else {
-      startColorFlipRoom(roomId, 1, {});
-    }
+    } else startColorFlipRoom(roomId, 1, {});
   } else if (room.type === 'freezetag') {
     if (allList.length < 5) {
       emitToRoom(room, 'minigameCancelled', { roomId, reason: '얼음땡은 총 5명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명)' });
@@ -257,6 +280,15 @@ function onRoomLobbyFinished(roomId) {
     broadcastLobbyToIdle('minigameLobbyClosed', { roomId });
     startLiarRoom(roomId);
   }
+}
+
+function awardMinigameWin(playerId, bonusMong) {
+  const p = players[playerId];
+  if (!p) return;
+  p.mong = (p.mong || 0) + bonusMong;
+  p.minigameWins = (p.minigameWins || 0) + 1;
+  syncCitizenship(p, io.sockets.sockets.get(playerId));
+  savePlayerToDB(p);
 }
 
 function startColorFlipRoom(roomId, teamCount, assignments) {
@@ -345,18 +377,12 @@ function finishColorFlipRoom(roomId) {
 
   if (room.mode === 'team' && top) {
     Object.values(room.participants).forEach(p => {
-      if (p.teamIdx === top.teamIdx && !p.isCpu && players[p.id]) {
-        players[p.id].mong = (players[p.id].mong || 0) + 100;
-        savePlayerToDB(players[p.id]);
-      }
+      if (p.teamIdx === top.teamIdx && !p.isCpu) awardMinigameWin(p.id, 100);
     });
-    summaryText = '우승 팀: ' + top.name + ' (' + top.count + '칸) — 모둠 전원 +100몽 지급!';
+    summaryText = '우승 팀: ' + top.name + ' (' + top.count + '칸) — 모둠 전원 +100몽 & 승리 +1!';
   } else if (top) {
-    if (!top.isCpu && players[top.id]) {
-      players[top.id].mong = (players[top.id].mong || 0) + 100;
-      savePlayerToDB(players[top.id]);
-    }
-    summaryText = '1등 우승: ' + top.name + ' (' + top.count + '칸) — +100몽 지급!';
+    if (!top.isCpu) awardMinigameWin(top.id, 100);
+    summaryText = '1등 우승: ' + top.name + ' (' + top.count + '칸) — +100몽 & 승리 +1!';
   }
   emitToRoom(room, 'minigameEnded', { title: '🎨 색깔 뒤집기 결과', summaryText, updatedPlayers: players });
   cleanupRoom(roomId);
@@ -539,22 +565,16 @@ function finishFreezeTagRoom(roomId, itsWon) {
   let summaryText = '';
 
   if (itsWon) {
-    allP.forEach(p => {
-      if (p.role === 'it' && !p.isCpu && players[p.id]) {
-        players[p.id].mong = (players[p.id].mong || 0) + 200;
-        savePlayerToDB(players[p.id]);
-      }
-    });
-    summaryText = '👹 술래 팀 승리! 전원 얼음/아웃 성공 — 술래 전원 +200몽 지급!';
+    allP.forEach(p => { if (p.role === 'it' && !p.isCpu) awardMinigameWin(p.id, 200); });
+    summaryText = '👹 술래 팀 승리! 술래 +200몽 & 승리 +1!';
   } else {
     allP.forEach(p => {
       if (p.role === 'runner' && !p.isCpu && players[p.id]) {
-        if (p.status === 'normal' || p.status === 'frozen') players[p.id].mong = (players[p.id].mong || 0) + 200;
-        else if (p.status === 'out') players[p.id].mong = (players[p.id].mong || 0) + 100;
-        savePlayerToDB(players[p.id]);
+        if (p.status === 'normal' || p.status === 'frozen') awardMinigameWin(p.id, 200);
+        else if (p.status === 'out') awardMinigameWin(p.id, 100);
       }
     });
-    summaryText = '🏃 도망자 팀 승리! 생존·얼음 상태 +200몽 / 생중계 관중석(아웃) +100몽 지급!';
+    summaryText = '🏃 도망자 팀 승리! 생존 +200몽 / 관중석 +100몽 & 승리 +1!';
   }
   emitToRoom(room, 'minigameEnded', { title: '🧊 얼음땡 최종 결과', summaryText, updatedPlayers: players });
   cleanupRoom(roomId);
@@ -687,40 +707,363 @@ function resolveLiarRoomVote(roomId, candidateIds) {
 
   if (caught) {
     Object.values(room.participants).forEach(p => {
-      if (p.id !== room.liarId && !p.isCpu && players[p.id]) {
-        players[p.id].mong = (players[p.id].mong || 0) + 200;
-        savePlayerToDB(players[p.id]);
-      }
+      if (p.id !== room.liarId && !p.isCpu) awardMinigameWin(p.id, 200);
     });
-    summaryText = '🎉 라이어 검거 성공! 지목된 [' + accusedName + ']님이 라이어였습니다!<br>제시어: <b>' + room.liarTopic.word + '</b> (' + room.liarTopic.cat + ')<br>시민 전원 +200몽 지급!';
+    summaryText = '🎉 라이어 검거 성공! 지목된 [' + accusedName + ']님이 라이어였습니다!<br>제시어: <b>' + room.liarTopic.word + '</b> (' + room.liarTopic.cat + ')<br>시민 전원 +200몽 & 승리 +1!';
   } else {
-    if (room.participants[room.liarId] && !room.participants[room.liarId].isCpu && players[room.liarId]) {
-      players[room.liarId].mong = (players[room.liarId].mong || 0) + 350;
-      savePlayerToDB(players[room.liarId]);
-    }
-    summaryText = '😈 라이어 승리! 지목된 [' + accusedName + ']님은 시민이었습니다!<br>진짜 라이어: <b>' + liarName + '</b> / 제시어: <b>' + room.liarTopic.word + '</b><br>라이어에게 +350몽 지급!';
+    if (room.participants[room.liarId] && !room.participants[room.liarId].isCpu) awardMinigameWin(room.liarId, 350);
+    summaryText = '😈 라이어 승리! 지목된 [' + accusedName + ']님은 시민이었습니다!<br>진짜 라이어: <b>' + liarName + '</b> / 제시어: <b>' + room.liarTopic.word + '</b><br>라이어에게 +350몽 & 승리 +1!';
   }
   emitToRoom(room, 'minigameEnded', { title: '🕵️ 거짓말 탐지기 결과', summaryText, updatedPlayers: players });
   cleanupRoom(roomId);
 }
 
+// ============================================================
+// Attack (브롤스타즈 스타일 독립 월드 6개 모드) 서버 엔진
+// ============================================================
+const ATTACK_WALLS = [
+  { x: -12, z: -10, w: 6, d: 2.4 }, { x: 12, z: -10, w: 6, d: 2.4 },
+  { x: -12, z: 10, w: 6, d: 2.4 },  { x: 12, z: 10, w: 6, d: 2.4 },
+  { x: 0, z: -16, w: 8, d: 2.2 },   { x: 0, z: 16, w: 8, d: 2.2 },
+  { x: -20, z: 0, w: 2.4, d: 8 },   { x: 20, z: 0, w: 2.4, d: 8 }
+];
+
+const ATTACK_BUSHES = [
+  { x: -18, z: -16, r: 4.2 }, { x: 18, z: -16, r: 4.2 },
+  { x: -18, z: 16, r: 4.2 },  { x: 18, z: 16, r: 4.2 },
+  { x: -7, z: 0, r: 3.8 },    { x: 7, z: 0, r: 3.8 }
+];
+
+function hitWall(x, z, pad = 0.7) {
+  for (const w of ATTACK_WALLS) {
+    if (Math.abs(x - w.x) < (w.w / 2 + pad) && Math.abs(z - w.z) < (w.d / 2 + pad)) return true;
+  }
+  return false;
+}
+
+function isInBush(x, z) {
+  return ATTACK_BUSHES.some(b => Math.hypot(x - b.x, z - b.z) <= b.r);
+}
+
+function buildAttackFighter(id, name, team, isCpu, charId, hpLv, atkLv, defLv, citizenship) {
+  const base = ATTACK_CHARS[charId] || ATTACK_CHARS.rookie;
+  const hasStarPower = ['special', 'yellow', 'admin'].includes(citizenship);
+  const hasBuffie = ['yellow', 'admin'].includes(citizenship);
+  const maxHp = Math.round((base.hp + hpLv * 350) * (hasStarPower ? 1.12 : 1.0) * (hasBuffie ? 1.08 : 1.0));
+  const atk = Math.round((base.atk + atkLv * 65) * (hasStarPower ? 1.12 : 1.0) * (hasBuffie ? 1.1 : 1.0));
+  const def = Math.min(70, base.def + defLv * 3 + (hasBuffie ? 5 : 0));
+  return {
+    id, name, team, isCpu, charId: base.id, color: base.color, citizenship,
+    maxHp, hp: maxHp, atk, def, speed: base.speed, range: base.range,
+    projCount: base.projCount, spread: base.spread,
+    x: team === 0 ? -22 : (team === 1 ? 22 : (Math.random() - 0.5) * 38),
+    z: (Math.random() - 0.5) * 20,
+    rotY: 0, alive: true, respawnTimer: 0, inBush: false,
+    superCharge: 0, gadgetCd: 0, hyperCharge: 0, hyperActiveTimer: 0,
+    gems: 0, stars: 2, aiTimer: 0.4, shootCd: 0
+  };
+}
+
+function startAttackMatch(hostSocketId, mode) {
+  const host = players[hostSocketId];
+  if (!host || host.roomId || host.attackRoomId) return;
+
+  const roomId = 'atk_' + Date.now() + '_' + Math.floor(Math.random() * 999);
+  const isFFA = (mode === 'showdown');
+  const room = {
+    id: roomId, mode, timeLeft: 120,
+    fighters: {}, projectiles: [], gems: [],
+    ball: { x: 0, z: 0, vx: 0, vz: 0 },
+    safes: { 0: { x: -24, z: 0, hp: 18000, maxHp: 18000 }, 1: { x: 24, z: 0, hp: 18000, maxHp: 18000 } },
+    scores: { 0: 0, 1: 0 },
+    gemTimer: { team: null, sec: 0 },
+    gasRadius: 34, gemSpawnCd: 2.5,
+    loopTimer: null
+  };
+
+  attackRooms[roomId] = room;
+  host.attackRoomId = roomId;
+
+  const ad = host.attackData || { selectedChar: 'rookie', hpLv: 0, atkLv: 0, defLv: 0 };
+  room.fighters[hostSocketId] = buildAttackFighter(
+    hostSocketId, host.name, isFFA ? 99 : 0, false,
+    ad.selectedChar, ad.hpLv || 0, ad.atkLv || 0, ad.defLv || 0, host.citizenship
+  );
+
+  // 다른 대기 중인 온라인 유저가 있으면 같은 매치에 합류(최대 6명)
+  const charKeys = Object.keys(ATTACK_CHARS);
+  let slotIdx = 1;
+  while (slotIdx < 6) {
+    const botId = 'atkbot_' + slotIdx;
+    const team = isFFA ? (100 + slotIdx) : (slotIdx % 2);
+    const botChar = charKeys[Math.floor(Math.random() * Math.min(4, charKeys.length))];
+    room.fighters[botId] = buildAttackFighter(botId, '배틀봇_' + slotIdx, team, true, botChar, 1, 1, 1, 'normal');
+    slotIdx++;
+  }
+
+  io.to(hostSocketId).emit('attackMatchStarted', {
+    roomId, mode, walls: ATTACK_WALLS, bushes: ATTACK_BUSHES,
+    fighters: room.fighters, safes: room.safes, ball: room.ball,
+    timeLeft: room.timeLeft, gasRadius: room.gasRadius
+  });
+
+  let secAcc = 0;
+  room.loopTimer = setInterval(() => {
+    const dt = 0.05;
+    secAcc += dt;
+
+    // 1. 쇼다운 독가스 축소
+    if (room.mode === 'showdown') room.gasRadius = Math.max(7, room.gasRadius - dt * 0.25);
+
+    // 2. 젬그랩 보석 스폰
+    if (room.mode === 'gemgrab') {
+      room.gemSpawnCd -= dt;
+      if (room.gemSpawnCd <= 0 && room.gems.length < 15) {
+        room.gemSpawnCd = 4.5;
+        room.gems.push({ id: 'g_' + Date.now() + Math.random(), x: (Math.random() - 0.5) * 4, z: (Math.random() - 0.5) * 4 });
+      }
+    }
+
+    // 3. 브롤볼 공 물리 및 골 판정
+    if (room.mode === 'brawlball') {
+      room.ball.x += room.ball.vx * dt * 20;
+      room.ball.z += room.ball.vz * dt * 20;
+      room.ball.vx *= 0.92; room.ball.vz *= 0.92;
+      if (Math.abs(room.ball.z) > 25) { room.ball.vz *= -0.8; room.ball.z = Math.sign(room.ball.z) * 25; }
+      if (room.ball.x > 27 && Math.abs(room.ball.z) < 6) {
+        room.scores[0] += 1; room.ball = { x: 0, z: 0, vx: 0, vz: 0 };
+        if (room.scores[0] >= 2) { finishAttackMatch(roomId, 0, '⚽ 브롤볼 2골 선취 승리!'); return; }
+      } else if (room.ball.x < -27 && Math.abs(room.ball.z) < 6) {
+        room.scores[1] += 1; room.ball = { x: 0, z: 0, vx: 0, vz: 0 };
+        if (room.scores[1] >= 2) { finishAttackMatch(roomId, 1, '⚽ 브롤볼 2골 선취 승리!'); return; }
+      } else if (Math.abs(room.ball.x) > 27) { room.ball.vx *= -0.8; room.ball.x = Math.sign(room.ball.x) * 27; }
+    }
+
+    const allF = Object.values(room.fighters);
+
+    // 4. 파이터 상태/쿨다운/부쉬/AI 업데이트
+    allF.forEach(f => {
+      if (f.shootCd > 0) f.shootCd = Math.max(0, f.shootCd - dt);
+      if (f.gadgetCd > 0) f.gadgetCd = Math.max(0, f.gadgetCd - dt);
+      if (f.hyperActiveTimer > 0) f.hyperActiveTimer = Math.max(0, f.hyperActiveTimer - dt);
+
+      if (!f.alive) {
+        if (room.mode !== 'showdown' && room.mode !== 'knockout') {
+          f.respawnTimer -= dt;
+          if (f.respawnTimer <= 0) {
+            f.alive = true; f.hp = f.maxHp;
+            f.x = f.team === 0 ? -22 : 22; f.z = (Math.random() - 0.5) * 16;
+          }
+        }
+        return;
+      }
+
+      f.inBush = isInBush(f.x, f.z);
+
+      // 쇼다운 독가스 피해
+      if (room.mode === 'showdown' && Math.hypot(f.x, f.z) > room.gasRadius) {
+        f.hp -= 220 * dt;
+        if (f.hp <= 0) handleFighterDeath(room, f, null);
+      }
+
+      // 젬그랩 보석 줍기
+      if (room.mode === 'gemgrab') {
+        for (let i = room.gems.length - 1; i >= 0; i--) {
+          if (Math.hypot(f.x - room.gems[i].x, f.z - room.gems[i].z) < 1.8) {
+            f.gems += 1; room.gems.splice(i, 1);
+          }
+        }
+      }
+
+      // 브롤볼 공 드리블/밀기
+      if (room.mode === 'brawlball' && Math.hypot(f.x - room.ball.x, f.z - room.ball.z) < 1.8) {
+        const ang = Math.atan2(room.ball.x - f.x, room.ball.z - f.z);
+        room.ball.vx = Math.sin(ang) * 0.9; room.ball.vz = Math.cos(ang) * 0.9;
+      }
+
+      // 봇 AI
+      if (f.isCpu) {
+        const enemies = allF.filter(o => o.alive && o.id !== f.id && o.team !== f.team && (!o.inBush || Math.hypot(o.x - f.x, o.z - f.z) < 6));
+        if (enemies.length > 0) {
+          enemies.sort((a, b) => Math.hypot(a.x - f.x, a.z - f.z) - Math.hypot(b.x - f.x, b.z - f.z));
+          const t = enemies[0], dist = Math.hypot(t.x - f.x, t.z - f.z);
+          const ang = Math.atan2(t.x - f.x, t.z - f.z);
+          f.rotY = ang;
+          if (dist > f.range * 0.65) {
+            const nx = f.x + Math.sin(ang) * f.speed * 0.85, nz = f.z + Math.cos(ang) * f.speed * 0.85;
+            if (!hitWall(nx, nz)) { f.x = Math.max(-27, Math.min(27, nx)); f.z = Math.max(-24, Math.min(24, nz)); }
+          }
+          if (dist <= f.range && f.shootCd <= 0) {
+            fireAttackProjectile(room, f, ang, false);
+            f.shootCd = 1.1;
+          }
+        }
+      }
+    });
+
+    // 5. 투사체 이동 및 충돌
+    for (let i = room.projectiles.length - 1; i >= 0; i--) {
+      const pr = room.projectiles[i];
+      pr.x += pr.vx * dt * 20; pr.z += pr.vz * dt * 20; pr.dist += Math.hypot(pr.vx, pr.vz) * dt * 20;
+      if (pr.dist > pr.maxDist || Math.abs(pr.x) > 29 || Math.abs(pr.z) > 27 || hitWall(pr.x, pr.z, 0.2)) {
+        room.projectiles.splice(i, 1); continue;
+      }
+
+      // 하이스트 금고 타격
+      if (room.mode === 'heist') {
+        const enemyTeam = pr.team === 0 ? 1 : 0;
+        const safe = room.safes[enemyTeam];
+        if (safe && Math.hypot(pr.x - safe.x, pr.z - safe.z) < 2.6) {
+          safe.hp = Math.max(0, safe.hp - pr.dmg);
+          room.projectiles.splice(i, 1);
+          if (safe.hp <= 0) { finishAttackMatch(roomId, pr.team, '💰 하이스트 상대 금고 파괴 승리!'); return; }
+          continue;
+        }
+      }
+
+      // 적 파이터 타격
+      let hit = false;
+      for (const target of allF) {
+        if (!target.alive || target.id === pr.ownerId || target.team === pr.team) continue;
+        if (Math.hypot(pr.x - target.x, pr.z - target.z) < 1.45) {
+          const reducedDmg = Math.max(80, Math.round(pr.dmg * (1 - target.def / 100)));
+          target.hp -= reducedDmg;
+          const owner = room.fighters[pr.ownerId];
+          if (owner) {
+            owner.superCharge = Math.min(100, owner.superCharge + 25);
+            owner.hyperCharge = Math.min(100, owner.hyperCharge + 14);
+          }
+          if (target.hp <= 0) handleFighterDeath(room, target, owner);
+          room.projectiles.splice(i, 1);
+          hit = true; break;
+        }
+      }
+      if (hit) continue;
+    }
+
+    // 6. 쇼다운 / 녹아웃 생존 체크
+    if (room.mode === 'showdown') {
+      const aliveList = allF.filter(f => f.alive);
+      if (aliveList.length <= 1) {
+        const winId = aliveList[0] ? aliveList[0].id : null;
+        finishAttackMatch(roomId, winId, '🏆 쇼다운 최후의 1인 승리!'); return;
+      }
+    } else if (room.mode === 'knockout') {
+      const a0 = allF.filter(f => f.team === 0 && f.alive).length;
+      const a1 = allF.filter(f => f.team === 1 && f.alive).length;
+      if (a0 === 0) { finishAttackMatch(roomId, 1, '💀 녹아웃 상대 팀 전멸!'); return; }
+      if (a1 === 0) { finishAttackMatch(roomId, 0, '💀 녹아웃 적 팀 전멸 승리!'); return; }
+    }
+
+    // 7. 1초 타이머 & 젬그랩 카운트다운
+    if (secAcc >= 1.0) {
+      secAcc = 0; room.timeLeft -= 1;
+      if (room.mode === 'gemgrab') {
+        const g0 = allF.filter(f => f.team === 0).reduce((s, f) => s + f.gems, 0);
+        const g1 = allF.filter(f => f.team === 1).reduce((s, f) => s + f.gems, 0);
+        room.scores[0] = g0; room.scores[1] = g1;
+        if (g0 >= 10 && g0 > g1) {
+          if (room.gemTimer.team === 0) room.gemTimer.sec += 1; else room.gemTimer = { team: 0, sec: 1 };
+          if (room.gemTimer.sec >= 10) { finishAttackMatch(roomId, 0, '💎 젬그랩 보석 10개 방어 성공!'); return; }
+        } else if (g1 >= 10 && g1 > g0) {
+          if (room.gemTimer.team === 1) room.gemTimer.sec += 1; else room.gemTimer = { team: 1, sec: 1 };
+          if (room.gemTimer.sec >= 10) { finishAttackMatch(roomId, 1, '💎 젬그랩 상대 팀 10개 방어!'); return; }
+        } else room.gemTimer = { team: null, sec: 0 };
+      }
+      if (room.timeLeft <= 0) {
+        const winTeam = room.scores[0] >= room.scores[1] ? 0 : 1;
+        finishAttackMatch(roomId, winTeam, '⏱️ 시간 종료! 점수 판정 승리!'); return;
+      }
+    }
+
+    // 상태 전송
+    allF.forEach(f => {
+      if (!f.isCpu) {
+        io.to(f.id).emit('attackStateUpdate', {
+          fighters: room.fighters, projectiles: room.projectiles, gems: room.gems,
+          ball: room.ball, safes: room.safes, scores: room.scores,
+          timeLeft: room.timeLeft, gasRadius: room.gasRadius, gemTimer: room.gemTimer
+        });
+      }
+    });
+  }, 50);
+}
+
+function handleFighterDeath(room, target, killer) {
+  target.alive = false; target.hp = 0; target.respawnTimer = 4.0;
+  if (room.mode === 'gemgrab' && target.gems > 0) {
+    for (let k = 0; k < target.gems; k++) {
+      room.gems.push({ id: 'gd_' + Date.now() + Math.random(), x: target.x + (Math.random() - 0.5) * 2.5, z: target.z + (Math.random() - 0.5) * 2.5 });
+    }
+    target.gems = 0;
+  }
+  if (room.mode === 'bounty' && killer) {
+    room.scores[killer.team] = (room.scores[killer.team] || 0) + target.stars;
+    killer.stars = Math.min(7, killer.stars + 1);
+    target.stars = 2;
+  }
+}
+
+function fireAttackProjectile(room, fighter, angle, isSuper) {
+  const mult = (isSuper ? 1.85 : 1.0) * (fighter.hyperActiveTimer > 0 ? 1.45 : 1.0);
+  const count = isSuper ? fighter.projCount + 2 : fighter.projCount;
+  const spread = isSuper ? 0.28 : fighter.spread;
+  for (let i = 0; i < count; i++) {
+    const offset = count === 1 ? 0 : (i - (count - 1) / 2) * spread;
+    const a = angle + offset;
+    room.projectiles.push({
+      ownerId: fighter.id, team: fighter.team, color: isSuper ? '#facc15' : fighter.color,
+      x: fighter.x, z: fighter.z, vx: Math.sin(a) * 1.15, vz: Math.cos(a) * 1.15,
+      dmg: Math.round(fighter.atk * mult), dist: 0, maxDist: fighter.range * (isSuper ? 1.25 : 1.0),
+      isSuper
+    });
+  }
+}
+
+function finishAttackMatch(roomId, winnerKey, reasonText) {
+  const room = attackRooms[roomId]; if (!room) return;
+  if (room.loopTimer) clearInterval(room.loopTimer);
+
+  Object.values(room.fighters).forEach(f => {
+    if (!f.isCpu && players[f.id]) {
+      const p = players[f.id];
+      p.attackRoomId = null;
+      const won = (room.mode === 'showdown') ? (f.id === winnerKey) : (f.team === winnerKey);
+      const reward = won ? 180 : 50;
+      p.mong = (p.mong || 0) + reward;
+      syncCitizenship(p, io.sockets.sockets.get(f.id));
+      savePlayerToDB(p);
+      io.to(f.id).emit('attackMatchEnded', {
+        won, reward, reasonText, mong: p.mong, citizenship: p.citizenship
+      });
+    }
+  });
+  delete attackRooms[roomId];
+}
+
 function buildPlayerSessionFromRow(socketId, row, isGuest) {
   const isAdm = !!row.is_admin;
-  return {
+  const maxMong = Math.max(row.mong !== undefined ? row.mong : 200, row.max_mong || 0);
+  const wins = row.minigame_wins || 0;
+  const p = {
     id: socketId,
     username: row.username,
     name: row.nickname || row.username,
     isGuest: !!isGuest,
     mong: row.mong !== undefined ? row.mong : 200,
-    speedLevel: row.speed_level || 0,
-    jumpLevel: row.jump_level || 0,
+    maxMong,
+    minigameWins: wins,
     isAdmin: isAdm,
     adminBoostActive: isAdm,
     isInvisible: false,
     ownedTops: isAdm ? [...ALL_TOPS] : (Array.isArray(row.owned_tops) ? row.owned_tops : ['tshirt']),
     ownedBottoms: isAdm ? [...ALL_BOTTOMS] : (Array.isArray(row.owned_bottoms) ? row.owned_bottoms : ['pants']),
     ownedThemes: isAdm ? [...ALL_THEMES] : (Array.isArray(row.owned_themes) ? row.owned_themes : ['original']),
+    attackData: row.attack_data && typeof row.attack_data === 'object'
+      ? row.attack_data
+      : { selectedChar: 'rookie', ownedChars: ['rookie'], hpLv: 0, atkLv: 0, defLv: 0 },
     roomId: null,
+    attackRoomId: null,
     x: (Math.random() - 0.5) * 6,
     y: 0,
     z: (Math.random() - 0.5) * 6,
@@ -732,6 +1075,8 @@ function buildPlayerSessionFromRow(socketId, row, isGuest) {
     bottomStyle: row.bottom_style || 'pants',
     bottomColor: row.bottom_color || '#1e293b'
   };
+  p.citizenship = computeCitizenship(p);
+  return p;
 }
 
 io.on('connection', (socket) => {
@@ -743,70 +1088,37 @@ io.on('connection', (socket) => {
       socket.emit('authError', '아이디, 닉네임, 비밀번호를 모두 2글자 이상 입력해 주세욥!!');
       return;
     }
-    if (!supabase) {
-      socket.emit('authError', '서버 데이터베이스(Supabase) 환경변수가 연결되지 않았습니다ㅠㅠ');
-      return;
-    }
+    if (!supabase) { socket.emit('authError', '서버 데이터베이스(Supabase) 환경변수가 연결되지 않았습니다ㅠㅠ'); return; }
     try {
-      const { data: existing } = await supabase
-        .from('game_profiles')
-        .select('username')
-        .eq('username', cleanUser)
-        .maybeSingle();
-
-      if (existing) {
-        socket.emit('authError', '이미 사용 중인 아이디에유. 다른 아이디를 입력해 주세요!');
-        return;
-      }
+      const { data: existing } = await supabase.from('game_profiles').select('username').eq('username', cleanUser).maybeSingle();
+      if (existing) { socket.emit('authError', '이미 사용 중인 아이디에유. 다른 아이디를 입력해 주세요!'); return; }
 
       const newRow = {
         username: cleanUser, nickname: cleanNick, password: cleanPw,
-        mong: 200, speed_level: 0, jump_level: 0, is_admin: false,
+        mong: 200, max_mong: 200, minigame_wins: 0, speed_level: 0, jump_level: 0, is_admin: false,
         owned_tops: ['tshirt'], owned_bottoms: ['pants'], owned_themes: ['original'],
-        face: 'happy', top_style: 'tshirt', top_color: '#3b82f6', bottom_style: 'pants', bottom_color: '#1e293b'
+        face: 'happy', top_style: 'tshirt', top_color: '#3b82f6', bottom_style: 'pants', bottom_color: '#1e293b',
+        attack_data: { selectedChar: 'rookie', ownedChars: ['rookie'], hpLv: 0, atkLv: 0, defLv: 0 }
       };
-
       const { error: insertErr } = await supabase.from('game_profiles').insert(newRow);
-      if (insertErr) {
-        socket.emit('authError', '회원가입 저장 중 오류: ' + insertErr.message);
-        return;
-      }
+      if (insertErr) { socket.emit('authError', '회원가입 저장 중 오류: ' + insertErr.message); return; }
 
       const p = buildPlayerSessionFromRow(socket.id, newRow, false);
       players[socket.id] = p;
-      socket.emit('authSuccess', { me: p, players, worldCoins: WORLD_COINS });
+      socket.emit('authSuccess', { me: p, players, worldCoins: WORLD_COINS, attackChars: ATTACK_CHARS });
       socket.broadcast.emit('newPlayer', p);
-    } catch (e) {
-      socket.emit('authError', '회원가입 처리 중 오류가 발생했습니다.ㅠㅠ');
-    }
+    } catch (e) { socket.emit('authError', '회원가입 처리 중 오류가 발생했습니다.ㅠㅠ'); }
   });
 
   socket.on('authLogin', async ({ username, password }) => {
     const cleanUser = (username || '').trim().substring(0, 14);
     const cleanPw = (password || '').trim();
-    if (!cleanUser || !cleanPw) {
-      socket.emit('authError', '아이디와 비밀번호를 모두 입력하셈요');
-      return;
-    }
-    if (!supabase) {
-      socket.emit('authError', '서버 데이터베이스(Supabase) 환경변수가 연결되지 않았습니다ㅠㅠ');
-      return;
-    }
+    if (!cleanUser || !cleanPw) { socket.emit('authError', '아이디와 비밀번호를 모두 입력하셈요'); return; }
+    if (!supabase) { socket.emit('authError', '서버 데이터베이스(Supabase) 환경변수가 연결되지 않았습니다ㅠㅠ'); return; }
     try {
-      const { data: row, error } = await supabase
-        .from('game_profiles')
-        .select('*')
-        .eq('username', cleanUser)
-        .maybeSingle();
-
-      if (error || !row) {
-        socket.emit('authError', '존재하지 않는 아이디에유ㅠ. 먼저 회원가입을 해주세요!');
-        return;
-      }
-      if (row.password !== cleanPw) {
-        socket.emit('authError', '비밀번호가 일치하지 않습니다.ㅋ');
-        return;
-      }
+      const { data: row, error } = await supabase.from('game_profiles').select('*').eq('username', cleanUser).maybeSingle();
+      if (error || !row) { socket.emit('authError', '존재하지 않는 아이디에유ㅠ. 먼저 회원가입을 해주세요!'); return; }
+      if (row.password !== cleanPw) { socket.emit('authError', '비밀번호가 일치하지 않습니다.ㅋ'); return; }
 
       Object.keys(players).forEach(sid => {
         if (players[sid].username === cleanUser && sid !== socket.id) {
@@ -818,39 +1130,29 @@ io.on('connection', (socket) => {
 
       const p = buildPlayerSessionFromRow(socket.id, row, false);
       players[socket.id] = p;
-      socket.emit('authSuccess', { me: p, players, worldCoins: WORLD_COINS });
+      socket.emit('authSuccess', { me: p, players, worldCoins: WORLD_COINS, attackChars: ATTACK_CHARS });
       socket.broadcast.emit('newPlayer', p);
-    } catch (e) {
-      socket.emit('authError', '로그인 처리 중 오류가 발생했습니다.ㅠㅠ');
-    }
+    } catch (e) { socket.emit('authError', '로그인 처리 중 오류가 발생했습니다.ㅠㅠ'); }
   });
 
   socket.on('authGuest', () => {
     const guestId = 'guest_' + socket.id.substring(0, 4);
     const p = buildPlayerSessionFromRow(socket.id, { username: guestId, nickname: '게스트_' + socket.id.substring(0, 4) }, true);
     players[socket.id] = p;
-    socket.emit('authSuccess', { me: p, players, worldCoins: WORLD_COINS });
+    socket.emit('authSuccess', { me: p, players, worldCoins: WORLD_COINS, attackChars: ATTACK_CHARS });
     socket.broadcast.emit('newPlayer', p);
   });
 
   socket.on('updateAccountSettings', async ({ newNickname, newPassword }) => {
-    const p = players[socket.id];
-    if (!p) return;
-
+    const p = players[socket.id]; if (!p) return;
     const cleanNick = (newNickname || '').trim().substring(0, 12);
     const cleanPw = (newPassword || '').trim();
     let changed = false;
-
-    if (cleanNick && cleanNick.length >= 2 && cleanNick !== p.name) {
-      p.name = cleanNick;
-      changed = true;
-    }
-
+    if (cleanNick && cleanNick.length >= 2 && cleanNick !== p.name) { p.name = cleanNick; changed = true; }
     if (cleanPw && cleanPw.length >= 2 && !p.isGuest && supabase) {
       await supabase.from('game_profiles').update({ password: cleanPw }).eq('username', p.username);
       changed = true;
     }
-
     if (changed) {
       savePlayerToDB(p);
       socket.emit('accountSettingsUpdated', { name: p.name, passwordChanged: cleanPw.length >= 2 });
@@ -858,44 +1160,48 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 2단계 인증: 1단계 아이디 확인
-  socket.on('adminVerifyId', ({ id }) => {
+  // YELLOW 시민권 <-> ADMIN 1:1 채팅
+  socket.on('sendAdminDM', (text) => {
     const p = players[socket.id];
-    if (!p) return;
-    if ((id || '').trim() === ADMIN_ID) {
-      socket.emit('adminIdVerified', { message: 'ID Successfully Entered. Now go inside the castle' });
-    } else {
-      socket.emit('adminAuthFail', 'Admin ID or password is uncorrect.');
-    }
+    if (!p || (p.citizenship !== 'yellow' && !p.isAdmin)) return;
+    const clean = (text || '').trim().substring(0, 120);
+    if (!clean) return;
+    const payload = { fromId: socket.id, fromName: p.name, isAdmin: p.isAdmin, text: clean };
+    socket.emit('receiveAdminDM', payload);
+    Object.values(players).forEach(other => {
+      if (other.id !== socket.id && (other.isAdmin || (p.isAdmin && other.citizenship === 'yellow'))) {
+        io.to(other.id).emit('receiveAdminDM', payload);
+      }
+    });
   });
 
-  // 2단계 인증: 2단계 비밀번호 확인 및 어드민 권한 부여
+  socket.on('adminVerifyId', ({ id }) => {
+    if (!players[socket.id]) return;
+    if ((id || '').trim() === ADMIN_ID) socket.emit('adminIdVerified', { message: '아이디 확인 완료! 성 안쪽 왕좌에서 비밀번호를 입력하세요.' });
+    else socket.emit('adminAuthFail', '관리자 아이디가 올바르지 않습니다.ㅋ');
+  });
+
   socket.on('adminLogin', ({ id, pw }) => {
-    const p = players[socket.id];
-    if (!p) return;
+    const p = players[socket.id]; if (!p) return;
     if ((id || '').trim() === ADMIN_ID && (pw || '').trim() === ADMIN_PW) {
       p.isAdmin = true; p.adminBoostActive = true;
       p.mong = (p.mong || 0) + 1000;
-      p.speedLevel = 20; p.jumpLevel = 20;
       p.ownedTops = [...ALL_TOPS]; p.ownedBottoms = [...ALL_BOTTOMS]; p.ownedThemes = [...ALL_THEMES];
+      syncCitizenship(p, socket);
       savePlayerToDB(p);
       socket.emit('adminAuthSuccess', p);
       io.emit('playerUpdated', p);
-    } else {
-      socket.emit('adminAuthFail', 'Admin ID or password is uncorrect.');
-    }
+    } else socket.emit('adminAuthFail', '관리자 아이디 또는 비밀번호가 올바르지 않습니다.ㅋ');
   });
 
   socket.on('adminToggleBoost', () => {
-    const p = players[socket.id];
-    if (!p || !p.isAdmin) return;
+    const p = players[socket.id]; if (!p || !p.isAdmin) return;
     p.adminBoostActive = !p.adminBoostActive;
     socket.emit('adminAuthSuccess', p);
   });
 
   socket.on('adminToggleInvisible', () => {
-    const p = players[socket.id];
-    if (!p || !p.isAdmin) return;
+    const p = players[socket.id]; if (!p || !p.isAdmin) return;
     p.isInvisible = !p.isInvisible;
     io.emit('adminPlayerStealth', { id: socket.id, isInvisible: p.isInvisible });
     socket.emit('adminAuthSuccess', p);
@@ -910,15 +1216,11 @@ io.on('connection', (socket) => {
     if (targetSocket) targetSocket.disconnect(true);
     delete players[targetId];
     io.emit('playerDisconnected', targetId);
-    io.emit('adminGlobalAlert', {
-      senderName: 'ADMIN',
-      message: '[' + kickedName + '] 님이 관리자에 의해 하준의 오픈!온라인 월드에서 강제퇴장되었어요! 아쉬운거죠 뭐;ㅋ'
-    });
+    io.emit('adminGlobalAlert', { senderName: 'ADMIN', message: '[' + kickedName + '] 님이 관리자에 의해 하준의 오픈!온라인 월드에서 강제퇴장되었어요! 아쉬운거죠 뭐;ㅋ' });
   });
 
   socket.on('adminBroadcastAlert', (alertText) => {
-    const p = players[socket.id];
-    if (!p || !p.isAdmin) return;
+    const p = players[socket.id]; if (!p || !p.isAdmin) return;
     const clean = (alertText || '').trim().substring(0, 120);
     if (clean) io.emit('adminGlobalAlert', { senderName: p.name, message: clean });
   });
@@ -926,20 +1228,20 @@ io.on('connection', (socket) => {
   socket.on('collectWorldCoin', (coinId) => {
     const p = players[socket.id];
     const coin = WORLD_COINS.find(c => c.id === coinId);
-    if (!p || !coin || p.roomId) return;
+    if (!p || !coin || p.roomId || p.attackRoomId) return;
     if (Math.hypot(p.x - coin.x, p.z - coin.z) <= 2.6) {
       p.mong = (p.mong || 0) + 2;
       const nextPos = spawnCoinPosition(coinId);
       coin.x = nextPos.x; coin.z = nextPos.z;
+      syncCitizenship(p, socket);
       savePlayerToDB(p);
-      socket.emit('coinCollected', { mong: p.mong, earned: 2 });
+      socket.emit('coinCollected', { mong: p.mong, earned: 2, citizenship: p.citizenship, maxMong: p.maxMong });
       io.emit('worldCoinMoved', coin);
     }
   });
 
   socket.on('updateProfile', (data) => {
-    const p = players[socket.id];
-    if (!p) return;
+    const p = players[socket.id]; if (!p) return;
     if (data.face) p.face = data.face;
     if (data.topStyle && p.ownedTops.includes(data.topStyle)) p.topStyle = data.topStyle;
     if (data.topColor) p.topColor = data.topColor;
@@ -950,29 +1252,22 @@ io.on('connection', (socket) => {
   });
 
   socket.on('buyItem', ({ category, itemId }) => {
-    const p = players[socket.id];
-    if (!p) return;
-    const maxLv = p.isAdmin ? 20 : 5;
-    if (category === 'speed' && p.speedLevel < maxLv) {
-      const cost = (p.speedLevel + 1) * 50;
-      if (p.mong >= cost) { p.mong -= cost; p.speedLevel += 1; savePlayerToDB(p); socket.emit('shopUpdated', p); }
-    } else if (category === 'jump' && p.jumpLevel < maxLv) {
-      const cost = (p.jumpLevel + 1) * 50;
-      if (p.mong >= cost) { p.mong -= cost; p.jumpLevel += 1; savePlayerToDB(p); socket.emit('shopUpdated', p); }
-    } else if (category === 'top') {
-      const cost = SHOP_PRICES.tops[itemId] !== undefined ? SHOP_PRICES.tops[itemId] : 9999;
+    const p = players[socket.id]; if (!p) return;
+    if (category === 'top') {
+      const cost = SHOP_PRICES.tops[itemId] !== undefined ? SHOP_PRICES.tops[itemId] : 999999;
       if (!p.ownedTops.includes(itemId) && p.mong >= cost) {
         p.mong -= cost; p.ownedTops.push(itemId); p.topStyle = itemId;
         savePlayerToDB(p); socket.emit('shopUpdated', p); io.emit('playerUpdated', p);
       }
     } else if (category === 'bottom') {
-      const cost = SHOP_PRICES.bottoms[itemId] !== undefined ? SHOP_PRICES.bottoms[itemId] : 9999;
+      const cost = SHOP_PRICES.bottoms[itemId] !== undefined ? SHOP_PRICES.bottoms[itemId] : 999999;
       if (!p.ownedBottoms.includes(itemId) && p.mong >= cost) {
         p.mong -= cost; p.ownedBottoms.push(itemId); p.bottomStyle = itemId;
         savePlayerToDB(p); socket.emit('shopUpdated', p); io.emit('playerUpdated', p);
       }
     } else if (category === 'theme') {
-      const cost = SHOP_PRICES.themes[itemId] !== undefined ? SHOP_PRICES.themes[itemId] : 9999;
+      if (p.citizenship === 'normal') return; // 일반 시민권은 테마 잠금
+      const cost = SHOP_PRICES.themes[itemId] !== undefined ? SHOP_PRICES.themes[itemId] : 999999;
       if (!p.ownedThemes.includes(itemId) && p.mong >= cost) {
         p.mong -= cost; p.ownedThemes.push(itemId);
         savePlayerToDB(p); socket.emit('shopUpdated', p);
@@ -980,31 +1275,93 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('exchangeTransfer', ({ targetId, mongAmount, giftTop }) => {
-    const sender = players[socket.id];
-    const receiver = players[targetId];
-    if (!sender || !receiver || socket.id === targetId) return;
+  // Attack 캐릭터 구매/선택 및 스탯 업그레이드
+  socket.on('attackShopAction', ({ action, charId, stat }) => {
+    const p = players[socket.id]; if (!p) return;
+    const ad = p.attackData || { selectedChar: 'rookie', ownedChars: ['rookie'], hpLv: 0, atkLv: 0, defLv: 0 };
+    if (action === 'buyChar' && ATTACK_CHARS[charId]) {
+      const ch = ATTACK_CHARS[charId];
+      if (!ad.ownedChars.includes(charId) && p.mong >= ch.price) {
+        p.mong -= ch.price; ad.ownedChars.push(charId); ad.selectedChar = charId;
+      } else if (ad.ownedChars.includes(charId)) {
+        ad.selectedChar = charId;
+      }
+    } else if (action === 'upgradeStat') {
+      const key = stat + 'Lv';
+      const curLv = ad[key] || 0;
+      const cost = (curLv + 1) * 120;
+      if (curLv < 10 && p.mong >= cost) {
+        p.mong -= cost; ad[key] = curLv + 1;
+      }
+    }
+    p.attackData = ad;
+    savePlayerToDB(p);
+    socket.emit('shopUpdated', p);
+  });
 
+  socket.on('startAttackGame', ({ mode }) => {
+    startAttackMatch(socket.id, mode || 'showdown');
+  });
+
+  socket.on('attackPlayerMove', ({ x, z, rotY }) => {
+    const p = players[socket.id]; if (!p || !p.attackRoomId) return;
+    const room = attackRooms[p.attackRoomId]; if (!room) return;
+    const f = room.fighters[socket.id];
+    if (f && f.alive) {
+      f.x = Math.max(-27, Math.min(27, x));
+      f.z = Math.max(-24, Math.min(24, z));
+      f.rotY = rotY;
+    }
+  });
+
+  socket.on('attackUseAction', ({ type, angle }) => {
+    const p = players[socket.id]; if (!p || !p.attackRoomId) return;
+    const room = attackRooms[p.attackRoomId]; if (!room) return;
+    const f = room.fighters[socket.id];
+    if (!f || !f.alive) return;
+
+    if (type === 'basic' && f.shootCd <= 0) {
+      fireAttackProjectile(room, f, angle, false);
+      f.shootCd = 0.45;
+    } else if (type === 'super' && f.superCharge >= 100) {
+      f.superCharge = 0;
+      fireAttackProjectile(room, f, angle, true);
+    } else if (type === 'gadget' && ['special', 'yellow', 'admin'].includes(f.citizenship) && f.gadgetCd <= 0) {
+      f.gadgetCd = 10;
+      f.hp = Math.min(f.maxHp, f.hp + Math.round(f.maxHp * 0.35));
+    } else if (type === 'hyper' && ['yellow', 'admin'].includes(f.citizenship) && f.hyperCharge >= 100) {
+      f.hyperCharge = 0;
+      f.hyperActiveTimer = 7.0;
+    }
+  });
+
+  socket.on('leaveAttackMatch', () => {
+    const p = players[socket.id]; if (!p || !p.attackRoomId) return;
+    const roomId = p.attackRoomId;
+    p.attackRoomId = null;
+    if (attackRooms[roomId]) {
+      const room = attackRooms[roomId];
+      if (room.loopTimer) clearInterval(room.loopTimer);
+      delete attackRooms[roomId];
+    }
+  });
+
+  socket.on('exchangeTransfer', ({ targetId, mongAmount, giftTop }) => {
+    const sender = players[socket.id], receiver = players[targetId];
+    if (!sender || !receiver || socket.id === targetId) return;
     const amt = Math.max(0, Math.min(sender.mong, parseInt(mongAmount) || 0));
     if (amt > 0) { sender.mong -= amt; receiver.mong += amt; }
-    if (giftTop && sender.ownedTops.includes(giftTop) && !receiver.ownedTops.includes(giftTop)) {
-      receiver.ownedTops.push(giftTop);
-    }
-
+    if (giftTop && sender.ownedTops.includes(giftTop) && !receiver.ownedTops.includes(giftTop)) receiver.ownedTops.push(giftTop);
+    syncCitizenship(receiver, io.sockets.sockets.get(targetId));
     savePlayerToDB(sender); savePlayerToDB(receiver);
-
     const giftText = giftTop ? (' 및 [' + giftTop + '] 의상') : '';
     socket.emit('shopUpdated', sender);
     io.to(targetId).emit('shopUpdated', receiver);
-    io.to(targetId).emit('chatMessage', {
-      id: 'system', name: '🏦 교환소 알림',
-      text: sender.name + '님이 ' + amt + '몽' + giftText + '을 보냈습니다!!!'
-    });
+    io.to(targetId).emit('chatMessage', { id: 'system', name: '🏦 교환소 알림', text: sender.name + '님이 ' + amt + '몽' + giftText + '을 보냈습니다!!!' });
   });
 
   socket.on('playerMovement', (data) => {
-    const p = players[socket.id];
-    if (!p) return;
+    const p = players[socket.id]; if (!p) return;
     p.x = data.x; p.y = data.y; p.z = data.z; p.rotY = data.rotY; p.isMoving = !!data.isMoving;
     if (p.roomId && rooms[p.roomId]) {
       const room = rooms[p.roomId];
@@ -1019,27 +1376,24 @@ io.on('connection', (socket) => {
 
   socket.on('playGesture', (gestureName) => {
     const p = players[socket.id];
-    if (p && !p.roomId) io.emit('playerGesture', { id: socket.id, gesture: gestureName });
+    if (p && !p.roomId && !p.attackRoomId) io.emit('playerGesture', { id: socket.id, gesture: gestureName });
   });
 
   socket.on('chatMessage', (msg) => {
     const p = players[socket.id];
-    if (p && msg && msg.trim()) {
-      io.emit('chatMessage', { id: socket.id, name: p.name, text: msg.trim().substring(0, 100) });
-    }
+    if (p && msg && msg.trim()) io.emit('chatMessage', { id: socket.id, name: p.name, text: msg.trim().substring(0, 100) });
   });
 
   socket.on('requestStartLobby', ({ type, cpuCount, mode }) => {
     const p = players[socket.id];
-    if (!p || p.roomId) return;
+    if (!p || p.roomId || p.attackRoomId) return;
     createMinigameRoom(socket.id, type, cpuCount, mode);
   });
 
   socket.on('joinMinigameLobby', ({ roomId }) => {
     const p = players[socket.id];
     const room = roomId ? rooms[roomId] : Object.values(rooms).find(r => r.phase === 'lobby');
-    if (!p || p.roomId || !room || room.phase !== 'lobby') return;
-
+    if (!p || p.roomId || p.attackRoomId || !room || room.phase !== 'lobby') return;
     p.roomId = room.id;
     room.participants[socket.id] = { id: socket.id, name: p.name, isCpu: false };
     const payload = { roomId: room.id, timeLeft: room.timeLeft, participants: room.participants };
@@ -1048,15 +1402,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('hostForceStartLobby', () => {
-    const p = players[socket.id];
-    if (!p || !p.roomId) return;
+    const p = players[socket.id]; if (!p || !p.roomId) return;
     const room = rooms[p.roomId];
     if (room && room.phase === 'lobby' && room.hostId === socket.id) onRoomLobbyFinished(room.id);
   });
 
   socket.on('hostCancelLobby', () => {
-    const p = players[socket.id];
-    if (!p || !p.roomId) return;
+    const p = players[socket.id]; if (!p || !p.roomId) return;
     const room = rooms[p.roomId];
     if (room && room.phase === 'lobby' && room.hostId === socket.id) {
       emitToRoom(room, 'minigameCancelled', { roomId: room.id, reason: '방장이 미니게임 모집을 취소했습니다ㅠㅠ' });
@@ -1066,8 +1418,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('confirmColorflipTeams', ({ teamCount, assignments }) => {
-    const p = players[socket.id];
-    if (!p || !p.roomId) return;
+    const p = players[socket.id]; if (!p || !p.roomId) return;
     const room = rooms[p.roomId];
     if (room && room.phase === 'team_setup' && room.hostId === socket.id) {
       startColorFlipRoom(room.id, Math.max(2, Math.min(4, parseInt(teamCount) || 2)), assignments);
@@ -1075,8 +1426,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('submitRps', (choice) => {
-    const p = players[socket.id];
-    if (!p || !p.roomId) return;
+    const p = players[socket.id]; if (!p || !p.roomId) return;
     const room = rooms[p.roomId];
     if (!room || room.phase !== 'rps' || !['rock', 'paper', 'scissors'].includes(choice)) return;
     const grp = room.rpsGroups.find(g => g.memberIds.includes(socket.id));
@@ -1084,8 +1434,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('freezetagUseSkill', (skill) => {
-    const p = players[socket.id];
-    if (!p || !p.roomId) return;
+    const p = players[socket.id]; if (!p || !p.roomId) return;
     const room = rooms[p.roomId];
     if (!room || room.phase !== 'playing' || room.type !== 'freezetag') return;
     const me = room.participants[socket.id];
@@ -1110,8 +1459,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('submitLiarSpeech', (text) => {
-    const p = players[socket.id];
-    if (!p || !p.roomId) return;
+    const p = players[socket.id]; if (!p || !p.roomId) return;
     const room = rooms[p.roomId];
     if (!room || room.phase !== 'liar_speak') return;
     const list = room.runoffIds || room.turnOrder;
@@ -1119,12 +1467,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('submitLiarVote', (targetId) => {
-    const p = players[socket.id];
-    if (!p || !p.roomId) return;
+    const p = players[socket.id]; if (!p || !p.roomId) return;
     const room = rooms[p.roomId];
-    if (room && room.phase === 'liar_vote' && room.participants[socket.id] && room.participants[targetId]) {
-      room.votes[socket.id] = targetId;
-    }
+    if (room && room.phase === 'liar_vote' && room.participants[socket.id] && room.participants[targetId]) room.votes[socket.id] = targetId;
   });
 
   socket.on('disconnect', () => {
@@ -1139,6 +1484,10 @@ io.on('connection', (socket) => {
           cleanupRoom(room.id);
         }
       }
+      if (p.attackRoomId && attackRooms[p.attackRoomId]) {
+        if (attackRooms[p.attackRoomId].loopTimer) clearInterval(attackRooms[p.attackRoomId].loopTimer);
+        delete attackRooms[p.attackRoomId];
+      }
     }
     delete players[socket.id];
     io.emit('playerDisconnected', socket.id);
@@ -1147,5 +1496,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log('Server v2.3-20261122 running on port ' + PORT);
+  console.log('Server v3.0-20261122 running on port ' + PORT);
 });
