@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const server = http.createServer(app);
@@ -9,6 +10,10 @@ const io = new Server(server, {
 });
 
 app.use(express.static(__dirname));
+
+const supabaseUrl = (process.env.SUPABASE_URL || '').trim();
+const supabaseKey = (process.env.SUPABASE_KEY || '').trim();
+const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 const players = {};
 
@@ -38,6 +43,32 @@ const SHOP_PRICES = {
   bottoms: { pants: 0, shorts: 30, skirt: 50, jeans: 50, overalls: 70, armorpants: 110 },
   themes: { original: 0, simple: 40, cute: 60, colorful: 70, dreamy: 90, jungle: 110, cathouse: 120 }
 };
+
+async function savePlayerToDB(p) {
+  if (!supabase || !p || !p.username || p.isGuest) return;
+  try {
+    await supabase
+      .from('game_profiles')
+      .update({
+        mong: p.mong,
+        speed_level: p.speedLevel,
+        jump_level: p.jumpLevel,
+        is_admin: !!p.isAdmin,
+        owned_tops: p.ownedTops,
+        owned_bottoms: p.ownedBottoms,
+        owned_themes: p.ownedThemes,
+        face: p.face,
+        top_style: p.topStyle,
+        top_color: p.topColor,
+        bottom_style: p.bottomStyle,
+        bottom_color: p.bottomColor,
+        updated_at: new Date().toISOString()
+      })
+      .eq('username', p.username);
+  } catch (err) {
+    console.error('DB Save Error:', err.message);
+  }
+}
 
 const WORLD_COINS = [];
 function spawnCoinPosition(id) {
@@ -109,46 +140,19 @@ const TILE_SIZE = 2.0;
 
 let mgLock = false;
 let mg = {
-  phase: 'idle',
-  type: null,
-  hostId: null,
-  cpuCount: 0,
-  mode: 'solo',
-  timeLeft: 0,
-  participants: {},
-  tiles: [],
-  teamAssignments: {},
-  arenaHalfSize: 19,
-  rpsGroups: [],
-  rpsPool: [],
-  targetItCount: 1,
-  liarId: null,
-  liarTopic: null,
-  turnOrder: [],
-  turnIndex: 0,
-  roundNum: 1,
-  speeches: [],
-  votes: {},
-  runoffIds: null,
-  loopTimer: null
+  phase: 'idle', type: null, hostId: null, cpuCount: 0, mode: 'solo',
+  timeLeft: 0, participants: {}, tiles: [], teamAssignments: {},
+  arenaHalfSize: 19, rpsGroups: [], rpsPool: [], targetItCount: 1,
+  liarId: null, liarTopic: null, turnOrder: [], turnIndex: 0,
+  roundNum: 1, speeches: [], votes: {}, runoffIds: null, loopTimer: null
 };
 
 function resetMinigame() {
   if (mg.loopTimer) clearInterval(mg.loopTimer);
-  mg.phase = 'idle';
-  mg.type = null;
-  mg.hostId = null;
-  mg.participants = {};
-  mg.tiles = [];
-  mg.teamAssignments = {};
-  mg.rpsGroups = [];
-  mg.rpsPool = [];
-  mg.liarId = null;
-  mg.liarTopic = null;
-  mg.turnOrder = [];
-  mg.speeches = [];
-  mg.votes = {};
-  mg.runoffIds = null;
+  mg.phase = 'idle'; mg.type = null; mg.hostId = null;
+  mg.participants = {}; mg.tiles = []; mg.teamAssignments = {};
+  mg.rpsGroups = []; mg.rpsPool = []; mg.liarId = null; mg.liarTopic = null;
+  mg.turnOrder = []; mg.speeches = []; mg.votes = {}; mg.runoffIds = null;
   mgLock = false;
   Object.values(players).forEach(p => { p.inMinigame = false; });
 }
@@ -156,21 +160,12 @@ function resetMinigame() {
 function openMinigameLobby(hostId, type, cpuCount, mode) {
   if (mgLock || mg.phase !== 'idle' || !players[hostId]) return false;
   mgLock = true;
-
-  mg.phase = 'lobby';
-  mg.type = type;
-  mg.hostId = hostId;
+  mg.phase = 'lobby'; mg.type = type; mg.hostId = hostId;
   mg.cpuCount = Math.max(0, Math.min(10, parseInt(cpuCount) || 0));
-  mg.mode = mode || 'solo';
-  mg.timeLeft = 30;
-  mg.participants = {};
+  mg.mode = mode || 'solo'; mg.timeLeft = 30; mg.participants = {};
 
   players[hostId].inMinigame = true;
-  mg.participants[hostId] = {
-    id: hostId,
-    name: players[hostId].name,
-    isCpu: false
-  };
+  mg.participants[hostId] = { id: hostId, name: players[hostId].name, isCpu: false };
 
   const titleMap = {
     colorflip: '🎨 색깔 뒤집기 (1분 / 최소 3명)',
@@ -179,28 +174,16 @@ function openMinigameLobby(hostId, type, cpuCount, mode) {
   };
 
   io.emit('minigameLobbyStarted', {
-    type: mg.type,
-    title: titleMap[type] || type,
-    hostId: hostId,
-    hostName: players[hostId].name,
-    mode: mg.mode,
-    cpuCount: mg.cpuCount,
-    timeLeft: mg.timeLeft,
-    participants: mg.participants
+    type: mg.type, title: titleMap[type] || type, hostId,
+    hostName: players[hostId].name, mode: mg.mode, cpuCount: mg.cpuCount,
+    timeLeft: mg.timeLeft, participants: mg.participants
   });
 
   mg.loopTimer = setInterval(() => {
     mg.timeLeft -= 1;
-    io.emit('minigameLobbyTick', {
-      timeLeft: mg.timeLeft,
-      participants: mg.participants
-    });
-    if (mg.timeLeft <= 0) {
-      clearInterval(mg.loopTimer);
-      onLobbyFinished();
-    }
+    io.emit('minigameLobbyTick', { timeLeft: mg.timeLeft, participants: mg.participants });
+    if (mg.timeLeft <= 0) { clearInterval(mg.loopTimer); onLobbyFinished(); }
   }, 1000);
-
   return true;
 }
 
@@ -214,42 +197,28 @@ function onLobbyFinished() {
   }
 
   const allList = Object.values(mg.participants);
-
   if (mg.type === 'colorflip') {
     if (allList.length < 3) {
-      io.emit('minigameCancelled', {
-        reason: '색깔 뒤집기는 총 3명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명) 다시 모집해 주세요.'
-      });
-      resetMinigame();
-      return;
+      io.emit('minigameCancelled', { reason: '색깔 뒤집기는 총 3명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명)' });
+      resetMinigame(); return;
     }
     if (mg.mode === 'team') {
       mg.phase = 'team_setup';
       allList.forEach((p, idx) => { mg.teamAssignments[p.id] = idx % 2; });
-      io.emit('colorflipTeamSetup', {
-        hostId: mg.hostId,
-        participants: mg.participants,
-        assignments: mg.teamAssignments
-      });
+      io.emit('colorflipTeamSetup', { hostId: mg.hostId, participants: mg.participants, assignments: mg.teamAssignments });
     } else {
       startColorFlipMatch(1, {});
     }
   } else if (mg.type === 'freezetag') {
     if (allList.length < 5) {
-      io.emit('minigameCancelled', {
-        reason: '얼음땡은 총 5명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명) 다시 모집해 주세요.'
-      });
-      resetMinigame();
-      return;
+      io.emit('minigameCancelled', { reason: '얼음땡은 총 5명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명)' });
+      resetMinigame(); return;
     }
     startRpsTournament();
   } else if (mg.type === 'liar') {
     if (allList.length < 4) {
-      io.emit('minigameCancelled', {
-        reason: '거짓말 탐지기는 총 4명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명) 다시 모집해 주세요.'
-      });
-      resetMinigame();
-      return;
+      io.emit('minigameCancelled', { reason: '거짓말 탐지기는 총 4명 이상이어야 시작할 수 있습니다! (현재 ' + allList.length + '명)' });
+      resetMinigame(); return;
     }
     startLiarGame();
   }
@@ -257,44 +226,30 @@ function onLobbyFinished() {
 
 function startColorFlipMatch(teamCount, assignments) {
   const safeTeamCount = (mg.mode === 'team') ? Math.max(2, Math.min(4, parseInt(teamCount) || 2)) : 1;
-  mg.phase = 'playing';
-  mg.timeLeft = 60;
+  mg.phase = 'playing'; mg.timeLeft = 60;
   mg.tiles = new Array(GRID_SIZE * GRID_SIZE).fill(null);
 
-  const list = Object.values(mg.participants);
-  list.forEach((p, idx) => {
-    let color = GAME_COLORS[idx % GAME_COLORS.length];
-    let teamIdx = null;
+  Object.values(mg.participants).forEach((p, idx) => {
+    let color = GAME_COLORS[idx % GAME_COLORS.length], teamIdx = null;
     if (mg.mode === 'team') {
       const rawT = (assignments[p.id] !== undefined) ? parseInt(assignments[p.id]) : (idx % safeTeamCount);
       teamIdx = ((rawT % safeTeamCount) + safeTeamCount) % safeTeamCount;
       color = TEAM_PALETTE[teamIdx].color;
     }
     const angle = Math.random() * Math.PI * 2;
-    p.color = color;
-    p.teamIdx = teamIdx;
-    p.x = (Math.random() - 0.5) * 22;
-    p.z = (Math.random() - 0.5) * 22;
-    p.rotY = angle;
-    p.isMoving = p.isCpu;
-    p.dirX = Math.sin(angle);
-    p.dirZ = Math.cos(angle);
+    p.color = color; p.teamIdx = teamIdx;
+    p.x = (Math.random() - 0.5) * 22; p.z = (Math.random() - 0.5) * 22;
+    p.rotY = angle; p.isMoving = p.isCpu;
+    p.dirX = Math.sin(angle); p.dirZ = Math.cos(angle);
     p.aiTimer = 1 + Math.random() * 1.5;
   });
 
-  io.emit('colorflipMatchStarted', {
-    mode: mg.mode,
-    teamCount: safeTeamCount,
-    timeLeft: mg.timeLeft,
-    participants: mg.participants,
-    tiles: mg.tiles
-  });
+  io.emit('colorflipMatchStarted', { mode: mg.mode, teamCount: safeTeamCount, timeLeft: mg.timeLeft, participants: mg.participants, tiles: mg.tiles });
 
   let secAccum = 0;
   mg.loopTimer = setInterval(() => {
     if (mg.phase !== 'playing') return;
-    const dt = 0.05;
-    secAccum += dt;
+    const dt = 0.05; secAccum += dt;
 
     Object.values(mg.participants).forEach(p => {
       if (p.isCpu) {
@@ -307,7 +262,6 @@ function startColorFlipMatch(teamCount, assignments) {
         p.x = Math.max(-15, Math.min(15, p.x + p.dirX * 0.36));
         p.z = Math.max(-15, Math.min(15, p.z + p.dirZ * 0.36));
       }
-
       const col = Math.floor((p.x + (GRID_SIZE * TILE_SIZE) / 2) / TILE_SIZE);
       const row = Math.floor((p.z + (GRID_SIZE * TILE_SIZE) / 2) / TILE_SIZE);
       if (col >= 0 && col < GRID_SIZE && row >= 0 && row < GRID_SIZE) {
@@ -321,12 +275,9 @@ function startColorFlipMatch(teamCount, assignments) {
     });
 
     io.emit('minigameActorsUpdate', mg.participants);
-
     if (secAccum >= 1.0) {
-      secAccum = 0;
-      mg.timeLeft -= 1;
-      const scoreboard = computeColorFlipScores();
-      io.emit('colorflipTick', { timeLeft: mg.timeLeft, scoreboard });
+      secAccum = 0; mg.timeLeft -= 1;
+      io.emit('colorflipTick', { timeLeft: mg.timeLeft, scoreboard: computeColorFlipScores() });
       if (mg.timeLeft <= 0) finishColorFlipMatch();
     }
   }, 50);
@@ -335,7 +286,7 @@ function startColorFlipMatch(teamCount, assignments) {
 function computeColorFlipScores() {
   if (mg.mode === 'team') {
     const teamCounts = {};
-    mg.tiles.forEach(ownerKey => { if (ownerKey) teamCounts[ownerKey] = (teamCounts[ownerKey] || 0) + 1; });
+    mg.tiles.forEach(k => { if (k) teamCounts[k] = (teamCounts[k] || 0) + 1; });
     const usedTeams = [...new Set(Object.values(mg.participants).map(p => p.teamIdx))];
     return usedTeams.map(tIdx => ({
       key: 'team_' + tIdx, teamIdx: tIdx,
@@ -347,37 +298,32 @@ function computeColorFlipScores() {
     const counts = {};
     mg.tiles.forEach(id => { if (id) counts[id] = (counts[id] || 0) + 1; });
     return Object.values(mg.participants).map(p => ({
-      key: p.id, id: p.id, name: p.name, color: p.color, isCpu: p.isCpu,
-      count: counts[p.id] || 0
+      key: p.id, id: p.id, name: p.name, color: p.color, isCpu: p.isCpu, count: counts[p.id] || 0
     })).sort((a, b) => b.count - a.count);
   }
 }
 
 function finishColorFlipMatch() {
   if (mg.loopTimer) clearInterval(mg.loopTimer);
-  const scoreboard = computeColorFlipScores();
-  const top = scoreboard[0];
+  const scoreboard = computeColorFlipScores(), top = scoreboard[0];
   let summaryText = '';
 
   if (mg.mode === 'team' && top) {
     Object.values(mg.participants).forEach(p => {
       if (p.teamIdx === top.teamIdx && !p.isCpu && players[p.id]) {
         players[p.id].mong = (players[p.id].mong || 0) + 100;
+        savePlayerToDB(players[p.id]);
       }
     });
     summaryText = '우승 팀: ' + top.name + ' (' + top.count + '칸) — 모둠 전원 +100몽 지급!';
   } else if (top) {
     if (!top.isCpu && players[top.id]) {
       players[top.id].mong = (players[top.id].mong || 0) + 100;
+      savePlayerToDB(players[top.id]);
     }
     summaryText = '1등 우승: ' + top.name + ' (' + top.count + '칸) — +100몽 지급!';
   }
-
-  io.emit('minigameEnded', {
-    title: '🎨 색깔 뒤집기 결과',
-    summaryText,
-    updatedPlayers: players
-  });
+  io.emit('minigameEnded', { title: '🎨 색깔 뒤집기 결과', summaryText, updatedPlayers: players });
   resetMinigame();
 }
 
@@ -396,26 +342,16 @@ function runRpsRound() {
       const others = Object.keys(mg.participants).filter(id => !itIds.includes(id));
       while (itIds.length < mg.targetItCount && others.length > 0) itIds.push(others.shift());
     }
-    startFreezeTagMatch(itIds);
-    return;
+    startFreezeTagMatch(itIds); return;
   }
 
-  const shuffled = [...mg.rpsPool].sort(() => Math.random() - 0.5);
-  const groups = [];
+  const shuffled = [...mg.rpsPool].sort(() => Math.random() - 0.5), groups = [];
   let i = 0;
   while (i < shuffled.length) {
     const rem = shuffled.length - i;
-    if (rem === 4) {
-      groups.push(shuffled.slice(i, i + 2));
-      groups.push(shuffled.slice(i + 2, i + 4));
-      break;
-    } else if (rem <= 3) {
-      groups.push(shuffled.slice(i));
-      break;
-    } else {
-      groups.push(shuffled.slice(i, i + 3));
-      i += 3;
-    }
+    if (rem === 4) { groups.push(shuffled.slice(i, i + 2)); groups.push(shuffled.slice(i + 2, i + 4)); break; }
+    else if (rem <= 3) { groups.push(shuffled.slice(i)); break; }
+    else { groups.push(shuffled.slice(i, i + 3)); i += 3; }
   }
 
   mg.rpsGroups = groups.map((memberIds, idx) => {
@@ -429,21 +365,12 @@ function runRpsRound() {
     return { groupIdx: idx, memberIds, choices };
   });
 
-  io.emit('rpsRoundStarted', {
-    targetItCount: mg.targetItCount,
-    groups: mg.rpsGroups,
-    participants: mg.participants,
-    timeLeft: 10
-  });
-
+  io.emit('rpsRoundStarted', { targetItCount: mg.targetItCount, groups: mg.rpsGroups, participants: mg.participants, timeLeft: 10 });
   let rpsTimer = 10;
   mg.loopTimer = setInterval(() => {
-    rpsTimer -= 1;
-    io.emit('rpsTick', { timeLeft: rpsTimer });
-    const allChosen = mg.rpsGroups.every(g => g.memberIds.every(id => g.choices[id]));
-    if (allChosen || rpsTimer <= 0) {
-      clearInterval(mg.loopTimer);
-      resolveRpsRound();
+    rpsTimer -= 1; io.emit('rpsTick', { timeLeft: rpsTimer });
+    if (mg.rpsGroups.every(g => g.memberIds.every(id => g.choices[id])) || rpsTimer <= 0) {
+      clearInterval(mg.loopTimer); resolveRpsRound();
     }
   }, 1000);
 }
@@ -468,128 +395,77 @@ function resolveRpsRound() {
 }
 
 function startFreezeTagMatch(itIds) {
-  mg.phase = 'playing';
-  mg.timeLeft = 90;
-
+  mg.phase = 'playing'; mg.timeLeft = 90;
   const count = Object.keys(mg.participants).length;
   mg.arenaHalfSize = Math.min(33, 18 + Math.floor(count * 1.1));
   const spawnLim = mg.arenaHalfSize - 2.5;
 
   Object.values(mg.participants).forEach(p => {
     const isIt = itIds.includes(p.id);
-    p.role = isIt ? 'it' : 'runner';
-    p.status = 'normal';
+    p.role = isIt ? 'it' : 'runner'; p.status = 'normal';
     p.x = isIt ? (Math.random() - 0.5) * 4 : (Math.random() > 0.5 ? 1 : -1) * (spawnLim * 0.65 + Math.random() * (spawnLim * 0.25));
     p.y = 0;
     p.z = isIt ? (Math.random() - 0.5) * 4 : (Math.random() > 0.5 ? 1 : -1) * (spawnLim * 0.65 + Math.random() * (spawnLim * 0.25));
-    p.rotY = Math.random() * Math.PI * 2;
-    p.isMoving = p.isCpu;
-    p.dirX = Math.sin(p.rotY);
-    p.dirZ = Math.cos(p.rotY);
-    p.aiTimer = 0.6;
-    p.freezeCooldown = 0;
+    p.rotY = Math.random() * Math.PI * 2; p.isMoving = p.isCpu;
+    p.dirX = Math.sin(p.rotY); p.dirZ = Math.cos(p.rotY);
+    p.aiTimer = 0.6; p.freezeCooldown = 0;
   });
 
-  io.emit('freezetagMatchStarted', {
-    timeLeft: mg.timeLeft,
-    arenaHalfSize: mg.arenaHalfSize,
-    participants: mg.participants
-  });
+  io.emit('freezetagMatchStarted', { timeLeft: mg.timeLeft, arenaHalfSize: mg.arenaHalfSize, participants: mg.participants });
 
   let secAccum = 0;
   mg.loopTimer = setInterval(() => {
     if (mg.phase !== 'playing') return;
-    const dt = 0.05;
-    secAccum += dt;
-
-    const allP = Object.values(mg.participants);
-    const its = allP.filter(p => p.role === 'it');
-    const runners = allP.filter(p => p.role === 'runner');
+    const dt = 0.05; secAccum += dt;
+    const allP = Object.values(mg.participants), its = allP.filter(p => p.role === 'it'), runners = allP.filter(p => p.role === 'runner');
     const lim = mg.arenaHalfSize - 1.0;
 
     allP.forEach(p => {
       if (p.freezeCooldown > 0) p.freezeCooldown = Math.max(0, p.freezeCooldown - dt);
       if (!p.isCpu) return;
-
       if (p.role === 'it') {
         const targets = runners.filter(r => r.status === 'normal');
         if (targets.length > 0) {
           targets.sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z));
-          const t = targets[0];
-          const ang = Math.atan2(t.x - p.x, t.z - p.z);
-          p.rotY = ang;
-          p.x = Math.max(-lim, Math.min(lim, p.x + Math.sin(ang) * 0.23));
-          p.z = Math.max(-lim, Math.min(lim, p.z + Math.cos(ang) * 0.23));
-          p.isMoving = true;
+          const ang = Math.atan2(targets[0].x - p.x, targets[0].z - p.z);
+          p.rotY = ang; p.x = Math.max(-lim, Math.min(lim, p.x + Math.sin(ang) * 0.23)); p.z = Math.max(-lim, Math.min(lim, p.z + Math.cos(ang) * 0.23)); p.isMoving = true;
         }
       } else {
         if (p.status === 'out') { p.isMoving = false; return; }
-
         if (p.status === 'frozen') {
           p.isMoving = false;
           const nearbyFrozen = runners.filter(r => r.status === 'frozen' && Math.hypot(r.x - p.x, r.z - p.z) <= 3.2);
           if (nearbyFrozen.length === 2) {
             nearbyFrozen.forEach(r => { r.status = 'normal'; r.freezeCooldown = 2.0; });
-            io.emit('freezetagAction', {
-              type: 'clang',
-              actorId: p.id,
-              targetId: nearbyFrozen.find(r => r.id !== p.id).id,
-              participants: mg.participants
-            });
+            io.emit('freezetagAction', { type: 'clang', actorId: p.id, targetId: nearbyFrozen.find(r => r.id !== p.id).id, participants: mg.participants });
           }
           return;
         }
-
-        let nearestIt = null;
-        let minItDist = Infinity;
-        its.forEach(it => {
-          const d = Math.hypot(it.x - p.x, it.z - p.z);
-          if (d < minItDist) { minItDist = d; nearestIt = it; }
-        });
-
+        let nearestIt = null, minItDist = Infinity;
+        its.forEach(it => { const d = Math.hypot(it.x - p.x, it.z - p.z); if (d < minItDist) { minItDist = d; nearestIt = it; } });
         if (nearestIt && minItDist < 3.6 && p.freezeCooldown <= 0) {
-          p.status = 'frozen';
-          p.isMoving = false;
-          io.emit('freezetagAction', { type: 'freeze', actorId: p.id, targetId: p.id, participants: mg.participants });
-          return;
+          p.status = 'frozen'; p.isMoving = false;
+          io.emit('freezetagAction', { type: 'freeze', actorId: p.id, targetId: p.id, participants: mg.participants }); return;
         }
-
         const frozenMate = runners.find(r => r.status === 'frozen');
         if (frozenMate) {
-          const dist = Math.hypot(frozenMate.x - p.x, frozenMate.z - p.z);
-          const ang = Math.atan2(frozenMate.x - p.x, frozenMate.z - p.z);
-          p.rotY = ang;
-          p.x = Math.max(-lim, Math.min(lim, p.x + Math.sin(ang) * 0.24));
-          p.z = Math.max(-lim, Math.min(lim, p.z + Math.cos(ang) * 0.24));
-          p.isMoving = true;
-          if (dist < 2.3) {
-            frozenMate.status = 'normal';
-            frozenMate.freezeCooldown = 2.0;
-            io.emit('freezetagAction', { type: 'fire', actorId: p.id, targetId: frozenMate.id, participants: mg.participants });
-          }
+          const dist = Math.hypot(frozenMate.x - p.x, frozenMate.z - p.z), ang = Math.atan2(frozenMate.x - p.x, frozenMate.z - p.z);
+          p.rotY = ang; p.x = Math.max(-lim, Math.min(lim, p.x + Math.sin(ang) * 0.24)); p.z = Math.max(-lim, Math.min(lim, p.z + Math.cos(ang) * 0.24)); p.isMoving = true;
+          if (dist < 2.3) { frozenMate.status = 'normal'; frozenMate.freezeCooldown = 2.0; io.emit('freezetagAction', { type: 'fire', actorId: p.id, targetId: frozenMate.id, participants: mg.participants }); }
           return;
         }
-
         p.isMoving = true;
         if (nearestIt && minItDist < 14) {
-          const awayX = p.x - nearestIt.x;
-          const awayZ = p.z - nearestIt.z;
-          let ang = Math.atan2(awayX, awayZ);
-          if (Math.abs(p.x) > lim - 2.0 || Math.abs(p.z) > lim - 2.0) {
-            ang = Math.atan2(-p.x, -p.z) + (Math.random() - 0.5) * 1.2;
-          }
-          p.rotY = ang;
-          p.x = Math.max(-lim, Math.min(lim, p.x + Math.sin(ang) * 0.24));
-          p.z = Math.max(-lim, Math.min(lim, p.z + Math.cos(ang) * 0.24));
+          let ang = Math.atan2(p.x - nearestIt.x, p.z - nearestIt.z);
+          if (Math.abs(p.x) > lim - 2.0 || Math.abs(p.z) > lim - 2.0) ang = Math.atan2(-p.x, -p.z) + (Math.random() - 0.5) * 1.2;
+          p.rotY = ang; p.x = Math.max(-lim, Math.min(lim, p.x + Math.sin(ang) * 0.24)); p.z = Math.max(-lim, Math.min(lim, p.z + Math.cos(ang) * 0.24));
         } else {
           p.aiTimer -= dt;
           if (p.aiTimer <= 0 || Math.abs(p.x) > lim - 1.5 || Math.abs(p.z) > lim - 1.5) {
             const ang = Math.atan2(-p.x + (Math.random() - 0.5) * lim, -p.z + (Math.random() - 0.5) * lim);
-            p.dirX = Math.sin(ang); p.dirZ = Math.cos(ang); p.rotY = ang;
-            p.aiTimer = 0.8 + Math.random() * 1.2;
+            p.dirX = Math.sin(ang); p.dirZ = Math.cos(ang); p.rotY = ang; p.aiTimer = 0.8 + Math.random() * 1.2;
           }
-          p.x = Math.max(-lim, Math.min(lim, p.x + p.dirX * 0.22));
-          p.z = Math.max(-lim, Math.min(lim, p.z + p.dirZ * 0.22));
+          p.x = Math.max(-lim, Math.min(lim, p.x + p.dirX * 0.22)); p.z = Math.max(-lim, Math.min(lim, p.z + p.dirZ * 0.22));
         }
       }
     });
@@ -597,35 +473,21 @@ function startFreezeTagMatch(itIds) {
     its.forEach(it => {
       runners.forEach(r => {
         if (r.status === 'normal' && Math.hypot(it.x - r.x, it.z - r.z) < 1.5) {
-          r.status = 'out';
-          r.isMoving = false;
-          r.x = (Math.random() - 0.5) * 14;
-          r.y = 4.6;
-          r.z = -(mg.arenaHalfSize + 4.5);
-          r.rotY = 0;
+          r.status = 'out'; r.isMoving = false;
+          r.x = (Math.random() - 0.5) * 14; r.y = 4.6; r.z = -(mg.arenaHalfSize + 4.5); r.rotY = 0;
           if (!r.isCpu && players[r.id]) {
             players[r.id].mong = Math.max(0, (players[r.id].mong || 0) - 10);
+            savePlayerToDB(players[r.id]);
           }
-          io.emit('freezetagAction', {
-            type: 'out', actorId: it.id, targetId: r.id,
-            participants: mg.participants, updatedPlayers: players
-          });
+          io.emit('freezetagAction', { type: 'out', actorId: it.id, targetId: r.id, participants: mg.participants, updatedPlayers: players });
         }
       });
     });
 
     io.emit('minigameActorsUpdate', mg.participants);
-
-    const activeRunners = runners.filter(r => r.status === 'normal');
-    if (activeRunners.length === 0) {
-      finishFreezeTagMatch(true);
-      return;
-    }
-
+    if (runners.filter(r => r.status === 'normal').length === 0) { finishFreezeTagMatch(true); return; }
     if (secAccum >= 1.0) {
-      secAccum = 0;
-      mg.timeLeft -= 1;
-      io.emit('freezetagTick', { timeLeft: mg.timeLeft });
+      secAccum = 0; mg.timeLeft -= 1; io.emit('freezetagTick', { timeLeft: mg.timeLeft });
       if (mg.timeLeft <= 0) finishFreezeTagMatch(false);
     }
   }, 50);
@@ -638,7 +500,10 @@ function finishFreezeTagMatch(itsWon) {
 
   if (itsWon) {
     allP.forEach(p => {
-      if (p.role === 'it' && !p.isCpu && players[p.id]) players[p.id].mong = (players[p.id].mong || 0) + 200;
+      if (p.role === 'it' && !p.isCpu && players[p.id]) {
+        players[p.id].mong = (players[p.id].mong || 0) + 200;
+        savePlayerToDB(players[p.id]);
+      }
     });
     summaryText = '👹 술래 팀 승리! 전원 얼음/아웃 성공 — 술래 전원 +200몽 지급!';
   } else {
@@ -646,16 +511,12 @@ function finishFreezeTagMatch(itsWon) {
       if (p.role === 'runner' && !p.isCpu && players[p.id]) {
         if (p.status === 'normal' || p.status === 'frozen') players[p.id].mong = (players[p.id].mong || 0) + 200;
         else if (p.status === 'out') players[p.id].mong = (players[p.id].mong || 0) + 100;
+        savePlayerToDB(players[p.id]);
       }
     });
     summaryText = '🏃 도망자 팀 승리! 생존·얼음 상태 +200몽 / 생중계 관중석(아웃) +100몽 지급!';
   }
-
-  io.emit('minigameEnded', {
-    title: '🧊 얼음땡 최종 결과',
-    summaryText,
-    updatedPlayers: players
-  });
+  io.emit('minigameEnded', { title: '🧊 얼음땡 최종 결과', summaryText, updatedPlayers: players });
   resetMinigame();
 }
 
@@ -665,118 +526,68 @@ function startLiarGame() {
   mg.liarId = ids[Math.floor(Math.random() * ids.length)];
   mg.liarTopic = LIAR_WORDS_50[Math.floor(Math.random() * LIAR_WORDS_50.length)];
   mg.turnOrder = [...ids].sort(() => Math.random() - 0.5);
-  mg.turnIndex = 0;
-  mg.roundNum = 1;
-  mg.speeches = [];
-  mg.votes = {};
-  mg.runoffIds = null;
+  mg.turnIndex = 0; mg.roundNum = 1; mg.speeches = []; mg.votes = {}; mg.runoffIds = null;
 
   const radius = 5.5;
   mg.turnOrder.forEach((id, idx) => {
-    const ang = (idx / mg.turnOrder.length) * Math.PI * 2;
-    const p = mg.participants[id];
-    p.x = Math.sin(ang) * radius;
-    p.y = 0;
-    p.z = Math.cos(ang) * radius;
-    p.rotY = ang + Math.PI;
-    p.isMoving = false;
+    const ang = (idx / mg.turnOrder.length) * Math.PI * 2, p = mg.participants[id];
+    p.x = Math.sin(ang) * radius; p.y = 0; p.z = Math.cos(ang) * radius; p.rotY = ang + Math.PI; p.isMoving = false;
   });
 
   mg.turnOrder.forEach(id => {
     if (!mg.participants[id].isCpu) {
       const isLiar = (id === mg.liarId);
-      io.to(id).emit('liarGameStarted', {
-        category: mg.liarTopic.cat,
-        word: isLiar ? null : mg.liarTopic.word,
-        isLiar,
-        turnOrder: mg.turnOrder,
-        participants: mg.participants
-      });
+      io.to(id).emit('liarGameStarted', { category: mg.liarTopic.cat, word: isLiar ? null : mg.liarTopic.word, isLiar, turnOrder: mg.turnOrder, participants: mg.participants });
     }
   });
-
   advanceLiarTurn();
 }
 
 function advanceLiarTurn() {
   if (mg.loopTimer) clearInterval(mg.loopTimer);
-
   if (mg.runoffIds) {
-    if (mg.turnIndex >= mg.runoffIds.length) {
-      startLiarVote(mg.runoffIds);
-      return;
-    }
-    broadcastSpeakerTurn(mg.runoffIds[mg.turnIndex], '동점자 최후 변론');
-    return;
+    if (mg.turnIndex >= mg.runoffIds.length) { startLiarVote(mg.runoffIds); return; }
+    broadcastSpeakerTurn(mg.runoffIds[mg.turnIndex], '동점자 최후 변론'); return;
   }
-
   if (mg.turnIndex >= mg.turnOrder.length) {
-    if (mg.roundNum < 2) {
-      mg.roundNum += 1;
-      mg.turnIndex = 0;
-    } else {
-      startLiarVote(mg.turnOrder);
-      return;
-    }
+    if (mg.roundNum < 2) { mg.roundNum += 1; mg.turnIndex = 0; }
+    else { startLiarVote(mg.turnOrder); return; }
   }
-
   broadcastSpeakerTurn(mg.turnOrder[mg.turnIndex], mg.roundNum + '바퀴째 발언');
 }
 
 function generateSmartCpuSpeech(cpuId) {
-  const isLiar = (cpuId === mg.liarId);
-  if (!isLiar) {
+  if (cpuId !== mg.liarId) {
     const num = parseInt(cpuId.replace('cpu_', '') || '1');
-    const idx = (mg.roundNum * 3 + mg.turnIndex + num) % mg.liarTopic.hints.length;
-    return mg.liarTopic.hints[idx];
-  } else {
-    const crypticPool = [
-      '분위기나 상황으로만 떠올리면 은근히 헷갈릴 수도 있을 것 같아요.',
-      '앞에서 나온 이야기들을 들으면서 머릿속으로 그림을 그려보고 있어요.',
-      '직접 마주했을 때 느껴지는 공기나 템포가 꽤 인상적인 주제네요.',
-      '사람마다 받아들이는 포인트가 조금씩 다를 수 있는 대상이라고 생각해요.'
-    ];
-    return crypticPool[(mg.turnIndex + mg.roundNum) % crypticPool.length];
+    return mg.liarTopic.hints[(mg.roundNum * 3 + mg.turnIndex + num) % mg.liarTopic.hints.length];
   }
+  const crypticPool = [
+    '분위기나 상황으로만 떠올리면 은근히 헷갈릴 수도 있을 것 같아요.',
+    '앞에서 나온 이야기들을 들으면서 머릿속으로 그림을 그려보고 있어요.',
+    '직접 마주했을 때 느껴지는 공기나 템포가 꽤 인상적인 주제네요.',
+    '사람마다 받아들이는 포인트가 조금씩 다를 수 있는 대상이라고 생각해요.'
+  ];
+  return crypticPool[(mg.turnIndex + mg.roundNum) % crypticPool.length];
 }
 
 function broadcastSpeakerTurn(speakerId, label) {
   let turnTime = 60;
-  io.emit('liarTurnUpdate', {
-    speakerId,
-    speakerName: mg.participants[speakerId] ? mg.participants[speakerId].name : '',
-    label,
-    timeLeft: turnTime,
-    speeches: mg.speeches
-  });
-
+  io.emit('liarTurnUpdate', { speakerId, speakerName: mg.participants[speakerId] ? mg.participants[speakerId].name : '', label, timeLeft: turnTime, speeches: mg.speeches });
   if (mg.participants[speakerId] && mg.participants[speakerId].isCpu) {
-    setTimeout(() => {
-      if (mg.phase !== 'liar_speak') return;
-      recordLiarSpeech(speakerId, generateSmartCpuSpeech(speakerId));
-    }, 3200);
+    setTimeout(() => { if (mg.phase === 'liar_speak') recordLiarSpeech(speakerId, generateSmartCpuSpeech(speakerId)); }, 3200);
     return;
   }
-
   mg.loopTimer = setInterval(() => {
-    turnTime -= 1;
-    io.emit('liarTurnTick', { timeLeft: turnTime });
-    if (turnTime <= 0) {
-      clearInterval(mg.loopTimer);
-      recordLiarSpeech(speakerId, '(시간 초과로 발언하지 못했습니다)');
-    }
+    turnTime -= 1; io.emit('liarTurnTick', { timeLeft: turnTime });
+    if (turnTime <= 0) { clearInterval(mg.loopTimer); recordLiarSpeech(speakerId, '(시간 초과로 발언하지 못했습니다)'); }
   }, 1000);
 }
 
 function recordLiarSpeech(speakerId, text) {
   if (mg.loopTimer) clearInterval(mg.loopTimer);
-  const p = mg.participants[speakerId];
-  if (!p) return;
-
+  const p = mg.participants[speakerId]; if (!p) return;
   const entry = { id: speakerId, name: p.name, text: text.trim().substring(0, 100) };
-  mg.speeches.push(entry);
-  io.emit('liarNewSpeech', { entry, speeches: mg.speeches });
-
+  mg.speeches.push(entry); io.emit('liarNewSpeech', { entry, speeches: mg.speeches });
   mg.turnIndex += 1;
   setTimeout(() => { if (mg.phase === 'liar_speak') advanceLiarTurn(); }, 2000);
 }
@@ -784,141 +595,220 @@ function recordLiarSpeech(speakerId, text) {
 function computeSmartCpuVote(voterId, candidateIds) {
   const others = candidateIds.filter(id => id !== voterId);
   if (others.length === 0) return candidateIds[0];
-
   const keywords = mg.liarTopic.kw || [];
   const suspicionScores = others.map(cid => {
     const userSpeeches = mg.speeches.filter(s => s.id === cid).map(s => s.text).join(' ');
     let score = 0;
     if (userSpeeches.includes('시간 초과') || userSpeeches.trim().length < 8) score += 45;
-    let kwHits = 0;
-    keywords.forEach(k => { if (userSpeeches.includes(k)) kwHits++; });
-    if (kwHits === 0) score += 25;
-    else score -= kwHits * 15;
+    let kwHits = 0; keywords.forEach(k => { if (userSpeeches.includes(k)) kwHits++; });
+    if (kwHits === 0) score += 25; else score -= kwHits * 15;
     if (userSpeeches.includes('분위기') || userSpeeches.includes('그림을 그려') || userSpeeches.includes('조금씩 다를')) score += 25;
     score += Math.random() * 14;
     return { id: cid, score };
   });
-
   suspicionScores.sort((a, b) => b.score - a.score);
   return suspicionScores[0].id;
 }
 
 function startLiarVote(candidateIds) {
-  mg.phase = 'liar_vote';
-  mg.votes = {};
-  let voteTime = 20;
-
-  Object.values(mg.participants).forEach(p => {
-    if (p.isCpu) mg.votes[p.id] = computeSmartCpuVote(p.id, candidateIds);
-  });
-
-  io.emit('liarVoteStarted', {
-    candidateIds,
-    participants: mg.participants,
-    timeLeft: voteTime,
-    isRunoff: !!mg.runoffIds
-  });
-
+  mg.phase = 'liar_vote'; mg.votes = {}; let voteTime = 20;
+  Object.values(mg.participants).forEach(p => { if (p.isCpu) mg.votes[p.id] = computeSmartCpuVote(p.id, candidateIds); });
+  io.emit('liarVoteStarted', { candidateIds, participants: mg.participants, timeLeft: voteTime, isRunoff: !!mg.runoffIds });
   mg.loopTimer = setInterval(() => {
-    voteTime -= 1;
-    io.emit('liarVoteTick', { timeLeft: voteTime });
+    voteTime -= 1; io.emit('liarVoteTick', { timeLeft: voteTime });
     if (Object.keys(mg.votes).length >= Object.keys(mg.participants).length || voteTime <= 0) {
-      clearInterval(mg.loopTimer);
-      resolveLiarVote(candidateIds);
+      clearInterval(mg.loopTimer); resolveLiarVote(candidateIds);
     }
   }, 1000);
 }
 
 function resolveLiarVote(candidateIds) {
-  const tally = {};
-  candidateIds.forEach(id => tally[id] = 0);
-  Object.values(mg.votes).forEach(targetId => { if (tally[targetId] !== undefined) tally[targetId] += 1; });
-
-  const maxVotes = Math.max(...Object.values(tally));
-  const topIds = candidateIds.filter(id => tally[id] === maxVotes);
+  const tally = {}; candidateIds.forEach(id => tally[id] = 0);
+  Object.values(mg.votes).forEach(tid => { if (tally[tid] !== undefined) tally[tid] += 1; });
+  const maxVotes = Math.max(...Object.values(tally)), topIds = candidateIds.filter(id => tally[id] === maxVotes);
 
   if (topIds.length > 1) {
-    mg.phase = 'liar_speak';
-    mg.runoffIds = topIds;
-    mg.turnIndex = 0;
-    const names = topIds.map(id => mg.participants[id] ? mg.participants[id].name : '').join(', ');
-    io.emit('liarRunoffAnnounced', { tieNames: names });
-    setTimeout(() => { if (mg.phase === 'liar_speak') advanceLiarTurn(); }, 2200);
-    return;
+    mg.phase = 'liar_speak'; mg.runoffIds = topIds; mg.turnIndex = 0;
+    io.emit('liarRunoffAnnounced', { tieNames: topIds.map(id => mg.participants[id] ? mg.participants[id].name : '').join(', ') });
+    setTimeout(() => { if (mg.phase === 'liar_speak') advanceLiarTurn(); }, 2200); return;
   }
 
   const accusedId = topIds[0];
   const liarName = mg.participants[mg.liarId] ? mg.participants[mg.liarId].name : '알 수 없음';
   const accusedName = mg.participants[accusedId] ? mg.participants[accusedId].name : '알 수 없음';
   const caught = (accusedId === mg.liarId);
-
   let summaryText = '';
+
   if (caught) {
     Object.values(mg.participants).forEach(p => {
       if (p.id !== mg.liarId && !p.isCpu && players[p.id]) {
         players[p.id].mong = (players[p.id].mong || 0) + 200;
+        savePlayerToDB(players[p.id]);
       }
     });
     summaryText = '🎉 라이어 검거 성공! 지목된 [' + accusedName + ']님이 라이어였습니다!<br>제시어: <b>' + mg.liarTopic.word + '</b> (' + mg.liarTopic.cat + ')<br>시민 전원 +200몽 지급!';
   } else {
     if (mg.participants[mg.liarId] && !mg.participants[mg.liarId].isCpu && players[mg.liarId]) {
       players[mg.liarId].mong = (players[mg.liarId].mong || 0) + 350;
+      savePlayerToDB(players[mg.liarId]);
     }
     summaryText = '😈 라이어 승리! 지목된 [' + accusedName + ']님은 시민이었습니다!<br>진짜 라이어: <b>' + liarName + '</b> / 제시어: <b>' + mg.liarTopic.word + '</b><br>라이어에게 +350몽 지급!';
   }
-
-  io.emit('minigameEnded', {
-    title: '🕵️ 거짓말 탐지기 결과',
-    summaryText,
-    updatedPlayers: players
-  });
+  io.emit('minigameEnded', { title: '🕵️ 거짓말 탐지기 결과', summaryText, updatedPlayers: players });
   resetMinigame();
 }
 
-io.on('connection', (socket) => {
-  players[socket.id] = {
-    id: socket.id,
-    name: '플레이어_' + socket.id.substring(0, 4),
-    mong: 200,
-    speedLevel: 0,
-    jumpLevel: 0,
-    isAdmin: false,
+function buildPlayerSessionFromRow(socketId, row, isGuest) {
+  return {
+    id: socketId,
+    username: row.username,
+    name: row.username,
+    isGuest: !!isGuest,
+    mong: row.mong !== undefined ? row.mong : 200,
+    speedLevel: row.speed_level || 0,
+    jumpLevel: row.jump_level || 0,
+    isAdmin: !!row.is_admin,
+    adminBoostActive: !!row.is_admin,
     isInvisible: false,
-    ownedTops: ['tshirt'],
-    ownedBottoms: ['pants'],
-    ownedThemes: ['original'],
+    ownedTops: Array.isArray(row.owned_tops) ? row.owned_tops : ['tshirt'],
+    ownedBottoms: Array.isArray(row.owned_bottoms) ? row.owned_bottoms : ['pants'],
+    ownedThemes: Array.isArray(row.owned_themes) ? row.owned_themes : ['original'],
     inMinigame: false,
     x: (Math.random() - 0.5) * 8,
     y: 0,
     z: (Math.random() - 0.5) * 8,
     rotY: 0,
     isMoving: false,
-    face: 'happy',
-    topStyle: 'tshirt',
-    topColor: '#3b82f6',
-    bottomStyle: 'pants',
-    bottomColor: '#1e293b'
+    face: row.face || 'happy',
+    topStyle: row.top_style || 'tshirt',
+    topColor: row.top_color || '#3b82f6',
+    bottomStyle: row.bottom_style || 'pants',
+    bottomColor: row.bottom_color || '#1e293b'
   };
+}
 
-  socket.emit('currentPlayers', { players, worldCoins: WORLD_COINS });
-  socket.broadcast.emit('newPlayer', players[socket.id]);
+io.on('connection', (socket) => {
+  socket.on('authRegister', async ({ username, password }) => {
+    const cleanUser = (username || '').trim().substring(0, 12);
+    const cleanPw = (password || '').trim();
+    if (cleanUser.length < 2 || cleanPw.length < 2) {
+      socket.emit('authError', '아이디와 비밀번호는 2글자 이상 입력해 주세요.');
+      return;
+    }
+    if (!supabase) {
+      socket.emit('authError', '서버 데이터베이스(Supabase) 환경변수가 연결되지 않았습니다.');
+      return;
+    }
+    try {
+      const { data: existing } = await supabase
+        .from('game_profiles')
+        .select('username')
+        .eq('username', cleanUser)
+        .maybeSingle();
+
+      if (existing) {
+        socket.emit('authError', '이미 사용 중인 아이디입니다. 다른 아이디를 입력해 주세요.');
+        return;
+      }
+
+      const newRow = {
+        username: cleanUser, password: cleanPw, mong: 200, speed_level: 0, jump_level: 0,
+        is_admin: false, owned_tops: ['tshirt'], owned_bottoms: ['pants'], owned_themes: ['original'],
+        face: 'happy', top_style: 'tshirt', top_color: '#3b82f6', bottom_style: 'pants', bottom_color: '#1e293b'
+      };
+
+      const { error: insertErr } = await supabase.from('game_profiles').insert(newRow);
+      if (insertErr) {
+        socket.emit('authError', '회원가입 저장 중 오류: ' + insertErr.message);
+        return;
+      }
+
+      const p = buildPlayerSessionFromRow(socket.id, newRow, false);
+      players[socket.id] = p;
+      socket.emit('authSuccess', { me: p, players, worldCoins: WORLD_COINS });
+      socket.broadcast.emit('newPlayer', p);
+    } catch (e) {
+      socket.emit('authError', '회원가입 처리 중 오류가 발생했습니다.');
+    }
+  });
+
+  socket.on('authLogin', async ({ username, password }) => {
+    const cleanUser = (username || '').trim().substring(0, 12);
+    const cleanPw = (password || '').trim();
+    if (!cleanUser || !cleanPw) {
+      socket.emit('authError', '아이디와 비밀번호를 모두 입력해 주세요.');
+      return;
+    }
+    if (!supabase) {
+      socket.emit('authError', '서버 데이터베이스(Supabase) 환경변수가 연결되지 않았습니다.');
+      return;
+    }
+    try {
+      const { data: row, error } = await supabase
+        .from('game_profiles')
+        .select('*')
+        .eq('username', cleanUser)
+        .maybeSingle();
+
+      if (error || !row) {
+        socket.emit('authError', '존재하지 않는 아이디입니다. 먼저 회원가입을 해주세요.');
+        return;
+      }
+      if (row.password !== cleanPw) {
+        socket.emit('authError', '비밀번호가 일치하지 않습니다.');
+        return;
+      }
+
+      Object.keys(players).forEach(sid => {
+        if (players[sid].username === cleanUser && sid !== socket.id) {
+          io.to(sid).emit('adminKicked', { byName: '중복 로그인 감지' });
+          delete players[sid];
+          io.emit('playerDisconnected', sid);
+        }
+      });
+
+      const p = buildPlayerSessionFromRow(socket.id, row, false);
+      players[socket.id] = p;
+      socket.emit('authSuccess', { me: p, players, worldCoins: WORLD_COINS });
+      socket.broadcast.emit('newPlayer', p);
+    } catch (e) {
+      socket.emit('authError', '로그인 처리 중 오류가 발생했습니다.');
+    }
+  });
+
+  socket.on('authGuest', () => {
+    const guestName = '게스트_' + socket.id.substring(0, 4);
+    const p = buildPlayerSessionFromRow(socket.id, { username: guestName }, true);
+    players[socket.id] = p;
+    socket.emit('authSuccess', { me: p, players, worldCoins: WORLD_COINS });
+    socket.broadcast.emit('newPlayer', p);
+  });
 
   socket.on('adminLogin', ({ id, pw }) => {
     const p = players[socket.id];
     if (!p) return;
     if (id === ADMIN_ID && pw === ADMIN_PW) {
       p.isAdmin = true;
+      p.adminBoostActive = true;
       p.mong = (p.mong || 0) + 1000;
       p.speedLevel = 20;
       p.jumpLevel = 20;
       p.ownedTops = [...ALL_TOPS];
       p.ownedBottoms = [...ALL_BOTTOMS];
       p.ownedThemes = [...ALL_THEMES];
+      savePlayerToDB(p);
       socket.emit('adminAuthSuccess', p);
       io.emit('playerUpdated', p);
     } else {
-      socket.emit('adminAuthFail', '아이디 또는 비밀번호가 올바르지 않습니다.');
+      socket.emit('adminAuthFail', '관리자 아이디 또는 비밀번호가 올바르지 않습니다.');
     }
+  });
+
+  socket.on('adminToggleBoost', () => {
+    const p = players[socket.id];
+    if (!p || !p.isAdmin) return;
+    p.adminBoostActive = !p.adminBoostActive;
+    socket.emit('adminAuthSuccess', p);
   });
 
   socket.on('adminToggleInvisible', () => {
@@ -935,9 +825,7 @@ io.on('connection', (socket) => {
     const kickedName = players[targetId].name;
     io.to(targetId).emit('adminKicked', { byName: p.name });
     const targetSocket = io.sockets.sockets.get(targetId);
-    if (targetSocket) {
-      targetSocket.disconnect(true);
-    }
+    if (targetSocket) targetSocket.disconnect(true);
     delete players[targetId];
     io.emit('playerDisconnected', targetId);
     io.emit('adminGlobalAlert', {
@@ -951,10 +839,7 @@ io.on('connection', (socket) => {
     if (!p || !p.isAdmin) return;
     const clean = (alertText || '').trim().substring(0, 120);
     if (!clean) return;
-    io.emit('adminGlobalAlert', {
-      senderName: p.name,
-      message: clean
-    });
+    io.emit('adminGlobalAlert', { senderName: p.name, message: clean });
   });
 
   socket.on('collectWorldCoin', (coinId) => {
@@ -964,8 +849,8 @@ io.on('connection', (socket) => {
     if (Math.hypot(p.x - coin.x, p.z - coin.z) <= 2.6) {
       p.mong = (p.mong || 0) + 5;
       const nextPos = spawnCoinPosition(coinId);
-      coin.x = nextPos.x;
-      coin.z = nextPos.z;
+      coin.x = nextPos.x; coin.z = nextPos.z;
+      savePlayerToDB(p);
       socket.emit('coinCollected', { mong: p.mong, earned: 5 });
       io.emit('worldCoinMoved', coin);
     }
@@ -974,12 +859,12 @@ io.on('connection', (socket) => {
   socket.on('updateProfile', (data) => {
     const p = players[socket.id];
     if (!p) return;
-    if (data.name && data.name.trim()) p.name = data.name.trim().substring(0, 12);
     if (data.face) p.face = data.face;
     if (data.topStyle && p.ownedTops.includes(data.topStyle)) p.topStyle = data.topStyle;
     if (data.topColor) p.topColor = data.topColor;
     if (data.bottomStyle && p.ownedBottoms.includes(data.bottomStyle)) p.bottomStyle = data.bottomStyle;
     if (data.bottomColor) p.bottomColor = data.bottomColor;
+    savePlayerToDB(p);
     io.emit('playerUpdated', p);
   });
 
@@ -989,26 +874,27 @@ io.on('connection', (socket) => {
     const maxLv = p.isAdmin ? 20 : 5;
     if (category === 'speed' && p.speedLevel < maxLv) {
       const cost = (p.speedLevel + 1) * 50;
-      if (p.mong >= cost) { p.mong -= cost; p.speedLevel += 1; socket.emit('shopUpdated', p); }
+      if (p.mong >= cost) { p.mong -= cost; p.speedLevel += 1; savePlayerToDB(p); socket.emit('shopUpdated', p); }
     } else if (category === 'jump' && p.jumpLevel < maxLv) {
       const cost = (p.jumpLevel + 1) * 50;
-      if (p.mong >= cost) { p.mong -= cost; p.jumpLevel += 1; socket.emit('shopUpdated', p); }
+      if (p.mong >= cost) { p.mong -= cost; p.jumpLevel += 1; savePlayerToDB(p); socket.emit('shopUpdated', p); }
     } else if (category === 'top') {
       const cost = SHOP_PRICES.tops[itemId] !== undefined ? SHOP_PRICES.tops[itemId] : 9999;
       if (!p.ownedTops.includes(itemId) && p.mong >= cost) {
         p.mong -= cost; p.ownedTops.push(itemId); p.topStyle = itemId;
-        socket.emit('shopUpdated', p); io.emit('playerUpdated', p);
+        savePlayerToDB(p); socket.emit('shopUpdated', p); io.emit('playerUpdated', p);
       }
     } else if (category === 'bottom') {
       const cost = SHOP_PRICES.bottoms[itemId] !== undefined ? SHOP_PRICES.bottoms[itemId] : 9999;
       if (!p.ownedBottoms.includes(itemId) && p.mong >= cost) {
         p.mong -= cost; p.ownedBottoms.push(itemId); p.bottomStyle = itemId;
-        socket.emit('shopUpdated', p); io.emit('playerUpdated', p);
+        savePlayerToDB(p); socket.emit('shopUpdated', p); io.emit('playerUpdated', p);
       }
     } else if (category === 'theme') {
       const cost = SHOP_PRICES.themes[itemId] !== undefined ? SHOP_PRICES.themes[itemId] : 9999;
       if (!p.ownedThemes.includes(itemId) && p.mong >= cost) {
-        p.mong -= cost; p.ownedThemes.push(itemId); socket.emit('shopUpdated', p);
+        p.mong -= cost; p.ownedThemes.push(itemId);
+        savePlayerToDB(p); socket.emit('shopUpdated', p);
       }
     }
   });
@@ -1019,20 +905,19 @@ io.on('connection', (socket) => {
     if (!sender || !receiver || socket.id === targetId) return;
 
     const amt = Math.max(0, Math.min(sender.mong, parseInt(mongAmount) || 0));
-    if (amt > 0) {
-      sender.mong -= amt;
-      receiver.mong += amt;
-    }
+    if (amt > 0) { sender.mong -= amt; receiver.mong += amt; }
     if (giftTop && sender.ownedTops.includes(giftTop) && !receiver.ownedTops.includes(giftTop)) {
       receiver.ownedTops.push(giftTop);
     }
+
+    savePlayerToDB(sender);
+    savePlayerToDB(receiver);
 
     const giftText = giftTop ? (' 및 [' + giftTop + '] 의상') : '';
     socket.emit('shopUpdated', sender);
     io.to(targetId).emit('shopUpdated', receiver);
     io.to(targetId).emit('chatMessage', {
-      id: 'system',
-      name: '🏦 교환소 알림',
+      id: 'system', name: '🏦 교환소 알림',
       text: sender.name + '님이 ' + amt + '몽' + giftText + '을 보냈습니다!'
     });
   });
@@ -1040,51 +925,34 @@ io.on('connection', (socket) => {
   socket.on('playerMovement', (data) => {
     const p = players[socket.id];
     if (!p) return;
-    p.x = data.x; p.y = data.y; p.z = data.z;
-    p.rotY = data.rotY; p.isMoving = !!data.isMoving;
-
+    p.x = data.x; p.y = data.y; p.z = data.z; p.rotY = data.rotY; p.isMoving = !!data.isMoving;
     if (mg.phase === 'playing' && mg.participants[socket.id]) {
       const mp = mg.participants[socket.id];
-      if (mg.type === 'freezetag' && (mp.status === 'frozen' || mp.status === 'out')) {
-        mp.isMoving = false;
-      } else {
-        mp.x = data.x; mp.z = data.z; mp.rotY = data.rotY; mp.isMoving = p.isMoving;
-      }
+      if (mg.type === 'freezetag' && (mp.status === 'frozen' || mp.status === 'out')) mp.isMoving = false;
+      else { mp.x = data.x; mp.z = data.z; mp.rotY = data.rotY; mp.isMoving = p.isMoving; }
     }
     socket.broadcast.emit('playerMoved', p);
   });
 
   socket.on('playGesture', (gestureName) => {
-    if (players[socket.id] && mg.phase === 'idle') {
-      io.emit('playerGesture', { id: socket.id, gesture: gestureName });
-    }
+    if (players[socket.id] && mg.phase === 'idle') io.emit('playerGesture', { id: socket.id, gesture: gestureName });
   });
 
   socket.on('chatMessage', (msg) => {
-    if (msg && msg.trim()) {
-      io.emit('chatMessage', {
-        id: socket.id,
-        name: players[socket.id] ? players[socket.id].name : '익명',
-        text: msg.trim().substring(0, 100)
-      });
+    if (players[socket.id] && msg && msg.trim()) {
+      io.emit('chatMessage', { id: socket.id, name: players[socket.id].name, text: msg.trim().substring(0, 100) });
     }
   });
 
   socket.on('requestStartLobby', ({ type, cpuCount, mode }) => {
     if (mg.phase === 'idle' && !mgLock) openMinigameLobby(socket.id, type, cpuCount, mode);
   });
-
-  socket.on('hostForceStartLobby', () => {
-    if (mg.phase === 'lobby' && socket.id === mg.hostId) onLobbyFinished();
-  });
-
+  socket.on('hostForceStartLobby', () => { if (mg.phase === 'lobby' && socket.id === mg.hostId) onLobbyFinished(); });
   socket.on('hostCancelLobby', () => {
     if (mg.phase === 'lobby' && socket.id === mg.hostId) {
-      io.emit('minigameCancelled', { reason: '방장이 미니게임 모집을 취소했습니다.' });
-      resetMinigame();
+      io.emit('minigameCancelled', { reason: '방장이 미니게임 모집을 취소했습니다.' }); resetMinigame();
     }
   });
-
   socket.on('joinMinigameLobby', () => {
     if (mg.phase === 'lobby' && players[socket.id] && !mg.participants[socket.id]) {
       players[socket.id].inMinigame = true;
@@ -1092,26 +960,21 @@ io.on('connection', (socket) => {
       io.emit('minigameLobbyTick', { timeLeft: mg.timeLeft, participants: mg.participants });
     }
   });
-
   socket.on('confirmColorflipTeams', ({ teamCount, assignments }) => {
     if (mg.phase === 'team_setup' && socket.id === mg.hostId) {
-      const safeTeams = Math.max(2, Math.min(4, parseInt(teamCount) || 2));
-      startColorFlipMatch(safeTeams, assignments);
+      startColorFlipMatch(Math.max(2, Math.min(4, parseInt(teamCount) || 2)), assignments);
     }
   });
-
   socket.on('submitRps', (choice) => {
     if (mg.phase !== 'rps' || !['rock', 'paper', 'scissors'].includes(choice)) return;
     const grp = mg.rpsGroups.find(g => g.memberIds.includes(socket.id));
     if (grp) grp.choices[socket.id] = choice;
   });
-
   socket.on('freezetagUseSkill', (skill) => {
     if (mg.phase !== 'playing' || mg.type !== 'freezetag') return;
     const me = mg.participants[socket.id];
     if (!me || me.role !== 'runner' || me.status === 'out') return;
     const runners = Object.values(mg.participants).filter(p => p.role === 'runner');
-
     if (skill === 'freeze' && me.status === 'normal' && me.freezeCooldown <= 0) {
       me.status = 'frozen'; me.isMoving = false;
       io.emit('freezetagAction', { type: 'freeze', actorId: me.id, targetId: me.id, participants: mg.participants });
@@ -1125,26 +988,21 @@ io.on('connection', (socket) => {
       const nearbyFrozen = runners.filter(r => r.status === 'frozen' && Math.hypot(r.x - me.x, r.z - me.z) <= 3.2);
       if (nearbyFrozen.length === 2) {
         nearbyFrozen.forEach(r => { r.status = 'normal'; r.freezeCooldown = 2.0; });
-        io.emit('freezetagAction', { type: 'clang', actorId: me.id, targetId: nearbyFrozen.find(r => r.id !== me.id).id, participants: mg.participants });
+        io.emit('freezetagAction', { type: 'clang', actorId: me.id, targetId: nearbyFrozen.find(r => r.id !== p.id).id, participants: mg.participants });
       }
     }
   });
-
   socket.on('submitLiarSpeech', (text) => {
     if (mg.phase !== 'liar_speak') return;
     const list = mg.runoffIds || mg.turnOrder;
-    if (list[mg.turnIndex] === socket.id && text && text.trim()) {
-      recordLiarSpeech(socket.id, text);
-    }
+    if (list[mg.turnIndex] === socket.id && text && text.trim()) recordLiarSpeech(socket.id, text);
   });
-
   socket.on('submitLiarVote', (targetId) => {
-    if (mg.phase === 'liar_vote' && mg.participants[socket.id] && mg.participants[targetId]) {
-      mg.votes[socket.id] = targetId;
-    }
+    if (mg.phase === 'liar_vote' && mg.participants[socket.id] && mg.participants[targetId]) mg.votes[socket.id] = targetId;
   });
 
   socket.on('disconnect', () => {
+    if (players[socket.id]) savePlayerToDB(players[socket.id]);
     delete players[socket.id];
     if (mg.participants[socket.id]) delete mg.participants[socket.id];
     io.emit('playerDisconnected', socket.id);
@@ -1153,5 +1011,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log('Server v1.6-20261122 running on port ' + PORT);
+  console.log('Server v2.1-20261122 running on port ' + PORT);
 });
