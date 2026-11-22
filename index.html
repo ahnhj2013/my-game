@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>3D 멀티플레이어 오픈월드 v2.2-20261122</title>
+  <title>3D 멀티플레이어 오픈월드 v2.3-20261122</title>
   <link href="https://fonts.googleapis.com/css2?family=Jua&family=Nanum+Myeongjo:wght@700&family=Noto+Sans+KR:wght@400;700;900&family=Black+Han+Sans&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -164,6 +164,7 @@
     }
     .opt-btn.active { background: var(--accent); color: #fff; border-color: transparent; font-weight: bold; }
     .opt-btn.locked { opacity: 0.75; border-style: dashed; }
+    .opt-btn.admin-only-lock { opacity: 0.6; border-style: dotted; border-color: #facc15; color: #fde047; }
     .color-row { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
     .color-swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border-ui); cursor: pointer; }
     .color-swatch.active { transform: scale(1.2); border-color: var(--accent); }
@@ -288,7 +289,7 @@
 
   <div id="auth-screen">
     <div id="auth-card">
-      <div style="font-size:20px;font-weight:900;color:#38bdf8;">🌐 Hajun's Online Open World v2.2</div>
+      <div style="font-size:20px;font-weight:900;color:#38bdf8;">🌐 Hajun's Online Open World v2.3</div>
       <div style="font-size:12px;color:#cbd5e1;">회원가입·로그인 시 몽, 옷, 테마, 닉네임 정보가 DB에 저장됩니다.</div>
       <div class="auth-tabs">
         <button type="button" class="auth-tab active" id="tab-login">🔑 로그인</button>
@@ -299,7 +300,7 @@
         <input type="text" class="auth-input" id="auth-nickname" placeholder="닉네임 (2~12자)" maxlength="12" style="display:none;">
         <input type="password" class="auth-input" id="auth-password" placeholder="비밀번호 (2자 이상)" required autocomplete="current-password">
         <div id="auth-error"></div>
-        <button type="submit" class="auth-submit" id="auth-submit-btn">로그인하고 입장</button>
+        <button type="submit" class="auth-submit" id="auth-submit-btn">로그인하고 월드 입장</button>
       </form>
       <button type="button" class="auth-guest" id="auth-guest-btn">👀 저장 없이 게스트로 둘러보기</button>
     </div>
@@ -307,17 +308,18 @@
 
   <div id="top-left-bar">
     <div class="row-flex">
-      <div class="badge version-tag">v2.2-20261122</div>
+      <div class="badge version-tag">v2.3-20261122</div>
       <div class="badge" id="user-badge" style="color:#6ee7b7;font-weight:bold;">👤 미접속</div>
       <div class="badge" id="mong-badge" style="color:#fbbf24;font-weight:bold;">🪙 200몽</div>
       <div class="badge" id="player-count">👥 1명</div>
+      <button class="ui-btn" id="quick-admin-btn" style="display:none;background:#dc2626;color:#fff;border-color:transparent;">👑 어드민 제어</button>
     </div>
   </div>
 
   <div id="zone-dwell-hud">
     <div id="zone-dwell-label" style="font-size:13px;font-weight:900;color:#38bdf8;">구역 대기 중...</div>
     <div id="zone-dwell-bar-bg"><div id="zone-dwell-bar-fill"></div></div>
-    <div id="zone-dwell-sec" style="font-size:11px;color:#cbd5e1;">0.0초 / 5.0초</div>
+    <div id="zone-dwell-sec" style="font-size:11px;color:#cbd5e1;">0.0초 / 3.0초</div>
   </div>
 
   <div id="admin-alert-overlay">
@@ -344,18 +346,22 @@
 
   <div class="side-panel" id="admin-panel">
     <div class="panel-header">
-      <span>🛡️ Admin 성 왕좌 제어실</span>
+      <span>👑 Admin 성 왕좌 제어실</span>
       <button class="close-btn" data-close="admin-panel">✕</button>
     </div>
-    <div id="admin-login-box" class="field-group">
-      <label>관리자 아이디</label>
-      <input type="text" id="admin-id-input" placeholder="아이디 입력">
-      <label>관리자 비밀번호</label>
-      <input type="password" id="admin-pw-input" placeholder="비밀번호 입력">
-      <button class="ui-btn primary" id="admin-submit-btn" style="background:#dc2626;margin-top:4px;">🔓 관리자 인증</button>
+    <div id="admin-step1-box" class="field-group">
+      <div style="color:#fde047;font-weight:bold;">1단계: 관리자 아이디 확인</div>
+      <input type="text" id="admin-id-input" placeholder="관리자 아이디 입력">
+      <button class="ui-btn primary" id="admin-id-verify-btn" style="background:#b91c1c;margin-top:4px;">➡️ 아이디 확인</button>
+    </div>
+    <div id="admin-step2-box" class="field-group" style="display:none;">
+      <div style="color:#38bdf8;font-weight:bold;">2단계: 관리자 비밀번호 확인</div>
+      <div id="admin-verified-id-label" style="font-size:11px;color:#cbd5e1;"></div>
+      <input type="password" id="admin-pw-input" placeholder="관리자 비밀번호 입력">
+      <button class="ui-btn primary" id="admin-submit-btn" style="background:#dc2626;margin-top:4px;">🔓 최종 어드민 인증</button>
     </div>
     <div id="admin-controls-box" class="field-group" style="display:none;">
-      <div style="color:#4ade80;font-weight:bold;">✅ 관리자 인증 완료 (+1000몽 · 전 의상/테마 해금 · 1.5배 크기)</div>
+      <div style="color:#4ade80;font-weight:bold;">👑 어드민 권한 활성화 (+1000몽 · 전용 의상/왕관 · 1.5배 크기)</div>
       <button class="ui-btn" id="admin-boost-btn" style="background:#059669;color:#fff;border-color:transparent;">⚡ 속도/점프: 현재 20배 (클릭 시 일반 전환)</button>
       <button class="ui-btn" id="admin-invisible-btn" style="background:#4f46e5;color:#fff;border-color:transparent;">👻 투명 모드 켜기 (현재: OFF)</button>
       <label style="margin-top:4px;">🚨 전체 접속자 대형 경고 알림 보내기</label>
@@ -506,22 +512,26 @@
     const socket = io();
 
     const TOP_ITEMS = [
-      { id: 'tshirt', label: '👕 티셔츠', price: 0 },
-      { id: 'hoodie', label: '🧥 후드티', price: 40 },
-      { id: 'sweater', label: '🧶 니트스웨터', price: 50 },
-      { id: 'suit', label: '👔 정장재킷', price: 70 },
-      { id: 'uniform', label: '🎓 교복블레이저', price: 80 },
-      { id: 'hanbok', label: '👘 전통한복', price: 100 },
-      { id: 'armor', label: '🛡️ 미래갑옷', price: 120 },
-      { id: 'royal', label: '👑 왕실망토', price: 150 }
+      { id: 'tshirt', label: '👕 티셔츠', price: 0, adminOnly: false },
+      { id: 'hoodie', label: '🧥 후드티', price: 40, adminOnly: false },
+      { id: 'sweater', label: '🧶 니트스웨터', price: 50, adminOnly: false },
+      { id: 'suit', label: '👔 정장재킷', price: 70, adminOnly: false },
+      { id: 'uniform', label: '🎓 교복블레이저', price: 80, adminOnly: false },
+      { id: 'hanbok', label: '👘 전통한복', price: 100, adminOnly: false },
+      { id: 'armor', label: '🛡️ 미래갑옷', price: 120, adminOnly: false },
+      { id: 'royal', label: '👑 왕실망토', price: 150, adminOnly: false },
+      { id: 'admin_coat', label: '⚡ 제왕의 코트', price: 0, adminOnly: true },
+      { id: 'admin_robe', label: '🌌 천공의 로브', price: 0, adminOnly: true }
     ];
     const BOTTOM_ITEMS = [
-      { id: 'pants', label: '👖 긴바지', price: 0 },
-      { id: 'shorts', label: '🩳 반바지', price: 30 },
-      { id: 'skirt', label: '👗 플레어치마', price: 50 },
-      { id: 'jeans', label: '👖 청바지', price: 50 },
-      { id: 'overalls', label: '👖 멜빵바지', price: 70 },
-      { id: 'armorpants', label: '🦿 로봇각반', price: 110 }
+      { id: 'pants', label: '👖 긴바지', price: 0, adminOnly: false },
+      { id: 'shorts', label: '🩳 반바지', price: 30, adminOnly: false },
+      { id: 'skirt', label: '👗 플레어치마', price: 50, adminOnly: false },
+      { id: 'jeans', label: '👖 청바지', price: 50, adminOnly: false },
+      { id: 'overalls', label: '👖 멜빵바지', price: 70, adminOnly: false },
+      { id: 'armorpants', label: '🦿 로봇각반', price: 110, adminOnly: false },
+      { id: 'admin_greaves', label: '⚔️ 제왕의 레깅스', price: 0, adminOnly: true },
+      { id: 'admin_leggings', label: '✨ 천공의 각반', price: 0, adminOnly: true }
     ];
     const THEME_ITEMS = [
       { id: 'original', label: '🌐 오리지널 초원', price: 0 },
@@ -542,7 +552,6 @@
     let myProfile = { name: '', face: 'happy', topStyle: 'tshirt', topColor: '#3b82f6', bottomStyle: 'pants', bottomColor: '#1e293b' };
     const savedPlayerProfiles = {};
 
-    // 로그인 / 회원가입 UI 처리
     let authMode = 'login';
     const authScreen = document.getElementById('auth-screen');
     const authError = document.getElementById('auth-error');
@@ -591,7 +600,7 @@
     };
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 380);
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 420);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
@@ -613,85 +622,162 @@
     let animatedProps = [];
     let currentTheme = 'original', gameState = 'world', ftArenaHalf = 19;
     let castleGateLeft = null, castleGateRight = null, castleGateOpenAmount = 0, castleGateUnlocked = false;
+    let castleIdVerified = false;
     const coinMeshes = {};
     let coinCollectCooldown = 0;
 
-    // 오픈월드 건물 & 미니게임 존 위치 정의 (5초 체류 시 자동 발동)
+    // 대형 성 중심 좌표 (북서쪽 외곽)
+    const CASTLE_CX = -54;
+    const CASTLE_CZ = -54;
+
+    // 오픈월드 건물 & 미니게임 존 위치 정의 (3초 체류 시 자동 발동, 집은 모형 주변 반경 판정)
     const WORLD_ZONES = [
-      { id: 'avatar_house', label: '🏠 아바타 하우스 상점', x: -24, z: -20, radius: 5.5, color: 0x38bdf8, action: 'openAvatar' },
-      { id: 'theme_house', label: '🏡 테마 상점 하우스', x: 24, z: -20, radius: 5.5, color: 0xf472b6, action: 'openTheme' },
-      { id: 'exchange_booth', label: '🏦 아이템·몽 교환소', x: 28, z: 6, radius: 5.2, color: 0x34d399, action: 'openExchange' },
-      { id: 'mg_colorflip', label: '🎨 색깔 뒤집기 존', x: -16, z: 22, radius: 5.0, color: 0x10b981, action: 'startColorflip' },
-      { id: 'mg_freezetag', label: '🧊 얼음땡 존', x: 0, z: 24, radius: 5.0, color: 0x0284c7, action: 'startFreezetag' },
-      { id: 'mg_liar', label: '🕵️ 거짓말 탐지기 존', x: 16, z: 22, radius: 5.0, color: 0xf59e0b, action: 'startLiar' },
-      { id: 'castle_gate', label: '🏰 대형 성문 열기', x: 0, z: -34, radius: 5.5, color: 0xfacc15, action: 'openCastleGate' },
-      { id: 'castle_throne', label: '👑 Admin 왕좌 인증', x: 0, z: -44, radius: 4.5, color: 0xef4444, action: 'openAdminModal', requiresGate: true }
+      { id: 'avatar_house', label: '🏠 아바타 하우스 상점', x: -24, z: -20, radius: 9.5, color: 0x38bdf8, action: 'openAvatar' },
+      { id: 'theme_house', label: '🏡 테마 상점 하우스', x: 24, z: -20, radius: 9.5, color: 0xf472b6, action: 'openTheme' },
+      { id: 'exchange_booth', label: '🏦 아이템·몽 교환소', x: 28, z: 4, radius: 9.2, color: 0x34d399, action: 'openExchange' },
+      { id: 'mg_colorflip', label: '🎨 색깔 뒤집기 존', x: -16, z: 22, radius: 5.2, color: 0x10b981, action: 'openMgSetup_colorflip' },
+      { id: 'mg_freezetag', label: '🧊 얼음땡 존', x: 0, z: 24, radius: 5.2, color: 0x0284c7, action: 'openMgSetup_freezetag' },
+      { id: 'mg_liar', label: '🕵️ 거짓말 탐지기 존', x: 16, z: 22, radius: 5.2, color: 0xf59e0b, action: 'openMgSetup_liar' },
+      { id: 'castle_gate', label: '🏰 ADMIN 성문 개방', x: CASTLE_CX, z: CASTLE_CZ + 16.5, radius: 6.5, color: 0xfacc15, action: 'openCastleGate' },
+      { id: 'castle_step1_id', label: '🪪 1단계: 관리자 ID 입력', x: CASTLE_CX, z: CASTLE_CZ + 6.0, radius: 4.8, color: 0xf97316, action: 'openAdminIdModal', requiresGate: true },
+      { id: 'castle_step2_pw', label: '🔐 2단계: 관리자 PW 입력', x: CASTLE_CX, z: CASTLE_CZ - 5.5, radius: 4.8, color: 0xef4444, action: 'openAdminPwModal', requiresGate: true, requiresId: true }
     ];
 
+    // 성 주변 사이보그 지킴이 (큰 칼과 방패 보유)
+    function createCyborgGuard(gx, gz, rotY) {
+      const g = new THREE.Group();
+      const darkMetal = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 });
+      const neonRed = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+      const neonCyan = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+      const silverBlade = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.15 });
+
+      const legL = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.0, 0.48), darkMetal); legL.position.set(-0.32, 0.5, 0);
+      const legR = legL.clone(); legR.position.set(0.32, 0.5, 0);
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.35, 0.75), darkMetal); torso.position.y = 1.65;
+      const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.26), neonRed); core.position.set(0, 1.72, 0.4);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.95, 0.95), darkMetal); head.position.y = 2.8;
+      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.22, 0.12), neonRed); visor.position.set(0, 2.85, 0.45);
+      const crest = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.7, 4), neonCyan); crest.position.set(0, 3.55, 0);
+
+      // 멋지고 큰 칼 (오른쪽)
+      const swordGroup = new THREE.Group(); swordGroup.position.set(0.95, 1.75, 0.4);
+      const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.6, 10), neonCyan);
+      const guard = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.16, 0.28), darkMetal); guard.position.y = 0.35;
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.28, 2.6, 0.08), silverBlade); blade.position.y = 1.7;
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.45, 4), silverBlade); tip.position.y = 3.2;
+      swordGroup.add(hilt, guard, blade, tip); swordGroup.rotation.x = 0.35;
+
+      // 멋지고 큰 방패 (왼쪽)
+      const shieldGroup = new THREE.Group(); shieldGroup.position.set(-0.95, 1.65, 0.45);
+      const shieldBody = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.2, 1.35), darkMetal);
+      const shieldTrim = new THREE.Mesh(new THREE.BoxGeometry(0.28, 2.32, 0.22), neonCyan);
+      const shieldCenter = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.32, 16), neonRed); shieldCenter.rotation.z = Math.PI / 2;
+      shieldGroup.add(shieldBody, shieldTrim, shieldCenter);
+
+      const label = makeTextSprite('🤖 사이보그 지킴이', 'rgba(15,23,42,0.88)', '#38bdf8');
+      label.position.y = 4.3; label.scale.set(4.2, 1.0, 1);
+
+      g.add(legL, legR, torso, core, head, visor, crest, swordGroup, shieldGroup, label);
+      g.position.set(gx, 0, gz); g.rotation.y = rotY;
+      return g;
+    }
+
     function addWorldLandmarks() {
-      // 1. 아바타 하우스 (북서쪽)
+      // 1. 아바타 하우스 모형 (주변 반경 9.5m에서 3초 대기)
       const avHouse = new THREE.Group();
       const avBody = new THREE.Mesh(new THREE.BoxGeometry(8, 5, 7), new THREE.MeshStandardMaterial({ color: 0x0284c7 })); avBody.position.y = 2.5;
       const avRoof = new THREE.Mesh(new THREE.ConeGeometry(6.4, 3.2, 4), new THREE.MeshStandardMaterial({ color: 0x1e3a8a })); avRoof.rotation.y = Math.PI / 4; avRoof.position.y = 6.6;
-      const avSign = makeTextSprite('🏠 아바타 상점 (5초)', 'rgba(15,23,42,0.88)', '#7dd3fc'); avSign.position.set(0, 8.8, 0); avSign.scale.set(6.5, 1.5, 1);
-      avHouse.add(avBody, avRoof, avSign); avHouse.position.set(-24, 0, -24); worldGroup.add(avHouse);
+      const avSign = makeTextSprite('🏠 아바타 하우스 (주변 3초)', 'rgba(15,23,42,0.88)', '#7dd3fc'); avSign.position.set(0, 8.8, 0); avSign.scale.set(6.8, 1.5, 1);
+      avHouse.add(avBody, avRoof, avSign); avHouse.position.set(-24, 0, -20); worldGroup.add(avHouse);
 
-      // 2. 테마 상점 하우스 (북동쪽)
+      // 2. 테마 상점 하우스 모형 (주변 반경 9.5m에서 3초 대기)
       const thHouse = new THREE.Group();
       const thBody = new THREE.Mesh(new THREE.BoxGeometry(8, 5, 7), new THREE.MeshStandardMaterial({ color: 0xec4899 })); thBody.position.y = 2.5;
       const thRoof = new THREE.Mesh(new THREE.ConeGeometry(6.4, 3.2, 4), new THREE.MeshStandardMaterial({ color: 0x831843 })); thRoof.rotation.y = Math.PI / 4; thRoof.position.y = 6.6;
-      const thSign = makeTextSprite('🏡 테마 하우스 (5초)', 'rgba(15,23,42,0.88)', '#fbcfe8'); thSign.position.set(0, 8.8, 0); thSign.scale.set(6.5, 1.5, 1);
-      thHouse.add(thBody, thRoof, thSign); thHouse.position.set(24, 0, -24); worldGroup.add(thHouse);
+      const thSign = makeTextSprite('🏡 테마 하우스 (주변 3초)', 'rgba(15,23,42,0.88)', '#fbcfe8'); thSign.position.set(0, 8.8, 0); thSign.scale.set(6.8, 1.5, 1);
+      thHouse.add(thBody, thRoof, thSign); thHouse.position.set(24, 0, -20); worldGroup.add(thHouse);
 
-      // 3. 아이템·몽 교환소 (동쪽)
+      // 3. 아이템·몽 교환소 모형 (주변 반경 9.2m에서 3초 대기)
       const exHouse = new THREE.Group();
       const exBody = new THREE.Mesh(new THREE.BoxGeometry(7.5, 4.8, 6.5), new THREE.MeshStandardMaterial({ color: 0x10b981 })); exBody.position.y = 2.4;
       const exRoof = new THREE.Mesh(new THREE.ConeGeometry(6.0, 2.8, 4), new THREE.MeshStandardMaterial({ color: 0x064e3b })); exRoof.rotation.y = Math.PI / 4; exRoof.position.y = 6.2;
-      const exSign = makeTextSprite('🏦 교환소 (5초)', 'rgba(15,23,42,0.88)', '#6ee7b7'); exSign.position.set(0, 8.3, 0); exSign.scale.set(5.5, 1.4, 1);
-      exHouse.add(exBody, exRoof, exSign); exHouse.position.set(28, 0, 1); worldGroup.add(exHouse);
+      const exSign = makeTextSprite('🏦 교환소 (주변 3초)', 'rgba(15,23,42,0.88)', '#6ee7b7'); exSign.position.set(0, 8.3, 0); exSign.scale.set(6.0, 1.4, 1);
+      exHouse.add(exBody, exRoof, exSign); exHouse.position.set(28, 0, 4); worldGroup.add(exHouse);
 
-      // 4. 미니게임 3개 구역 (남쪽 광장)
+      // 4. 미니게임 3개 구역 (남쪽 광장, 3초 대기 시 방장 설정 모달)
       const zoneVisuals = [
-        { x: -16, z: 22, col: 0x10b981, txt: '🎨 색깔 뒤집기 (5초)' },
-        { x: 0, z: 24, col: 0x0284c7, txt: '🧊 얼음땡 (5초)' },
-        { x: 16, z: 22, col: 0xf59e0b, txt: '🕵️ 거짓말 탐지기 (5초)' }
+        { x: -16, z: 22, col: 0x10b981, txt: '🎨 색깔 뒤집기 (3초)' },
+        { x: 0, z: 24, col: 0x0284c7, txt: '🧊 얼음땡 (3초)' },
+        { x: 16, z: 22, col: 0xf59e0b, txt: '🕵️ 거짓말 탐지기 (3초)' }
       ];
       zoneVisuals.forEach(zv => {
         const pad = new THREE.Mesh(new THREE.CylinderGeometry(4.8, 5.0, 0.2, 28), new THREE.MeshStandardMaterial({ color: zv.col }));
         pad.position.set(zv.x, 0.1, zv.z);
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 3.2, 10), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
-        post.position.set(zv.x, 1.6, zv.z - 3.5);
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 3.0, 10), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+        post.position.set(zv.x, 1.5, zv.z - 3.5);
         const sp = makeTextSprite(zv.txt, 'rgba(15,23,42,0.88)', '#ffffff');
-        sp.position.set(zv.x, 4.1, zv.z - 3.5); sp.scale.set(5.8, 1.35, 1);
+        sp.position.set(zv.x, 3.8, zv.z - 3.5); sp.scale.set(5.8, 1.35, 1);
         worldGroup.add(pad, post, sp);
       });
 
-      // 5. 대형 Admin 성 (북쪽 중앙, 5초 머물면 성문 열림)
+      // 5. 대형 입체 Admin 성 (북서쪽 외곽 CASTLE_CX, CASTLE_CZ, 어두운 내부/외벽 차단)
       const castle = new THREE.Group();
-      const wallMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
-      const goldTrim = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.5, roughness: 0.3 });
-      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(9, 9, 3), wallMat); leftWall.position.set(-7.5, 4.5, -44);
-      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(9, 9, 3), wallMat); rightWall.position.set(7.5, 4.5, -44);
-      const lintel = new THREE.Mesh(new THREE.BoxGeometry(24, 2.2, 3.4), wallMat); lintel.position.set(0, 10.1, -44);
+      const stoneMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.75 });
+      const darkInteriorMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.95 });
+      const goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.65, roughness: 0.25 });
 
-      const t1 = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.7, 13, 16), wallMat); t1.position.set(-12, 6.5, -44);
-      const r1 = new THREE.Mesh(new THREE.ConeGeometry(3.2, 4.2, 16), goldTrim); r1.position.set(-12, 15.1, -44);
-      const t2 = t1.clone(); t2.position.set(12, 6.5, -44);
-      const r2 = r1.clone(); r2.position.set(12, 15.1, -44);
+      const size = 28, half = size / 2, wallH = 11;
+      const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(10.5, wallH, 2.2), stoneMat); frontLeft.position.set(CASTLE_CX - 8.75, wallH / 2, CASTLE_CZ + half);
+      const frontRight = new THREE.Mesh(new THREE.BoxGeometry(10.5, wallH, 2.2), stoneMat); frontRight.position.set(CASTLE_CX + 8.75, wallH / 2, CASTLE_CZ + half);
+      const frontArch = new THREE.Mesh(new THREE.BoxGeometry(7.2, 3.2, 2.4), stoneMat); frontArch.position.set(CASTLE_CX, wallH - 1.6, CASTLE_CZ + half);
+      const backWall = new THREE.Mesh(new THREE.BoxGeometry(size + 2, wallH, 2.2), stoneMat); backWall.position.set(CASTLE_CX, wallH / 2, CASTLE_CZ - half);
+      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(2.2, wallH, size), stoneMat); leftWall.position.set(CASTLE_CX - half, wallH / 2, CASTLE_CZ);
+      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(2.2, wallH, size), stoneMat); rightWall.position.set(CASTLE_CX + half, wallH / 2, CASTLE_CZ);
+      // 성 내부를 어둡고 밖에서 안이 보이지 않게 덮는 천장 & 어두운 내벽
+      const roofCover = new THREE.Mesh(new THREE.BoxGeometry(size + 2.4, 1.2, size + 2.4), darkInteriorMat); roofCover.position.set(CASTLE_CX, wallH + 0.6, CASTLE_CZ);
+      const innerShadowRoom = new THREE.Mesh(new THREE.BoxGeometry(size - 2.6, wallH - 0.4, size - 2.6), darkInteriorMat); innerShadowRoom.position.set(CASTLE_CX, wallH / 2, CASTLE_CZ);
+      // Three.js BackSide로 내부에서 어두운 공간이 느껴지도록 처리
+      const shadowInnerMesh = new THREE.Mesh(new THREE.BoxGeometry(size - 2.4, wallH, size - 2.4), new THREE.MeshBasicMaterial({ color: 0x050811, side: THREE.BackSide }));
+      shadowInnerMesh.position.set(CASTLE_CX, wallH / 2, CASTLE_CZ);
 
-      const gateMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
-      castleGateLeft = new THREE.Mesh(new THREE.BoxGeometry(3.0, 8.8, 0.8), gateMat);
-      castleGateLeft.position.set(-1.5, 4.4, -44);
-      castleGateRight = new THREE.Mesh(new THREE.BoxGeometry(3.0, 8.8, 0.8), gateMat);
-      castleGateRight.position.set(1.5, 4.4, -44);
+      // 4개 모서리 대형 망루
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+        const tx = CASTLE_CX + sx * (half + 0.5), tz = CASTLE_CZ + sz * (half + 0.5);
+        const tower = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.6, 16, 16), stoneMat); tower.position.set(tx, 8, tz);
+        const spire = new THREE.Mesh(new THREE.ConeGeometry(4.2, 5.5, 16), goldMat); spire.position.set(tx, 18.7, tz);
+        castle.add(tower, spire);
+      });
 
-      const throneCarpet = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.15, 8), new THREE.MeshStandardMaterial({ color: 0xdc2626 }));
-      throneCarpet.position.set(0, 0.08, -48);
-      const cSign = makeTextSprite('🏰 ADMIN 성문 (5초 대기 시 개방)', 'rgba(127,29,29,0.92)', '#fef08a');
-      cSign.position.set(0, 12.6, -43.5); cSign.scale.set(8.5, 1.8, 1);
+      // 중앙 성채(Keep)
+      const keep = new THREE.Mesh(new THREE.BoxGeometry(11, 17, 11), stoneMat); keep.position.set(CASTLE_CX, 8.5, CASTLE_CZ - 5);
+      const keepRoof = new THREE.Mesh(new THREE.ConeGeometry(8.5, 6, 4), goldMat); keepRoof.rotation.y = Math.PI / 4; keepRoof.position.set(CASTLE_CX, 20, CASTLE_CZ - 5);
 
-      castle.add(leftWall, rightWall, lintel, t1, r1, t2, r2, castleGateLeft, castleGateRight, throneCarpet, cSign);
+      // 성문 (한 번 열리면 닫히지 않고 계속 열림)
+      const gateMat = new THREE.MeshStandardMaterial({ color: 0x78350f, metalness: 0.3, roughness: 0.6 });
+      castleGateLeft = new THREE.Mesh(new THREE.BoxGeometry(3.5, 7.8, 0.9), gateMat);
+      castleGateLeft.position.set(CASTLE_CX - 1.75, 3.9, CASTLE_CZ + half);
+      castleGateRight = new THREE.Mesh(new THREE.BoxGeometry(3.5, 7.8, 0.9), gateMat);
+      castleGateRight.position.set(CASTLE_CX + 1.75, 3.9, CASTLE_CZ + half);
+
+      // 아래쪽으로 내린 ADMIN ONLY 표지판
+      const adminSign = makeTextSprite('ADMIN ONLY', 'rgba(153, 27, 27, 0.95)', '#fef08a');
+      adminSign.position.set(CASTLE_CX, 6.2, CASTLE_CZ + half + 1.4);
+      adminSign.scale.set(5.4, 1.3, 1);
+
+      castle.add(frontLeft, frontRight, frontArch, backWall, leftWall, rightWall, roofCover, shadowInnerMesh, towerOrKeep(keep, keepRoof), castleGateLeft, castleGateRight, adminSign);
+
+      // 성 주변 사이보그 지킴이 3명 배치
+      castle.add(createCyborgGuard(CASTLE_CX - 9.5, CASTLE_CZ + half + 3.5, 0.25));
+      castle.add(createCyborgGuard(CASTLE_CX + 9.5, CASTLE_CZ + half + 3.5, -0.25));
+      castle.add(createCyborgGuard(CASTLE_CX + half + 3.5, CASTLE_CZ, -Math.PI / 2));
+
       worldGroup.add(castle);
+    }
+
+    function towerOrKeep(keep, keepRoof) {
+      const g = new THREE.Group();
+      g.add(keep, keepRoof);
+      return g;
     }
 
     function syncWorldCoins(coinList) {
@@ -752,21 +838,21 @@
       while (worldGroup.children.length > 0) worldGroup.remove(worldGroup.children[0]);
       animatedProps = [];
       castleGateLeft = null; castleGateRight = null; castleGateUnlocked = false; castleGateOpenAmount = 0;
-      const groundGeo = new THREE.PlaneGeometry(320, 320);
+      const groundGeo = new THREE.PlaneGeometry(340, 340);
 
       if (theme === 'original') {
-        scene.background = new THREE.Color(0x7dd3fc); scene.fog = new THREE.Fog(0x7dd3fc, 55, 175);
+        scene.background = new THREE.Color(0x7dd3fc); scene.fog = new THREE.Fog(0x7dd3fc, 60, 190);
         hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.9;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('grass') })); g.rotation.x = -Math.PI / 2; worldGroup.add(g); addClouds(0xffffff);
         const f = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 5, 0.8, 24), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 })); f.position.set(0, 0.4, -10);
         const w = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.9, 24), new THREE.MeshStandardMaterial({ color: 0x38bdf8 })); w.position.set(0, 0.45, -10);
         worldGroup.add(f, w);
       } else if (theme === 'cute') {
-        scene.background = new THREE.Color(0xffe4e6); scene.fog = new THREE.Fog(0xffe4e6, 50, 165);
+        scene.background = new THREE.Color(0xffe4e6); scene.fog = new THREE.Fog(0xffe4e6, 55, 180);
         hemiLight.color.setHex(0xfff1f2); hemiLight.intensity = 1.0;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('cute') })); g.rotation.x = -Math.PI / 2; worldGroup.add(g); addClouds(0xfff1f2);
       } else if (theme === 'dreamy') {
-        scene.background = new THREE.Color(0x1e1b4b); scene.fog = new THREE.Fog(0x1e1b4b, 45, 150);
+        scene.background = new THREE.Color(0x1e1b4b); scene.fog = new THREE.Fog(0x1e1b4b, 50, 165);
         hemiLight.color.setHex(0xc4b5fd); hemiLight.intensity = 0.85;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x312e81 })); g.rotation.x = -Math.PI / 2; worldGroup.add(g);
         for (let i = 0; i < 24; i++) {
@@ -776,20 +862,20 @@
           animatedProps.push({ mesh: cr, type: 'float', baseY: cr.position.y, phase: i });
         }
       } else if (theme === 'colorful') {
-        scene.background = new THREE.Color(0x38bdf8); scene.fog = new THREE.Fog(0x38bdf8, 55, 170);
+        scene.background = new THREE.Color(0x38bdf8); scene.fog = new THREE.Fog(0x38bdf8, 60, 185);
         hemiLight.color.setHex(0xffffff); hemiLight.intensity = 1.0;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xfef08a })); g.rotation.x = -Math.PI / 2; worldGroup.add(g); addClouds(0xffffff);
       } else if (theme === 'simple') {
-        scene.background = new THREE.Color(0xf4f4f5); scene.fog = new THREE.Fog(0xf4f4f5, 55, 170);
+        scene.background = new THREE.Color(0xf4f4f5); scene.fog = new THREE.Fog(0xf4f4f5, 60, 185);
         hemiLight.color.setHex(0xffffff); hemiLight.intensity = 0.95;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0xe4e4e7 })); g.rotation.x = -Math.PI / 2; worldGroup.add(g);
-        const gr = new THREE.GridHelper(320, 64, 0xa1a1aa, 0xd4d4d8); gr.position.y = 0.01; worldGroup.add(gr);
+        const gr = new THREE.GridHelper(340, 68, 0xa1a1aa, 0xd4d4d8); gr.position.y = 0.01; worldGroup.add(gr);
       } else if (theme === 'jungle') {
-        scene.background = new THREE.Color(0xa7f3d0); scene.fog = new THREE.Fog(0x6ee7b7, 45, 150);
+        scene.background = new THREE.Color(0xa7f3d0); scene.fog = new THREE.Fog(0x6ee7b7, 50, 165);
         hemiLight.color.setHex(0xd1fae5); hemiLight.intensity = 0.9;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('jungle') })); g.rotation.x = -Math.PI / 2; worldGroup.add(g); addClouds(0xecfdf5);
       } else if (theme === 'cathouse') {
-        scene.background = new THREE.Color(0xfef3c7); scene.fog = new THREE.Fog(0xfef3c7, 50, 160);
+        scene.background = new THREE.Color(0xfef3c7); scene.fog = new THREE.Fog(0xfef3c7, 55, 175);
         hemiLight.color.setHex(0xfffbeb); hemiLight.intensity = 0.95;
         const g = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ map: makeGroundTexture('wood') })); g.rotation.x = -Math.PI / 2; worldGroup.add(g);
         const rug = new THREE.Mesh(new THREE.CylinderGeometry(11.5, 11.5, 0.08, 32), new THREE.MeshStandardMaterial({ color: 0xfce7f3 })); rug.position.y = 0.04; worldGroup.add(rug);
@@ -828,7 +914,7 @@
       const topC = new THREE.Color(data.topColor || '#3b82f6'), botC = new THREE.Color(data.bottomColor || '#1e293b');
       const topMat = new THREE.MeshStandardMaterial({ color: topC }), topDark = new THREE.MeshStandardMaterial({ color: topC.clone().multiplyScalar(0.75) });
       const botMat = new THREE.MeshStandardMaterial({ color: botC }), botDark = new THREE.MeshStandardMaterial({ color: botC.clone().multiplyScalar(0.72) });
-      const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff }), goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.6, roughness: 0.3 });
+      const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff }), goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.7, roughness: 0.2 });
 
       function createLeg(isLeft) {
         const lp = new THREE.Group(); lp.position.set(isLeft ? -0.22 : 0.22, 0.72, 0);
@@ -851,10 +937,18 @@
           const kn = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.14), new THREE.MeshBasicMaterial({ color: 0x38bdf8 })); kn.position.set(0, -0.3, 0.22);
           const sf = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.35, 0.25), goldMat); sf.position.set(isLeft ? -0.22 : 0.22, -0.4, 0);
           lp.add(l, kn, sf);
+        } else if (data.bottomStyle === 'admin_greaves') {
+          const l = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.66, 0.44), new THREE.MeshStandardMaterial({ color: 0x111827 })); l.position.y = -0.33;
+          const gTrim = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.14, 0.48), goldMat); gTrim.position.y = -0.25;
+          lp.add(l, gTrim);
+        } else if (data.bottomStyle === 'admin_leggings') {
+          const l = new THREE.Mesh(new THREE.BoxGeometry(0.39, 0.66, 0.43), new THREE.MeshStandardMaterial({ color: 0x4c1d95 })); l.position.y = -0.33;
+          const neon = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.46), new THREE.MeshBasicMaterial({ color: 0xfacc15 })); neon.position.y = -0.46;
+          lp.add(l, neon);
         } else {
           const l = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.66, 0.41), botMat); l.position.y = -0.33; lp.add(l);
         }
-        const sh = new THREE.Mesh(new THREE.BoxGeometry(0.39, 0.15, 0.5), data.bottomStyle === 'armorpants' ? goldMat : whiteMat);
+        const sh = new THREE.Mesh(new THREE.BoxGeometry(0.39, 0.15, 0.5), (data.bottomStyle === 'armorpants' || data.bottomStyle === 'admin_greaves' || data.bottomStyle === 'admin_leggings') ? goldMat : whiteMat);
         sh.position.set(0, -0.65, 0.04); lp.add(sh); return lp;
       }
 
@@ -913,8 +1007,15 @@
         const eL = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), goldMat); eL.position.set(-0.56, 1.66, 0);
         const eR = eL.clone(); eR.position.set(0.56, 1.66, 0);
         const ss = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.96, 0.6), goldMat); ss.rotation.z = 0.55; ss.position.y = 1.25;
-        const cr = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.26, 0.24, 8), goldMat); cr.position.y = 2.64;
-        rig.add(cp, eL, eR, ss, cr);
+        rig.add(cp, eL, eR, ss);
+      } else if (data.topStyle === 'admin_coat') {
+        const coat = new THREE.Mesh(new THREE.BoxGeometry(1.24, 1.45, 0.72), new THREE.MeshStandardMaterial({ color: 0x0f172a })); coat.position.set(0, 1.05, 0);
+        const gTrim = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.14, 0.76), goldMat); gTrim.position.set(0, 1.65, 0);
+        rig.add(coat, gTrim);
+      } else if (data.topStyle === 'admin_robe') {
+        const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.95, 1.42, 18), new THREE.MeshStandardMaterial({ color: 0x312e81 })); robe.position.set(0, 1.05, 0);
+        const aura = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.06, 10, 24), goldMat); aura.rotation.x = Math.PI / 2; aura.position.set(0, 1.72, 0);
+        rig.add(robe, aura);
       }
 
       function createArm(isLeft) {
@@ -943,6 +1044,15 @@
       const head = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.82), [skinMat, skinMat, skinMat, skinMat, new THREE.MeshStandardMaterial({ map: faceTex }), skinMat]);
       head.position.y = 2.12; rig.add(head);
 
+      // 어드민 전용 황금 왕관
+      if (data.isAdmin) {
+        const crownBase = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.3, 0.24, 12), goldMat);
+        crownBase.position.y = 2.62;
+        const crownGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+        crownGem.position.set(0, 2.84, 0.24);
+        rig.add(crownBase, crownGem);
+      }
+
       if (data.face === 'cat') {
         const eg = new THREE.ConeGeometry(0.16, 0.28, 4);
         const lE = new THREE.Mesh(eg, skinMat); lE.position.set(-0.24, 2.62, 0);
@@ -965,7 +1075,7 @@
       };
       buildAvatarAppearance(group, playerData);
       const ns = makeTextSprite(playerData.name, playerData.isAdmin ? "rgba(220,38,38,0.88)" : "rgba(15,23,42,0.75)", "#ffffff");
-      ns.position.y = 2.95; group.add(ns); group.userData.nameSprite = ns;
+      ns.position.y = 3.15; group.add(ns); group.userData.nameSprite = ns;
       if (playerData.isInvisible) group.visible = false;
       scene.add(group); return group;
     }
@@ -980,7 +1090,7 @@
     function showSpeechBubble(avatar, text) {
       if (avatar.userData.chatSprite) avatar.remove(avatar.userData.chatSprite);
       if (avatar.userData.chatTimeout) clearTimeout(avatar.userData.chatTimeout);
-      const b = makeTextSprite(text, "rgba(255,255,255,0.95)", "#0f172a"); b.position.y = 3.75; avatar.add(b); avatar.userData.chatSprite = b;
+      const b = makeTextSprite(text, "rgba(255,255,255,0.95)", "#0f172a"); b.position.y = 3.9; avatar.add(b); avatar.userData.chatSprite = b;
       avatar.userData.chatTimeout = setTimeout(() => { avatar.remove(b); avatar.userData.chatSprite = null; }, 4500);
     }
 
@@ -1062,7 +1172,6 @@
       updateFreezeTagHud(data.participants);
     }
 
-    // 포근하고 귀여운 거짓말 탐지기 라운지 디자인
     function enterLiarArena(data) {
       gameState = 'liar'; worldGroup.visible = false; coinGroup.visible = false; arenaGroup.visible = true;
       document.getElementById('gesture-bar').style.display = 'none'; document.getElementById('zone-dwell-hud').classList.remove('open');
@@ -1117,7 +1226,7 @@
           if (ov && savedPlayerProfiles[p.id]) buildAvatarAppearance(otherPlayers[p.id], { ...savedPlayerProfiles[p.id], ...ov });
           if (isFreezeTag && p.role === 'it') {
             otherPlayers[p.id].remove(otherPlayers[p.id].userData.nameSprite);
-            const ns = makeTextSprite('👹[술래] ' + p.name, "rgba(220,38,38,0.9)", "#ffffff"); ns.position.y = 2.95; otherPlayers[p.id].add(ns); otherPlayers[p.id].userData.nameSprite = ns;
+            const ns = makeTextSprite('👹[술래] ' + p.name, "rgba(220,38,38,0.9)", "#ffffff"); ns.position.y = 3.15; otherPlayers[p.id].add(ns); otherPlayers[p.id].userData.nameSprite = ns;
           }
         }
       });
@@ -1142,7 +1251,7 @@
           buildAvatarAppearance(av, savedPlayerProfiles[id]);
           av.remove(av.userData.nameSprite);
           const ns = makeTextSprite(savedPlayerProfiles[id].name, savedPlayerProfiles[id].isAdmin ? "rgba(220,38,38,0.88)" : "rgba(15,23,42,0.75)", "#ffffff");
-          ns.position.y = 2.95; av.add(ns); av.userData.nameSprite = ns;
+          ns.position.y = 3.15; av.add(ns); av.userData.nameSprite = ns;
         }
       });
       buildWorldTheme(currentTheme);
@@ -1204,15 +1313,60 @@
       cModal.classList.add('open');
     }
 
+    // 미니게임 존 3초 후 방장 설정 모달
+    const cModal = document.getElementById('center-modal');
+    function openMinigameHostSetupModal(type) {
+      const defCpu = type === 'freezetag' ? 5 : 3;
+      const titleMap = {
+        colorflip: '🎨 색깔 뒤집기 방장 설정',
+        freezetag: '🧊 얼음땡 방장 설정',
+        liar: '🕵️ 거짓말 탐지기 방장 설정'
+      };
+      let extraHtml = '';
+      if (type === 'colorflip') {
+        extraHtml =
+          '<div style="display:flex;flex-direction:column;gap:4px;text-align:left;margin-top:6px;">' +
+          '<label>경기 방식:</label><select id="mg-setup-mode" style="padding:6px;border-radius:8px;background:#1e293b;color:#fff;">' +
+          '<option value="solo">개인전</option><option value="team">팀전 (2팀 이상)</option></select></div>';
+      }
+      document.getElementById('cmodal-title').innerText = titleMap[type] || '미니게임 설정';
+      document.getElementById('cmodal-body').innerHTML =
+        '<div style="display:flex;flex-direction:column;gap:6px;text-align:left;">' +
+        '<label>CPU 수 (0~10):</label>' +
+        '<input type="number" id="mg-setup-cpu" min="0" max="10" value="' + defCpu + '" style="padding:6px;border-radius:8px;background:#1e293b;color:#fff;">' +
+        extraHtml + '</div>';
+      document.getElementById('cmodal-footer').innerHTML =
+        '<button class="modal-btn" id="mg-setup-confirm-btn" style="background:#10b981;">🚀 모집 시작</button>' +
+        '<button class="modal-btn" style="background:#475569;" onclick="document.getElementById(\'center-modal\').classList.remove(\'open\')">취소</button>';
+      document.getElementById('mg-setup-confirm-btn').onclick = () => {
+        const cpuCount = Math.max(0, Math.min(10, parseInt(document.getElementById('mg-setup-cpu').value) || 0));
+        const modeEl = document.getElementById('mg-setup-mode');
+        const mode = modeEl ? modeEl.value : 'solo';
+        cModal.classList.remove('open');
+        socket.emit('requestStartLobby', { type, cpuCount, mode });
+      };
+      cModal.classList.add('open');
+    }
+
     function renderShopUI() {
       document.getElementById('user-badge').innerText = myAccount.isGuest ? ('👀 ' + myAccount.name) : ('👤 ' + myAccount.name);
       document.getElementById('mong-badge').innerText = '🪙 ' + myAccount.mong + '몽';
+      if (myAccount.isAdmin) document.getElementById('quick-admin-btn').style.display = 'inline-block';
+
       const spCost = (myAccount.speedLevel + 1) * 50, jpCost = (myAccount.jumpLevel + 1) * 50;
       document.getElementById('upgrade-speed-btn').innerText = myAccount.isAdmin ? ('🏃 달리기 Lv.' + myAccount.speedLevel + ' (ADMIN)') : (myAccount.speedLevel >= 5 ? '🏃 달리기 MAX' : '🏃 달리기 Lv.' + myAccount.speedLevel + ' (' + spCost + '몽)');
       document.getElementById('upgrade-jump-btn').innerText = myAccount.isAdmin ? ('🦘 점프력 Lv.' + myAccount.jumpLevel + ' (ADMIN)') : (myAccount.jumpLevel >= 5 ? '🦘 점프력 MAX' : '🦘 점프력 Lv.' + myAccount.jumpLevel + ' (' + jpCost + '몽)');
 
       const topBox = document.getElementById('top-options'); topBox.innerHTML = '';
       TOP_ITEMS.forEach(item => {
+        if (item.adminOnly && !myAccount.isAdmin) {
+          const btn = document.createElement('button');
+          btn.className = 'opt-btn admin-only-lock';
+          btn.innerText = '👑 ' + item.label + ' (어드민만 사용가능)';
+          btn.onclick = () => showLiveToast('👑 어드민 전용', '어드민만 사용가능한 의상입니다!');
+          topBox.appendChild(btn);
+          return;
+        }
         const owned = myAccount.ownedTops.includes(item.id), btn = document.createElement('button');
         btn.className = 'opt-btn ' + (myProfile.topStyle === item.id ? 'active ' : '') + (!owned ? 'locked' : '');
         btn.innerText = owned ? item.label : '🔒 ' + item.label + ' (' + item.price + '몽)';
@@ -1226,6 +1380,14 @@
 
       const botBox = document.getElementById('bottom-options'); botBox.innerHTML = '';
       BOTTOM_ITEMS.forEach(item => {
+        if (item.adminOnly && !myAccount.isAdmin) {
+          const btn = document.createElement('button');
+          btn.className = 'opt-btn admin-only-lock';
+          btn.innerText = '👑 ' + item.label + ' (어드민만 사용가능)';
+          btn.onclick = () => showLiveToast('👑 어드민 전용', '어드민만 사용가능한 하의입니다!');
+          botBox.appendChild(btn);
+          return;
+        }
         const owned = myAccount.ownedBottoms.includes(item.id), btn = document.createElement('button');
         btn.className = 'opt-btn ' + (myProfile.bottomStyle === item.id ? 'active ' : '') + (!owned ? 'locked' : '');
         btn.innerText = owned ? item.label : '🔒 ' + item.label + ' (' + item.price + '몽)';
@@ -1280,6 +1442,27 @@
     const panels = ['account-panel', 'avatar-panel', 'theme-panel', 'admin-panel'];
     function togglePanel(id) { panels.forEach(p => p === id ? document.getElementById(p).classList.toggle('open') : document.getElementById(p).classList.remove('open')); }
 
+    function openAdminPanelForStage(stage) {
+      refreshAdminKickList();
+      if (myAccount.isAdmin) {
+        document.getElementById('admin-step1-box').style.display = 'none';
+        document.getElementById('admin-step2-box').style.display = 'none';
+        document.getElementById('admin-controls-box').style.display = 'flex';
+      } else if (stage === 'pw' && castleIdVerified) {
+        document.getElementById('admin-step1-box').style.display = 'none';
+        document.getElementById('admin-step2-box').style.display = 'flex';
+        document.getElementById('admin-controls-box').style.display = 'none';
+        document.getElementById('admin-verified-id-label').innerText = '확인된 ID: ' + document.getElementById('admin-id-input').value.trim();
+      } else {
+        document.getElementById('admin-step1-box').style.display = 'flex';
+        document.getElementById('admin-step2-box').style.display = 'none';
+        document.getElementById('admin-controls-box').style.display = 'none';
+      }
+      document.getElementById('admin-panel').classList.add('open');
+    }
+
+    document.getElementById('quick-admin-btn').onclick = () => openAdminPanelForStage('controls');
+
     document.getElementById('open-account-btn').onclick = () => {
       document.getElementById('my-id-readonly').value = myAccount.username || '';
       document.getElementById('my-nickname-input').value = myAccount.name || '';
@@ -1296,7 +1479,15 @@
 
     document.querySelectorAll('.close-btn').forEach(b => b.onclick = () => document.getElementById(b.dataset.close).classList.remove('open'));
 
-    document.getElementById('admin-submit-btn').onclick = () => socket.emit('adminLogin', { id: document.getElementById('admin-id-input').value.trim(), pw: document.getElementById('admin-pw-input').value.trim() });
+    document.getElementById('admin-id-verify-btn').onclick = () => {
+      socket.emit('adminVerifyId', { id: document.getElementById('admin-id-input').value.trim() });
+    };
+    document.getElementById('admin-submit-btn').onclick = () => {
+      socket.emit('adminLogin', {
+        id: document.getElementById('admin-id-input').value.trim(),
+        pw: document.getElementById('admin-pw-input').value.trim()
+      });
+    };
     document.getElementById('admin-boost-btn').onclick = () => socket.emit('adminToggleBoost');
     document.getElementById('admin-invisible-btn').onclick = () => socket.emit('adminToggleInvisible');
     document.getElementById('admin-send-alert-btn').onclick = () => { const inp = document.getElementById('admin-alert-input'); if (inp.value.trim()) { socket.emit('adminBroadcastAlert', inp.value); inp.value = ''; } };
@@ -1316,7 +1507,6 @@
     bindColorGroup('#bottom-colors', 'bottom-picker', 'bottomColor');
     document.querySelectorAll('.gest-btn').forEach(btn => btn.onclick = () => socket.emit('playGesture', btn.dataset.gest));
 
-    // 참가 대기실 실시간 참가자 명단 렌더링
     let activeLobbyRoomId = null;
     const lobbyBanner = document.getElementById('lobby-banner');
     function updateLobbyParticipantsUI(participants) {
@@ -1386,11 +1576,8 @@
       });
 
       if (me.isAdmin) {
-        document.getElementById('admin-login-box').style.display = 'none';
-        document.getElementById('admin-controls-box').style.display = 'flex';
-        document.getElementById('admin-boost-btn').innerText = me.adminBoostActive
-          ? '⚡ 속도/점프: 현재 20배 (클릭 시 일반 전환)'
-          : '🚶 속도/점프: 현재 일반 (클릭 시 20배 전환)';
+        document.getElementById('quick-admin-btn').style.display = 'inline-block';
+        openAdminPanelForStage('controls');
       }
 
       authScreen.classList.add('hidden');
@@ -1400,6 +1587,12 @@
       else showLiveToast('환영합니다!', me.name + '님의 데이터가 불러와졌어요!! :)');
     });
 
+    socket.on('adminIdVerified', ({ message }) => {
+      castleIdVerified = true;
+      showLiveToast('🪪 1단계 통과', message);
+      openAdminPanelForStage('pw');
+    });
+
     socket.on('adminAuthSuccess', (p) => {
       myAccount = {
         ...myAccount,
@@ -1407,7 +1600,9 @@
         isAdmin: !!p.isAdmin, adminBoostActive: !!p.adminBoostActive, isInvisible: !!p.isInvisible,
         ownedTops: p.ownedTops, ownedBottoms: p.ownedBottoms, ownedThemes: p.ownedThemes
       };
-      document.getElementById('admin-login-box').style.display = 'none';
+      document.getElementById('quick-admin-btn').style.display = 'inline-block';
+      document.getElementById('admin-step1-box').style.display = 'none';
+      document.getElementById('admin-step2-box').style.display = 'none';
       document.getElementById('admin-controls-box').style.display = 'flex';
       document.getElementById('admin-boost-btn').innerText = p.adminBoostActive
         ? '⚡ 속도/점프: 현재 20배 (클릭 시 일반 전환)'
@@ -1447,7 +1642,7 @@
       savedPlayerProfiles[p.id] = p; const t = p.id === socket.id ? myAvatar : otherPlayers[p.id];
       if (t && gameState === 'world') {
         buildAvatarAppearance(t, p); t.remove(t.userData.nameSprite);
-        const ns = makeTextSprite(p.name, p.isAdmin ? "rgba(220,38,38,0.88)" : "rgba(15,23,42,0.75)", "#ffffff"); ns.position.y = 2.95; t.add(ns); t.userData.nameSprite = ns;
+        const ns = makeTextSprite(p.name, p.isAdmin ? "rgba(220,38,38,0.88)" : "rgba(15,23,42,0.75)", "#ffffff"); ns.position.y = 3.15; t.add(ns); t.userData.nameSprite = ns;
       }
       refreshAdminKickList();
     });
@@ -1487,7 +1682,6 @@
 
     socket.on('minigameCancelled', ({ reason }) => { activeLobbyRoomId = null; lobbyBanner.classList.remove('open'); showLiveToast('알림', reason); addChatLog('시스템', reason); });
 
-    const cModal = document.getElementById('center-modal');
     socket.on('colorflipTeamSetup', ({ hostId, participants, assignments }) => {
       lobbyBanner.classList.remove('open');
       if (socket.id !== hostId) { document.getElementById('cmodal-title').innerText = '⏳ 팀 편성 대기 중'; document.getElementById('cmodal-body').innerText = '방장이 팀을 배정 중입니다.'; document.getElementById('cmodal-footer').innerHTML = ''; cModal.classList.add('open'); return; }
@@ -1632,26 +1826,28 @@
     document.getElementById('jump-btn').onclick = () => { if (isGrounded && gameState !== 'liar') { velY = getJumpPower(); isGrounded = false; } };
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 
-    // 오픈월드 5초 구역 체류 로직
+    // 오픈월드 3초 구역 체류 로직
     let currentDwellZoneId = null, dwellProgressSec = 0, dwellTriggered = false;
     const dwellHud = document.getElementById('zone-dwell-hud');
     const dwellLabel = document.getElementById('zone-dwell-label');
     const dwellFill = document.getElementById('zone-dwell-bar-fill');
     const dwellSecTxt = document.getElementById('zone-dwell-sec');
+    const DWELL_TARGET_SEC = 3.0;
 
     function triggerZoneAction(zone) {
       if (zone.action === 'openAvatar') { renderShopUI(); togglePanel('avatar-panel'); }
       else if (zone.action === 'openTheme') { renderShopUI(); togglePanel('theme-panel'); }
       else if (zone.action === 'openExchange') { openExchangeModal(); }
-      else if (zone.action === 'startColorflip') { socket.emit('requestStartLobby', { type: 'colorflip', cpuCount: 3, mode: 'solo' }); }
-      else if (zone.action === 'startFreezetag') { socket.emit('requestStartLobby', { type: 'freezetag', cpuCount: 5, mode: 'solo' }); }
-      else if (zone.action === 'startLiar') { socket.emit('requestStartLobby', { type: 'liar', cpuCount: 3, mode: 'solo' }); }
+      else if (zone.action === 'openMgSetup_colorflip') { openMinigameHostSetupModal('colorflip'); }
+      else if (zone.action === 'openMgSetup_freezetag') { openMinigameHostSetupModal('freezetag'); }
+      else if (zone.action === 'openMgSetup_liar') { openMinigameHostSetupModal('liar'); }
       else if (zone.action === 'openCastleGate') {
         castleGateUnlocked = true;
-        showLiveToast('🏰 성문 개방!', '5초 대기 완료! 성문이 열렸어요! 안으로 들어가세요!');
-      } else if (zone.action === 'openAdminModal') {
-        refreshAdminKickList();
-        togglePanel('admin-panel');
+        showLiveToast('🏰 성문 개방!', '3초 대기 완료! 성문이 열렸어요! 안으로 들어가세요!');
+      } else if (zone.action === 'openAdminIdModal') {
+        openAdminPanelForStage('id');
+      } else if (zone.action === 'openAdminPwModal') {
+        openAdminPanelForStage('pw');
       }
     }
 
@@ -1667,11 +1863,12 @@
           if (p.type === 'float') { p.mesh.position.y = p.baseY + Math.sin(time * 0.002 + p.phase) * 0.5; p.mesh.rotation.y += dt * 0.8; }
           else if (p.type === 'cloud') { p.mesh.position.x += dt * p.speed; if (p.mesh.position.x > 110) p.mesh.position.x = -110; }
         }
+        // 성문은 한 번 열리면 닫히지 않고 계속 열려 있음
         if (castleGateLeft && castleGateRight) {
-          const targetOpen = castleGateUnlocked ? 3.2 : 0;
+          const targetOpen = castleGateUnlocked ? 3.6 : 0;
           castleGateOpenAmount += (targetOpen - castleGateOpenAmount) * Math.min(1, dt * 5);
-          castleGateLeft.position.x = -1.5 - castleGateOpenAmount;
-          castleGateRight.position.x = 1.5 + castleGateOpenAmount;
+          castleGateLeft.position.x = (CASTLE_CX - 1.75) - castleGateOpenAmount;
+          castleGateRight.position.x = (CASTLE_CX + 1.75) + castleGateOpenAmount;
         }
       }
 
@@ -1699,10 +1896,12 @@
           const dx = (fX * -moveZ + rX * moveX) * speed, dz = (fZ * -moveZ + rZ * moveX) * speed;
           myAvatar.position.x += dx; myAvatar.position.z += dz; myAvatar.rotation.y = Math.atan2(dx, dz);
 
-          // 닫힌 성문 충돌 방지
-          if (gameState === 'world' && !castleGateUnlocked && Math.abs(myAvatar.position.x) < 3.2 && myAvatar.position.z < -42.2 && myAvatar.position.z > -45.8) {
-            myAvatar.position.z = -42.2;
+          // 닫힌 성문 충돌 방지 (열리면 통과 가능)
+          const gateZ = CASTLE_CZ + 14;
+          if (gameState === 'world' && !castleGateUnlocked && Math.abs(myAvatar.position.x - CASTLE_CX) < 3.6 && Math.abs(myAvatar.position.z - gateZ) < 1.8) {
+            myAvatar.position.z = gateZ + 1.9;
           }
+
           if (gameState === 'colorflip') { myAvatar.position.x = Math.max(-15, Math.min(15, myAvatar.position.x)); myAvatar.position.z = Math.max(-15, Math.min(15, myAvatar.position.z)); }
           else if (gameState === 'freezetag') { const lim = ftArenaHalf - 1.0; myAvatar.position.x = Math.max(-lim, Math.min(lim, myAvatar.position.x)); myAvatar.position.z = Math.max(-lim, Math.min(lim, myAvatar.position.z)); }
         }
@@ -1713,10 +1912,11 @@
           }
         }
 
-        // 5초 체류 구역 판정
+        // 3초 체류 구역 판정
         if (gameState === 'world') {
           const hitZone = WORLD_ZONES.find(z => {
             if (z.requiresGate && !castleGateUnlocked) return false;
+            if (z.requiresId && !castleIdVerified) return false;
             return Math.hypot(myAvatar.position.x - z.x, myAvatar.position.z - z.z) <= z.radius;
           });
           if (hitZone) {
@@ -1726,12 +1926,12 @@
               dwellTriggered = false;
             }
             if (!dwellTriggered) {
-              dwellProgressSec = Math.min(5.0, dwellProgressSec + dt);
+              dwellProgressSec = Math.min(DWELL_TARGET_SEC, dwellProgressSec + dt);
               dwellHud.classList.add('open');
               dwellLabel.innerText = hitZone.label + ' 체류 중';
-              dwellFill.style.width = ((dwellProgressSec / 5.0) * 100) + '%';
-              dwellSecTxt.innerText = dwellProgressSec.toFixed(1) + '초 / 5.0초';
-              if (dwellProgressSec >= 5.0) {
+              dwellFill.style.width = ((dwellProgressSec / DWELL_TARGET_SEC) * 100) + '%';
+              dwellSecTxt.innerText = dwellProgressSec.toFixed(1) + '초 / 3.0초';
+              if (dwellProgressSec >= DWELL_TARGET_SEC) {
                 dwellTriggered = true;
                 dwellHud.classList.remove('open');
                 triggerZoneAction(hitZone);
@@ -1754,7 +1954,6 @@
         }
         updateAvatarAnimation(myAvatar, dt);
 
-        // 얼음땡 생중계 관중석 시야 수정: 관중석 앞쪽 위에서 경기장 중앙을 내려다보도록 배치
         if (isOutSpectator) {
           camera.position.set(myAvatar.position.x * 0.5, 13.5, -(ftArenaHalf + 1.5));
           camera.lookAt(0, 0.5, 2);
